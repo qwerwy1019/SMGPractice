@@ -1,14 +1,14 @@
 #include "FbxLoader.h"
+
 #include <filesystem>
 #include <cassert>
+#include <set>
+
 #include "SMGEngine/SkinnedData.h"
 #include "SMGEngine/MathHelper.h"
-#include <fbxsdk/core/math/fbxquaternion.h>
-#include <windows.h>
-#include <msxml.h>
 #include "SMGEngine/D3DUtil.h"
 #include "SMGEngine/FileHelper.h"
-#include <set>
+
 
 HRESULT FbxLoader::loadFbxPolygons(FbxMesh* mesh, std::vector<FbxPolygonVertexInfo>& polygonVertices) const noexcept
 {
