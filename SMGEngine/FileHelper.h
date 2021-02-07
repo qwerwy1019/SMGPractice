@@ -6,53 +6,55 @@
 class XMLWriter
 {
 public:
-	XMLWriter();
-	HRESULT createDocument(const std::string& name) noexcept;
+	XMLWriter(const std::string& name);
 
 	template<typename T>
-	HRESULT addAttribute(const std::string& name, const T& value) noexcept
+	void addAttribute(const std::string& name, const T& value)
 	{
-		assert(_cursor != nullptr);
+		check(_cursor != nullptr, "cursor가 비정상입니다.");
 
 		_bstr_t bstrName = name.c_str();
 		_variant_t variantValue = value;
 		IXMLDOMAttributePtr attribute;
-		ReturnIfFailed(_document->createAttribute(bstrName, &attribute));
-		ReturnIfFailed(attribute->put_value(variantValue));
+		ThrowIfFailed(_document->createAttribute(bstrName, &attribute), "createAttribute fail");
+		ThrowIfFailed(attribute->put_value(variantValue), "put_value fail");
 
-		ReturnIfFailed(_cursor->setAttributeNode(attribute, nullptr));
-
-		return S_OK;
+		IXMLDOMAttributePtr outAttribute;
+		ThrowIfFailed(_cursor->setAttributeNode(attribute, &outAttribute), "setAttributeNode fail");
+		if (outAttribute != nullptr)
+		{
+			ThrowErrCode(ErrCode::InvalidXmlData, "attrName :" + name + "이 중복으로 추가되었습니다.");
+		}
 	}
 
 	template<>
-	HRESULT addAttribute(const std::string& name, const DirectX::XMFLOAT2& value) noexcept
+	void addAttribute(const std::string& name, const DirectX::XMFLOAT2& value)
 	{
-		assert(_cursor != nullptr);
+		check(_cursor != nullptr, "cursor가 비정상입니다.");
 		std::string valueStr = std::to_string(value.x) + " " + std::to_string(value.y);
 		return addAttribute(name, valueStr.c_str());
 	}
 
 	template<>
-	HRESULT addAttribute(const std::string& name, const DirectX::XMFLOAT3& value) noexcept
+	void addAttribute(const std::string& name, const DirectX::XMFLOAT3& value)
 	{
-		assert(_cursor != nullptr);
+		check(_cursor != nullptr, "cursor가 비정상입니다.");
 		std::string valueStr = std::to_string(value.x) + " " + std::to_string(value.y) + " " + std::to_string(value.z);
 		return addAttribute(name, valueStr.c_str());
 	}
 
 	template<>
-	HRESULT addAttribute(const std::string& name, const DirectX::XMFLOAT4& value) noexcept
+	void addAttribute(const std::string& name, const DirectX::XMFLOAT4& value)
 	{
-		assert(_cursor != nullptr);
+		check(_cursor != nullptr, "cursor가 비정상입니다.");
 		std::string valueStr = std::to_string(value.x) + " " + std::to_string(value.y) + " " + std::to_string(value.z) + " " + std::to_string(value.w);
 		return addAttribute(name, valueStr.c_str());
 	}
 
 	template<typename T>
-	HRESULT addAttribute(const std::string& name, const std::vector<T>& value) noexcept
+	void addAttribute(const std::string& name, const std::vector<T>& value)
 	{
-		assert(_cursor != nullptr);
+		check(_cursor != nullptr, "cursor가 비정상입니다.");
 		std::string valueStr;
 		for (int i = 0; i < value.size(); ++i)
 		{
@@ -67,9 +69,9 @@ public:
 	}
 
 	template<typename T, int Size>
-	HRESULT addAttribute(const std::string& name, const std::array<T, Size>& value) noexcept
+	void addAttribute(const std::string& name, const std::array<T, Size>& value)
 	{
-		assert(_cursor != nullptr);
+		check(_cursor != nullptr, "cursor가 비정상입니다.");
 		std::string valueStr;
 		for (int i = 0; i < Size; ++i)
 		{
@@ -82,9 +84,9 @@ public:
 	}
 
 	template<>
-	HRESULT addAttribute(const std::string& name, const DirectX::XMFLOAT4X4& value) noexcept
+	void addAttribute(const std::string& name, const DirectX::XMFLOAT4X4& value)
 	{
-		assert(_cursor != nullptr);
+		check(_cursor != nullptr, "cursor가 비정상입니다.");
 		std::string valueStr;
 		for (int i = 0; i < 4; ++i)
 		{
@@ -98,18 +100,16 @@ public:
 		return addAttribute(name, valueStr.c_str());
 	}
 
-	HRESULT addNode(const std::string& name) noexcept;
+	void addNode(const std::string& name);
 
-	HRESULT openChildNode(void) noexcept;
+	void openChildNode(void);
 
-	HRESULT closeChildNode(void) noexcept;
+	void closeChildNode(void);
 
-	HRESULT returnToRootNode(void) noexcept;
-
-	HRESULT writeXmlFile(const std::string& filePath) const noexcept;
+	void writeXmlFile(const std::string& filePath) const;
 private:
-	HRESULT insertNewLine(void) noexcept;
-	HRESULT insertTab(void) noexcept;
+	void insertNewLine(void);
+	void insertTab(void);
 	IXMLDOMElementPtr _cursor;
 	IXMLDOMElementPtr _cursorParent;
 	IXMLDOMDocumentPtr _document;
@@ -123,64 +123,65 @@ public:
 	XMLReaderNode(IXMLDOMElementPtr node) noexcept;
 
 	template<typename T>
-	void loadAttribute(const std::string& attrName, T& outValue) const noexcept
+	void loadAttribute(const std::string& attrName, T& outValue) const
 	{
 		_bstr_t bstrAttrName = attrName.c_str();
 		_variant_t out = outValue;
-		HRESULT rv = _element->getAttribute(bstrAttrName, &out);
-		if (FAILED(rv))
-		{
-			assert(false);
-			return;
-		}
+		ThrowIfFailed(_element->getAttribute(bstrAttrName, &out), attrName);
+
 		outValue = out;
 	}
 
 	template<>
-	void loadAttribute(const std::string& attrName, std::string& outValue) const noexcept
+	void loadAttribute(const std::string& attrName, std::string& outValue) const
 	{
 		_bstr_t bstrAttrName = attrName.c_str();
 		_variant_t out = outValue.c_str();
-		HRESULT rv = _element->getAttribute(bstrAttrName, &out);
-		if (FAILED(rv))
-		{
-			assert(false);
-			return;
-		}
+		ThrowIfFailed(_element->getAttribute(bstrAttrName, &out), attrName);
+
 		USES_CONVERSION;
 		outValue = W2A(out.bstrVal);
 	}
 
 	template<>
-	void loadAttribute(const std::string& attrName, DirectX::XMFLOAT2& outValue) const noexcept
+	void loadAttribute(const std::string& attrName, DirectX::XMFLOAT2& outValue) const
 	{
 		std::string outString;
 		loadAttribute(attrName, outString);
 		const auto& tokenized = D3DUtil::tokenizeString(outString, ' ');
-		assert(tokenized.size() == 2);
+		if (tokenized.size() != 2)
+		{
+			ThrowErrCode(ErrCode::TokenizeError);
+		}
 		outValue.x = std::stof(tokenized[0]);
 		outValue.y = std::stof(tokenized[1]);
 	}
 
 	template<>
-	void loadAttribute(const std::string& attrName, DirectX::XMFLOAT3& outValue) const noexcept
+	void loadAttribute(const std::string& attrName, DirectX::XMFLOAT3& outValue) const
 	{
 		std::string outString;
 		loadAttribute(attrName, outString);
 		const auto& tokenized = D3DUtil::tokenizeString(outString, ' ');
-		assert(tokenized.size() == 3);
+		if (tokenized.size() != 3)
+		{
+			ThrowErrCode(ErrCode::TokenizeError);
+		}
 		outValue.x = std::stof(tokenized[0]);
 		outValue.y = std::stof(tokenized[1]);
 		outValue.z = std::stof(tokenized[2]);
 	}
 
 	template<>
-	void loadAttribute(const std::string& attrName, DirectX::XMFLOAT4& outValue) const noexcept
+	void loadAttribute(const std::string& attrName, DirectX::XMFLOAT4& outValue) const
 	{
 		std::string outString;
 		loadAttribute(attrName, outString);
 		const auto& tokenized = D3DUtil::tokenizeString(outString, ' ');
-		assert(tokenized.size() == 4);
+		if(tokenized.size() != 4)
+		{
+			ThrowErrCode(ErrCode::TokenizeError);
+		}
 		outValue.x = std::stof(tokenized[0]);
 		outValue.y = std::stof(tokenized[1]);
 		outValue.z = std::stof(tokenized[2]);
@@ -188,12 +189,15 @@ public:
 	}
 
 	template<>
-	void loadAttribute(const std::string& attrName, DirectX::XMFLOAT4X4& outValue) const noexcept
+	void loadAttribute(const std::string& attrName, DirectX::XMFLOAT4X4& outValue) const
 	{
 		std::string outString;
 		loadAttribute(attrName, outString);
 		const auto& tokenized = D3DUtil::tokenizeString(outString, ' ');
-		assert(tokenized.size() == 16);
+		if (tokenized.size() != 16)
+		{
+			ThrowErrCode(ErrCode::TokenizeError);
+		}
 		for (int i = 0; i < 4; ++i)
 		{
 			for (int j = 0; j < 4; ++j)
@@ -204,7 +208,7 @@ public:
 	}
 
 	template<typename T>
-	void loadAttribute(const std::string& attrName, std::vector<T>& outValue) const noexcept
+	void loadAttribute(const std::string& attrName, std::vector<T>& outValue) const
 	{
 		std::string outString;
 		loadAttribute(attrName, outString);
@@ -216,20 +220,23 @@ public:
 		}
 	}
 	template<typename T, int Size>
-	void loadAttribute(const std::string& attrName, std::array<T, Size>& outValue) const noexcept
+	void loadAttribute(const std::string& attrName, std::array<T, Size>& outValue) const
 	{
 		std::string outString;
 		loadAttribute(attrName, outString);
 		const auto& tokenized = D3DUtil::tokenizeString(outString, ' ');
-		assert(tokenized.size() == Size);
+		if (tokenized.size() != Size)
+		{
+			ThrowErrCode(ErrCode::TokenizeError);
+		}
 		for (int i = 0; i < tokenized.size(); ++i)
 		{
 			outValue[i] = D3DUtil::convertTo<T>(tokenized[i]);
 		}
 	}
-	std::string getNodeName(void) const noexcept;
+	std::string getNodeName(void) const;
 
-	std::vector<XMLReaderNode> getChildNodes(void) const noexcept;
+	std::vector<XMLReaderNode> getChildNodes(void) const;
 
 private:
 	IXMLDOMElementPtr _element;
@@ -239,7 +246,7 @@ class XMLReader
 {
 public:
 	XMLReader() = default;
-	HRESULT loadXMLFile(const std::string& filePath) noexcept;
+	void loadXMLFile(const std::string& filePath);
 	XMLReaderNode getRootNode(void) const noexcept { return _node; }
 private:
 	XMLReaderNode _node;

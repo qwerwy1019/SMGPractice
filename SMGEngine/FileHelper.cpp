@@ -2,106 +2,97 @@
 #include "FileHelper.h"
 #include "D3DUtil.h"
 
-XMLWriter::XMLWriter(void)
+XMLWriter::XMLWriter(const std::string& name)
 	: _cursor(nullptr)
 	, _cursorParent(nullptr)
 	, _tabCount(1)
 {
-}
+	check(!name.empty(), "비정상입니다.");
 
-HRESULT XMLWriter::createDocument(const std::string& name) noexcept
-{
 	IXMLDOMProcessingInstructionPtr xmlProcessingInstruction;
-	HRESULT rv = _document.CreateInstance(__uuidof(DOMDocument));
-	if (FAILED(rv))
-	{
-		assert(false);
-		return rv;
-	}
+	ThrowIfFailed(_document.CreateInstance(__uuidof(DOMDocument)),
+		"writer document create fail");
 
 	_bstr_t bstr1, bstr2;
 
 	bstr1 = L"xml";
 	bstr2 = L"version=\"1.0\"";
 
-	ReturnIfFailed(_document->createProcessingInstruction(bstr1, bstr2, &xmlProcessingInstruction));
+	ThrowIfFailed(_document->createProcessingInstruction(bstr1, bstr2, &xmlProcessingInstruction),
+		"xml version write fail");
 
-	ReturnIfFailed(_document->appendChild(xmlProcessingInstruction, nullptr));
+	ThrowIfFailed(_document->appendChild(xmlProcessingInstruction, nullptr),
+		"xml verstion node append fail");
 
 	_bstr_t rootName = name.c_str();
 
-	ReturnIfFailed(_document->createElement(rootName, &_cursorParent));
-	ReturnIfFailed(_document->appendChild(_cursorParent, nullptr));
-	ReturnIfFailed(insertNewLine());
+	ThrowIfFailed(_document->createElement(rootName, &_cursorParent),
+		"xml createElement fail");
+	ThrowIfFailed(_document->appendChild(_cursorParent, nullptr),
+		"xml appendChild fail");
+
+	insertNewLine();
 
 	_cursor = _cursorParent;
-	return S_OK;
 }
 
-HRESULT XMLWriter::addNode(const std::string& name) noexcept
+void XMLWriter::addNode(const std::string& name)
 {
-	assert(_cursorParent != nullptr);
-	assert(!name.empty());
+	check(_cursorParent != nullptr, "초기화를 확인해주세요.");
+	check(!name.empty(), "이름이 비정상입니다");
 
-	ReturnIfFailed(insertTab());
+	insertTab();
 
 	HRESULT rv;
 	_bstr_t bstrName = name.c_str();
 	IXMLDOMElementPtr element;
-	rv = _document->createElement(bstrName, &element);
-	if (FAILED(rv))
-	{
-		assert(false);
-		return rv;
-	}
-	IXMLDOMNodePtr outNewChild;
-	rv = _cursorParent->appendChild(element, &outNewChild);
-	if (FAILED(rv))
-	{
-		assert(false);
-		return rv;
-	}
-	ReturnIfFailed(insertNewLine());
+	ThrowIfFailed(_document->createElement(bstrName, &element), "xml element create fail : " + name);
 
+	IXMLDOMNodePtr outNewChild;
+	ThrowIfFailed(_cursorParent->appendChild(element, &outNewChild), "xml append child fail : " + name);
+
+	insertNewLine();
 	DOMNodeType nodeType;
-	assert(SUCCEEDED(outNewChild->get_nodeType(&nodeType)) && nodeType == NODE_ELEMENT);
+	ThrowIfFailed(outNewChild->get_nodeType(&nodeType));
+
+	if (nodeType != NODE_ELEMENT)
+	{
+		ThrowErrCode(ErrCode::MsXmlError, "nodeType이 이상합니다.");
+	}
 	_cursor = static_cast<IXMLDOMElementPtr>(outNewChild);
-	return S_OK;
 }
 
-HRESULT XMLWriter::openChildNode(void) noexcept
+void XMLWriter::openChildNode(void)
 {
 	_cursorParent = _cursor;
-	ReturnIfFailed(insertNewLine());
+	insertNewLine();
 	++_tabCount;
-
-	return S_OK;
 }
 
-// hresult 처리를 어떻게 할지 조금 고민해보자 [1/25/2021 qwerw]
-HRESULT XMLWriter::closeChildNode(void) noexcept
+void XMLWriter::closeChildNode(void)
 {
-	assert(_cursor != nullptr);
-
+	check(_cursor != nullptr, "초기화를 확인해주세요.");
 
 	_cursor = _cursorParent;
 
 	IXMLDOMNodePtr outParent;
-	ReturnIfFailed(_cursorParent->get_parentNode(&outParent));
+	HRESULT rv;
+
+	ThrowIfFailed(_cursorParent->get_parentNode(&outParent), "get_parentNode fail");
+	check(outParent != nullptr, "get_parentNode fail");
+
 	DOMNodeType nodeType;
-	ReturnIfFailed(outParent->get_nodeType(&nodeType));
+	ThrowIfFailed(outParent->get_nodeType(&nodeType), "get_nodeType fail");
+
 	if (nodeType == NODE_ELEMENT)
 	{
 		--_tabCount;
-		ReturnIfFailed(insertTab());
+		insertTab();
 		_cursorParent = static_cast<IXMLDOMElementPtr>(outParent);
 	}
-
-
-	return S_OK;
 }
 
-HRESULT XMLWriter::writeXmlFile(const std::string& filePath) const noexcept
+void XMLWriter::writeXmlFile(const std::string& filePath) const
 {
 	char fullPath[1024];
 	(void)_fullpath(fullPath, filePath.c_str(), 1024);
@@ -109,37 +100,36 @@ HRESULT XMLWriter::writeXmlFile(const std::string& filePath) const noexcept
 
 	_bstr_t bstrPath = fullFilePathStr.c_str();
 	_variant_t variantPath = fullFilePathStr.c_str();
-	HRESULT rv = _document->save(variantPath);
-	if (FAILED(rv))
-	{
-		assert(false);
-		return E_FAIL;
-	}
 
-	return S_OK;
+	ThrowIfFailed(_document->save(variantPath), "writeXmlFile fail");
 }
 
-HRESULT XMLWriter::insertNewLine(void) noexcept
+void XMLWriter::insertNewLine(void)
 {
+	check(_document != nullptr, "초기화를 확인해주세요.");
+	check(_cursorParent != nullptr, "비정상입니다.");
+
 	IXMLDOMTextPtr text;
 	_bstr_t newLine = "\n";
-	ReturnIfFailed(_document->createTextNode(newLine, &text));
-	ReturnIfFailed(_cursorParent->appendChild(text, nullptr));
+	
+	ThrowIfFailed(_document->createTextNode(newLine, &text));
 
-	return S_OK;
+	ThrowIfFailed(_cursorParent->appendChild(text, nullptr));
 }
 
-HRESULT XMLWriter::insertTab(void) noexcept
+void XMLWriter::insertTab(void)
 {
 	IXMLDOMTextPtr text;
 	std::string tab(_tabCount, '\t');
 	_bstr_t bstrTab = tab.c_str();
-	ReturnIfFailed(_document->createTextNode(bstrTab, &text));
-	ReturnIfFailed(_cursorParent->appendChild(text, nullptr))
-		return S_OK;
+
+	HRESULT rv;
+	ThrowIfFailed(_document->createTextNode(bstrTab, &text));
+
+	ThrowIfFailed(_cursorParent->appendChild(text, nullptr));
 }
 
-HRESULT XMLReader::loadXMLFile(const std::string& filePath) noexcept
+void XMLReader::loadXMLFile(const std::string& filePath)
 {
 	_document.CreateInstance(__uuidof(DOMDocument));
 	_document->put_async(VARIANT_FALSE);
@@ -153,21 +143,14 @@ HRESULT XMLReader::loadXMLFile(const std::string& filePath) noexcept
 	_variant_t pathVariant = fullPath;
 	VARIANT_BOOL isSuccessful;
 	HRESULT rv = _document->load(pathVariant, &isSuccessful);
-	if (FAILED(rv) || isSuccessful == VARIANT_FALSE)
+	if (rv != S_OK || isSuccessful == VARIANT_FALSE)
 	{
-		assert(false);
-		return E_FAIL;
+		ThrowErrCode(ErrCode::FileNotFound, filePath + "가 없습니다.");
 	}
 	IXMLDOMElementPtr element;
-	rv = _document->get_documentElement(&element);
-	if (FAILED(rv))
-	{
-		assert(false);
-		return E_FAIL;
-	}
-	_node = XMLReaderNode(element);
 
-	return S_OK;
+	ThrowIfFailed(_document->get_documentElement(&element), "xml get_documentElement.");
+	_node = XMLReaderNode(element);
 }
 
 XMLReaderNode::XMLReaderNode(IXMLDOMElementPtr node) noexcept
@@ -176,38 +159,36 @@ XMLReaderNode::XMLReaderNode(IXMLDOMElementPtr node) noexcept
 	
 }
 
-std::string XMLReaderNode::getNodeName(void) const noexcept
+std::string XMLReaderNode::getNodeName(void) const
 {
 	BSTR bstrNodeName;
-	HRESULT rv = _element->get_nodeName(&bstrNodeName);
-	if (FAILED(rv))
-	{
-		assert(false);
-	}
+	ThrowIfFailed(_element->get_nodeName(&bstrNodeName));
+
 	USES_CONVERSION;
 	std::string nodeName = W2A(bstrNodeName);
 	return nodeName;
 }
 
-std::vector<XMLReaderNode> XMLReaderNode::getChildNodes(void) const noexcept
+std::vector<XMLReaderNode> XMLReaderNode::getChildNodes(void) const
 {
 	IXMLDOMNodeListPtr nodeList;
-	HRESULT rv = _element->get_childNodes(&nodeList);
-	assert(SUCCEEDED(rv));
+	ThrowIfFailed(_element->get_childNodes(&nodeList));
 
 	long listSize;
-	rv = nodeList->get_length(&listSize);
-	assert(SUCCEEDED(rv));
+	ThrowIfFailed(nodeList->get_length(&listSize));
 
 	std::vector<XMLReaderNode> childNodes(listSize);
 	for (long i = 0; i < listSize; ++i)
 	{
 		IXMLDOMNodePtr node;
-		rv = nodeList->get_item(i, &node);
-		assert(SUCCEEDED(rv));
+		ThrowIfFailed(nodeList->get_item(i, &node));
+
 		DOMNodeType nodeType;
-		rv = node->get_nodeType(&nodeType);
-		assert(SUCCEEDED(rv) && nodeType == DOMNodeType::NODE_ELEMENT);
+		ThrowIfFailed(node->get_nodeType(&nodeType));
+		if (nodeType != DOMNodeType::NODE_ELEMENT)
+		{
+			ThrowErrCode(ErrCode::TypeIsDifferent, "node type error!");
+		}
 
 		IXMLDOMElementPtr element = static_cast<IXMLDOMElementPtr>(node);
 		childNodes[i] = XMLReaderNode(element);

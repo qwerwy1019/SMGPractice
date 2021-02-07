@@ -81,17 +81,17 @@ Vertex::Vertex() noexcept
 // 	, _roughness(roughness) 
 // {}
 
-SkinnedVertex::SkinnedVertex(const DirectX::XMFLOAT3& position,
-							 const DirectX::XMFLOAT3& normal,
-							 const DirectX::XMFLOAT2& textureCoord,
-							 const std::array<float, BONE_WEIGHT_COUNT - 1>& boneWeights,
-							 const std::array<BoneIndex, BONE_WEIGHT_COUNT>& boneIndices) noexcept
-	: _position(position)
-	, _normal(normal)
-	, _textureCoord(textureCoord)
-	, _boneWeights(boneWeights)
-	, _boneIndices(boneIndices)
-{}
+// SkinnedVertex::SkinnedVertex(const DirectX::XMFLOAT3& position,
+// 							 const DirectX::XMFLOAT3& normal,
+// 							 const DirectX::XMFLOAT2& textureCoord,
+// 							 const std::array<float, BONE_WEIGHT_COUNT - 1>& boneWeights,
+// 							 const std::array<BoneIndex, BONE_WEIGHT_COUNT>& boneIndices) noexcept
+// 	: _position(position)
+// 	, _normal(normal)
+// 	, _textureCoord(textureCoord)
+// 	, _boneWeights(boneWeights)
+// 	, _boneIndices(boneIndices)
+// {}
 
 SkinnedVertex::SkinnedVertex() noexcept
 	: _position(0.f, 0.f, 0.f)

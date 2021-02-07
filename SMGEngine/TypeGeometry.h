@@ -75,11 +75,11 @@ constexpr int BONE_WEIGHT_COUNT = 4;
 struct SkinnedVertex
 {
 	SkinnedVertex() noexcept;
-	SkinnedVertex(const DirectX::XMFLOAT3& position,
-				const DirectX::XMFLOAT3& normal,
-				const DirectX::XMFLOAT2& textureCoord,
-				const std::array<float, BONE_WEIGHT_COUNT - 1>& boneWeights,
-				const std::array<BoneIndex, BONE_WEIGHT_COUNT>& boneIndices) noexcept;
+// 	SkinnedVertex(const DirectX::XMFLOAT3& position,
+// 				const DirectX::XMFLOAT3& normal,
+// 				const DirectX::XMFLOAT2& textureCoord,
+// 				const std::array<float, BONE_WEIGHT_COUNT - 1>& boneWeights,
+// 				const std::array<BoneIndex, BONE_WEIGHT_COUNT>& boneIndices) noexcept;
 
 	DirectX::XMFLOAT3 _position;
 	DirectX::XMFLOAT3 _normal;

@@ -2,15 +2,17 @@
 #include "D3DUtil.h"
 
 DxException::DxException()
-	: _errorCode(S_OK)
+	: _hr(S_OK)
+	, _errorCode(ErrCode::Success)
 	, _functionName()
 	, _fileName()
 	, _lineNumber(-1)
 {
 }
 
-DxException::DxException(HRESULT hr, const std::wstring& functionName, const std::wstring& fileName, const int lineNumber)
-	: _errorCode(hr)
+DxException::DxException(HRESULT hr, ErrCode errorCode, const std::wstring& functionName, const std::wstring& fileName, const int lineNumber)
+	: _hr(hr)
+	, _errorCode(errorCode)
 	, _functionName(functionName)
 	, _fileName(fileName)
 	, _lineNumber(lineNumber)
@@ -19,8 +21,9 @@ DxException::DxException(HRESULT hr, const std::wstring& functionName, const std
 
 std::wstring DxException::to_wstring() const noexcept
 {
-	_com_error err(_errorCode);
-	return _functionName + L" failed in " + _fileName + L": line " + std::to_wstring(_lineNumber) + L"\n" + err.ErrorMessage();
+	_com_error err(_hr);
+	return _functionName + L" failed in " + _fileName + L": line " + std::to_wstring(_lineNumber) + L"\n" 
+		+ err.ErrorMessage() + L" " + ErrCodeWString(_errorCode) + L"\n";
 }
 
 WComPtr<ID3D12Resource> D3DUtil::CreateDefaultBuffer(ID3D12Device* device,
@@ -29,6 +32,9 @@ WComPtr<ID3D12Resource> D3DUtil::CreateDefaultBuffer(ID3D12Device* device,
 													 UINT64 byteSize,
 													 WComPtr<ID3D12Resource>& uploadBuffer)
 {
+	check(byteSize != 0, "Buffer size가 0입니다.");
+	check(byteSize < std::numeric_limits<LONG_PTR>::max(), "할당하려는 버퍼 크기가 너무 큽니다. 오버플로우가 일어납니다.");
+
 	WComPtr<ID3D12Resource> defaultBuffer;
 
 	const CD3DX12_RESOURCE_DESC& bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(byteSize);
@@ -39,7 +45,7 @@ WComPtr<ID3D12Resource> D3DUtil::CreateDefaultBuffer(ID3D12Device* device,
 		&bufferDesc ,
 		D3D12_RESOURCE_STATE_COMMON,
 		nullptr,
-		IID_PPV_ARGS(defaultBuffer.GetAddressOf())));
+		IID_PPV_ARGS(defaultBuffer.GetAddressOf())), "CreateDefaultBuffer Fail!");
 
 	const CD3DX12_HEAP_PROPERTIES& heapPropertyUpload = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	ThrowIfFailed(device->CreateCommittedResource(
@@ -48,9 +54,9 @@ WComPtr<ID3D12Resource> D3DUtil::CreateDefaultBuffer(ID3D12Device* device,
 		&bufferDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
-		IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+		IID_PPV_ARGS(uploadBuffer.GetAddressOf())), "CreateDefaultUploadBuffer Fail!");
 
-	D3D12_SUBRESOURCE_DATA subResourceData = {initData, byteSize, byteSize};
+	D3D12_SUBRESOURCE_DATA subResourceData = { initData, static_cast<LONG_PTR>(byteSize), static_cast<LONG_PTR>(byteSize) };
 
 	const CD3DX12_RESOURCE_BARRIER& transitionToCopyDest = CD3DX12_RESOURCE_BARRIER::Transition(defaultBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -87,7 +93,8 @@ WComPtr<ID3DBlob> D3DUtil::CompileShader(const std::wstring& fileName,
 	{
 		OutputDebugStringA((char*)errors->GetBufferPointer());
 	}
-	ThrowIfFailed(hr);
+	ThrowIfFailed(hr, "shader compile fail");
+
 	return byteCode;
 }
 
@@ -100,7 +107,7 @@ WComPtr<ID3DBlob> D3DUtil::LoadBinaryShaer(const std::wstring& fileName)
 	fin.seekg(0, std::ios_base::beg);
 
 	WComPtr<ID3DBlob> blob;
-	ThrowIfFailed(D3DCreateBlob(size, blob.GetAddressOf()));
+	ThrowIfFailed(D3DCreateBlob(size, blob.GetAddressOf()), "blob 할당 실패");
 
 	fin.read(static_cast<char*>(blob->GetBufferPointer()), size);
 	fin.close();

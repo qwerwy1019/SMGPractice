@@ -5,6 +5,6 @@ struct StageInfo;
 
 class StageManager
 {
-	HRESULT loadStage(const std::string& stageName) noexcept;
+	ErrCode loadStage(const std::string& stageName) noexcept;
 	StageInfo* _stageInfo;
 };

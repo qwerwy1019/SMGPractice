@@ -3,50 +3,23 @@
 #include "D3DUtil.h"
 #include "FileHelper.h"
 
-// MeshGeometry::MeshGeometry(ID3D12Device* device,
-// 	ID3D12GraphicsCommandList* commandList,
-// 	const std::string& name,
-// 	const std::vector<std::string>& subMeshNames,
-// 	const std::vector<std::vector<Vertex>>& vb,
-// 	const std::vector<std::vector<Index>>& ib)
-// 	: _vertexByteStride(sizeof(Vertex))
-// 	, _name(name)
-// {
-// 	assert(device != nullptr);
-// 	assert(commandList != nullptr);
-// 	assert(!subMeshNames.empty());
-// 	assert(!vb.empty());
-// 	assert(!ib.empty());
-// 	assert(subMeshNames.size() == vb.size());
-// 	assert(subMeshNames.size() == ib.size());
-// 	
-// 	std::vector<Vertex> totalVertices = D3DUtil::mergeContainer(vb);
-// 	std::vector<Index> totalIndices = D3DUtil::mergeContainer(ib);
-// 
-// 	_vertexBufferByteSize = totalVertices.size() * sizeof(Vertex);
-// 	_indexBufferByteSize = totalIndices.size() * sizeof(Index);
-// 	
-// 	makeSubMeshMap(subMeshNames, vb, ib);
-// 
-// 	createMeshGeometryXXX(device, commandList, totalVertices.data(), totalIndices.data());
-// }
-
 void MeshGeometry::createMeshGeometryXXX(ID3D12Device* device,
 										ID3D12GraphicsCommandList* commandList,
 										const void* vb,
 										const void* ib)
 {
-	ThrowIfFailed(D3DCreateBlob(_vertexBufferByteSize, &_vertexBufferCPU));
+	ThrowIfFailed(D3DCreateBlob(_vertexBufferByteSize, &_vertexBufferCPU), "vertexBuffer 할당 실패" );
 	CopyMemory(_vertexBufferCPU->GetBufferPointer(), vb, _vertexBufferByteSize);
 
-	ThrowIfFailed(D3DCreateBlob(_indexBufferByteSize, &_indexBufferCPU));
+	ThrowIfFailed(D3DCreateBlob(_indexBufferByteSize, &_indexBufferCPU), "indexBuffer 할당 실패" );
 	CopyMemory(_indexBufferCPU->GetBufferPointer(), ib, _indexBufferByteSize);
 
 	_vertexBufferGPU = D3DUtil::CreateDefaultBuffer(device, commandList, vb, _vertexBufferByteSize, _vertexBufferUploader);
 	_indexBufferGPU = D3DUtil::CreateDefaultBuffer(device, commandList, ib, _indexBufferByteSize, _indexBufferUploader);
+	check(_vertexBufferGPU != nullptr && _indexBufferGPU != nullptr, "vertex index buffer가 생성되지 않았습니다.");
 }
 
-HRESULT MeshGeometry::loadXmlSkinnedVertices(const XMLReaderNode& node, std::vector<SkinnedVertex>& skinnedVertices) const noexcept
+void MeshGeometry::loadXmlSkinnedVertices(const XMLReaderNode& node, std::vector<SkinnedVertex>& skinnedVertices) const
 {
 	const auto& childNodes = node.getChildNodes();
 	for (int i = 0; i < childNodes.size(); ++i)
@@ -61,10 +34,9 @@ HRESULT MeshGeometry::loadXmlSkinnedVertices(const XMLReaderNode& node, std::vec
 
 		skinnedVertices.push_back(vertex);
 	}
-	return S_OK;
 }
 
-HRESULT MeshGeometry::loadXmlVertices(const XMLReaderNode& node, std::vector<Vertex>& vertices) const noexcept
+void MeshGeometry::loadXmlVertices(const XMLReaderNode& node, std::vector<Vertex>& vertices) const
 {
 	const auto& childNodes = node.getChildNodes();
 	for (int i = 0; i < childNodes.size(); ++i)
@@ -77,10 +49,9 @@ HRESULT MeshGeometry::loadXmlVertices(const XMLReaderNode& node, std::vector<Ver
 
 		vertices.push_back(vertex);
 	}
-	return S_OK;
 }
 
-HRESULT MeshGeometry::loadXmlIndices(const XMLReaderNode& node, std::vector<Index>& indices) const noexcept
+void MeshGeometry::loadXmlIndices(const XMLReaderNode& node, std::vector<Index>& indices) const
 {
 	const auto& childNodes = node.getChildNodes();
 	for (int i = 0; i < childNodes.size(); ++i)
@@ -94,12 +65,19 @@ HRESULT MeshGeometry::loadXmlIndices(const XMLReaderNode& node, std::vector<Inde
 		indices.push_back(index1);
 		indices.push_back(index2);
 	}
-	return S_OK;
 }
 
-HRESULT MeshGeometry::loadXml(const XMLReaderNode& rootNode, ID3D12Device* device, ID3D12GraphicsCommandList* commandList) noexcept
+MeshGeometry::MeshGeometry() noexcept
+	: _vertexByteStride(0)
+	, _vertexBufferByteSize(0)
+	, _indexBufferByteSize(0)
 {
-	HRESULT rv;
+
+}
+
+void MeshGeometry::loadXml(const XMLReaderNode& rootNode, ID3D12Device* device, ID3D12GraphicsCommandList* commandList)
+{
+	ErrCode rv = ErrCode::Success;
 	rootNode.loadAttribute("Name", _name);
 	bool isSkinned;
 	rootNode.loadAttribute("IsSkinned", isSkinned);
@@ -159,38 +137,26 @@ HRESULT MeshGeometry::loadXml(const XMLReaderNode& rootNode, ID3D12Device* devic
 				{
 					if (isSkinned)
 					{
-						rv = loadXmlSkinnedVertices(subMeshChildList[j], skinnedVertices);
+						loadXmlSkinnedVertices(subMeshChildList[j], skinnedVertices);
 					}
 					else
 					{
-						rv = loadXmlVertices(subMeshChildList[j], vertices);
-					}
-					if (FAILED(rv))
-					{
-						assert(false);
-						return rv;
+						loadXmlVertices(subMeshChildList[j], vertices);
 					}
 				}
 				else if (subMeshNodeName == "Indices")
 				{
-					rv = loadXmlIndices(subMeshChildList[j], indices);
-					if (FAILED(rv))
-					{
-						assert(false);
-						return rv;
-					}
+					loadXmlIndices(subMeshChildList[j], indices);
 				}
 				else
 				{
-					assert(false);
-					return E_FAIL;
+					ThrowErrCode(ErrCode::NodeNameNotFound, "subMeshNodeName이 이상합니다." + subMeshNodeName);
 				}
 			}
 		}
 		else
 		{
-			assert(false);
-			return E_FAIL;
+			ThrowErrCode(ErrCode::NodeNotFound, "nodeName이 이상합니다." + nodeName);
 		}
 	}
 
@@ -202,7 +168,6 @@ HRESULT MeshGeometry::loadXml(const XMLReaderNode& rootNode, ID3D12Device* devic
 	{
 		createMeshGeometryXXX(device, commandList, vertices.data(), indices.data());
 	}
-	return S_OK;
 }
 
 void MeshGeometry::setVertexByteSizeOnlyXXXXX(UINT vertexBufferSize) noexcept
@@ -254,30 +219,3 @@ D3D12_INDEX_BUFFER_VIEW MeshGeometry::getIndexBufferView(void) const noexcept
 
 	return ibv;
 }
-
-// template<typename VertexCont>
-// void MeshGeometry::makeSubMeshMap(const std::vector<std::string>& subMeshNames,
-// 	const VertexCont& vb,
-// 	const std::vector<std::vector<Index>>& ib)
-// {
-// 	CommonIndex startIndexLocation = 0;
-// 	CommonIndex baseVertexLocation = 0;
-// 	for (int i = 0; i < subMeshNames.size(); ++i)
-// 	{
-// 		if (ib[i].empty())
-// 		{
-// 			continue;
-// 		}
-// 
-// 		const SubMeshGeometry subMesh = { ib[i].size(), startIndexLocation, baseVertexLocation };
-// 		auto it = _subMeshMap.emplace(std::make_pair(subMeshNames[i], subMesh));
-// 		if (it.second == false)
-// 		{
-// 			assert(false && L"submesh name이 중복되었음!! mesh가 생성되지 않습니다.");
-// 			return;
-// 		}
-// 
-// 		startIndexLocation += ib[i].size();
-// 		baseVertexLocation += vb[i].size();
-// 	}
-// }

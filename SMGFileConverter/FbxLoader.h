@@ -6,6 +6,7 @@
 #include "SMGEngine/TypeGeometry.h"
 #include "SMGEngine/TypeData.h"
 #include <set>
+#include "SMGEngine/PreDefines.h"
 
 using namespace std;
 using namespace DirectX;
@@ -103,16 +104,16 @@ private:
 		float _value;
 	};
 
-	HRESULT loadKeyFrame(FbxAnimLayer* animLayer, const string& animationName);
-	HRESULT writeXmlMesh(XMLWriter& xmlMeshGeometry, int meshIndex, const string& fileName) const noexcept;
-	HRESULT writeXmlMaterial(XMLWriter& xmlMaterial) const noexcept;
-	HRESULT writeXmlSkeleton(XMLWriter& xmlSkeleton) const noexcept;
-	HRESULT writeXmlAnimation(XMLWriter& xmlAnimation) const noexcept;
-	FbxNode* getParentLinkNode(FbxNode* linkNode, int boneIndex) const noexcept;
+	void loadKeyFrame(FbxAnimLayer* animLayer, const string& animationName);
+	void writeXmlMesh(XMLWriter& xmlMeshGeometry, const FbxMeshInfo& meshInfo, const string& fileName) const;
+	void writeXmlMaterial(XMLWriter& xmlMaterial) const;
+	void writeXmlSkeleton(XMLWriter& xmlSkeleton) const;
+	void writeXmlAnimation(XMLWriter& xmlAnimation) const;
+
 public:
 	FbxLoader(void);
 	~FbxLoader(void);
-	HRESULT LoadFbxFiles(const string& filePath, const string& objectFolderPath);
+	void ConvertFbxFiles(const string& filePath, const string& objectFolderPath);
 
 private:
 	FbxManager* _fbxManager;
@@ -125,31 +126,31 @@ private:
 	std::vector<std::string> _boneNames;
 	std::unordered_map<std::string, AnimationClip> _animations;
 
-	std::unordered_map<FbxNode*, CommonIndex> _boneIndexMap;
+	std::unordered_map<FbxNode*, BoneIndex> _boneIndexMap;
 	bool _isZUpvectorSystem;
 
 	const std::string fbxFolderPath = "../ResourcesRaw/FbxFiles";
 
-	HRESULT loadFbxMeshNode(FbxNode* node);
-	HRESULT loadFbxSkeletonNode(FbxNode* node, bool& nodeFound);
+	void loadFbxMeshNode(FbxNode* node);
+	void loadFbxSkeletonNode(FbxNode* node, bool& nodeFound);
 
-	HRESULT loadFbxMesh(FbxNode* node);
+	void loadFbxMesh(FbxNode* node);
 
-	HRESULT loadFbxSkeleton(FbxNode* node, CommonIndex parentIndex);
+	void loadFbxSkeleton(FbxNode* node, BoneIndex parentIndex);
 
-	HRESULT loadFbxMaterial(FbxScene* node);
+	void loadFbxMaterial(FbxScene* node);
 
-	HRESULT loadFbxPolygons(FbxMesh* mesh, std::vector<FbxPolygonVertexInfo>& polygons) const noexcept;
+	void loadFbxPolygons(FbxMesh* mesh, std::vector<FbxPolygonVertexInfo>& polygons) const;
 
-	HRESULT loadFbxOptimizedMesh(const FbxMesh* mesh,
+	void loadFbxOptimizedMesh(const FbxMesh* mesh,
 								const std::vector<FbxPolygonVertexInfo>& polygonVertices,
 								const std::vector<FbxVertexSkinningInfo>& skinningInfos);
 
-	HRESULT loadFbxSkin(FbxNode* node, std::vector<FbxVertexSkinningInfo>& skinningInfos);
+	void loadFbxSkin(FbxNode* node, std::vector<FbxVertexSkinningInfo>& skinningInfos);
 
-	HRESULT loadFbxAnimations(FbxScene* fbxScene) noexcept;
+	void loadFbxAnimations(FbxScene* fbxScene);
 
-	HRESULT writeXmlFile(const string& path, const string& fileName) const;
+	void writeXmlFile(const string& path, const string& fileName) const;
 
 	void clearCachedFbxFileInfo(void) noexcept;
 
@@ -168,17 +169,13 @@ private:
 	}
 	static DirectX::XMFLOAT4X4 fbxMatrixToXMFLOAT4X4(const FbxAMatrix& matrix) noexcept;
 
-	static IndexMappingType getUVIndexType(const FbxLayerElement::EReferenceMode referenceMode, const FbxLayerElement::EMappingMode mappingMode) noexcept;
+	static IndexMappingType getIndexMappingType(const FbxLayerElement::EReferenceMode referenceMode, const FbxLayerElement::EMappingMode mappingMode);
 
 	static std::array<float, BONE_WEIGHT_COUNT - 1> getWeight(const std::array<float, BONE_WEIGHT_COUNT>& weightArray) noexcept;
 
-	static DirectX::XMFLOAT4 EulerVectorToQuaternion(float x, float y, float z) noexcept;
-
-	//static BoneAnimation convertToBoneAnimation(const std::map<FbxLongLong, KeyFrame>& keyFrame, float& endTime) noexcept;
-
 	static void getKeyFrameTimes(const FbxAnimCurve* curve, std::set<FbxTime>& keyFrameTimes) noexcept;
 
-	HRESULT getKeyFrames(FbxAnimLayer* animLayer, FbxNode* linkNode, std::set<FbxTime>& keyFramesTimes);
+	void getKeyFrames(FbxAnimLayer* animLayer, FbxNode* linkNode, std::set<FbxTime>& keyFramesTimes) const noexcept;
 	static FbxAMatrix getGeometryTransformation(const FbxNode* inNode)
 	{
 		if (!inNode)
@@ -192,5 +189,6 @@ private:
 
 		return FbxAMatrix(lT, lR, lS);
 	}
-};
 
+	FbxNode* getParentLinkNode(FbxNode* linkNode) const;
+};

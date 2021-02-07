@@ -15,6 +15,8 @@
 #include <atlconv.h>
 #include "FileHelper.h"
 #include "Material.h"
+#include "PreDefines.h"
+#include "D3DUtil.h"
 
 LRESULT CALLBACK
 MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -25,107 +27,56 @@ MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 D3DApp* D3DApp::_app = nullptr;
 
-HRESULT D3DApp::loadInfoMap(void) noexcept
+void D3DApp::loadInfoMap(void)
 {
 	if (SUCCEEDED(::CoInitialize(nullptr)))
 	{
-		HRESULT rv;
 		{
 			const string filePath = "../Resources/XmlFiles/Asset/Mesh/marioMesh.xml";
 			XMLReader xmlMeshGeometry;
-			rv = xmlMeshGeometry.loadXMLFile(filePath);
-			if (FAILED(rv))
-			{
-				assert(false);
-				return rv;
-			}
+
+			xmlMeshGeometry.loadXMLFile(filePath);
 
 			unique_ptr<MeshGeometry> mesh(new MeshGeometry);
-			rv = mesh->loadXml(xmlMeshGeometry.getRootNode(), _device.Get(), _commandList.Get());
-			if (FAILED(rv))
-			{
-				assert(false);
-				return rv;
-			}
+			mesh->loadXml(xmlMeshGeometry.getRootNode(), _device.Get(), _commandList.Get());
+
 			_geometries["marioMesh"] = move(mesh);
 		}
 		{
 			const string filePath = "../Resources/XmlFiles/Asset/Material/marioMat.xml";
 			XMLReader xmlMaterial;
-			rv = xmlMaterial.loadXMLFile(filePath);
-			if (FAILED(rv))
-			{
-				assert(false);
-				return rv;
-			}
+			xmlMaterial.loadXMLFile(filePath);
 
-			XMLReaderNode rootNode = xmlMaterial.getRootNode();
-			rv = loadXmlMaterial(xmlMaterial.getRootNode());
-			if (FAILED(rv))
-			{
-				assert(false);
-				return rv;
-			}
+			loadXmlMaterial(xmlMaterial.getRootNode());
 		}
 		{
 			const string filePath = "../Resources/XmlFiles/Asset/Skeleton/marioSkeleton.xml";
 			XMLReader xmlSkeleton;
-			rv = xmlSkeleton.loadXMLFile(filePath);
-			if (FAILED(rv))
-			{
-				assert(false);
-				return rv;
-			}
+			xmlSkeleton.loadXMLFile(filePath);
 
 			unique_ptr<BoneInfo> boneInfo(new BoneInfo);
-			rv = boneInfo->loadXML(xmlSkeleton.getRootNode());
-			if (FAILED(rv))
-			{
-				assert(false);
-				return rv;
-			}
+			boneInfo->loadXML(xmlSkeleton.getRootNode());
 			_boneInfoMap["marioSkeleton"] = move(boneInfo);
 		}
 		{
 			const string filePath = "../Resources/XmlFiles/Asset/Animation/marioAnim.xml";
 			XMLReader xmlAnimation;
-			rv = xmlAnimation.loadXMLFile(filePath);
-			if (FAILED(rv))
-			{
-				assert(false);
-				return rv;
-			}
+			xmlAnimation.loadXMLFile(filePath);
 
 			unique_ptr<AnimationInfo> animationInfo(new AnimationInfo);
-			rv = animationInfo->loadXML(xmlAnimation.getRootNode());
-			if (FAILED(rv))
-			{
-				assert(false);
-				return rv;
-			}
+			animationInfo->loadXML(xmlAnimation.getRootNode());
 			_animationInfoMap["marioAnim"] = move(animationInfo);
 		}
 		{
 			const string filePath = "../Resources/XmlFiles/Object/marioObj.xml";
 			XMLReader xmlGameObject;
-			rv = xmlGameObject.loadXMLFile(filePath);
-			if (FAILED(rv))
-			{
-				assert(false);
-				return rv;
-			}
+			xmlGameObject.loadXMLFile(filePath);
 
-			rv = loadXmlGameObject(xmlGameObject.getRootNode());
-			if (FAILED(rv))
-			{
-				assert(false);
-				return rv;
-			}
+			loadXmlGameObject(xmlGameObject.getRootNode());
 		}
 
 		::CoUninitialize();
 	}
-	return S_OK;
 }
 
 float D3DApp::getHillsHeight(const float x, const float z)
@@ -208,7 +159,7 @@ D3DApp::D3DApp(HINSTANCE hInstance)
 	, _scissorRect()
 	, _timer()
 {
-	assert(_app == nullptr);
+	check(_app == nullptr, "D3DApp class는 한번만 생성되어야 합니다.");
 	_app = this;
 
 	_mousePos.x = 0;
@@ -408,7 +359,7 @@ void D3DApp::flushCommandQueue()
 		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
 		if (eventHandle == nullptr)
 		{
-			throw DxException(E_OUTOFMEMORY, L"CreateEventEx", AnsiToWString(__FILE__), __LINE__);
+			ThrowIfFailed(E_OUTOFMEMORY, "CreateEventEX Fail");
 		}
 		ThrowIfFailed(_fence->SetEventOnCompletion(_currentFence, eventHandle));
 
@@ -492,12 +443,12 @@ void D3DApp::createDescriptorHeaps(void)
 
 void D3DApp::OnResize(void)
 {
-	assert(_device != nullptr);
-	assert(_swapChain != nullptr);
-	assert(_commandAlloc != nullptr);
+	check(_device != nullptr, "device가 null입니다. 초기화를 확인하세요.");
+	check(_swapChain != nullptr, "swapChain이 null입니다. 초기화를 확인하세요.");
+	check(_commandAlloc != nullptr, "commandAlloc이 null입니다. 초기화를 확인하세요.");
 
 	flushCommandQueue();
-	ThrowIfFailed(_commandList->Reset(_commandAlloc.Get(), nullptr));
+	ThrowIfFailed(_commandList->Reset(_commandAlloc.Get(), nullptr), "error!");
 
 	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
 	{
@@ -590,13 +541,13 @@ void D3DApp::Update(void)
 	updateCamera();
 
 	_frameIndex = (_frameIndex + 1) % FRAME_RESOURCE_COUNT;
-	const UINT64& currentFrameFence = _frameResources[_frameIndex]->_fence;
+	const UINT64& currentFrameFence = _frameResources[_frameIndex]->getFence();
 
 	if (currentFrameFence != 0 && _fence->GetCompletedValue() < currentFrameFence)
 	{
 		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
-		assert(eventHandle != nullptr);
-		ThrowIfFailed(_fence->SetEventOnCompletion(currentFrameFence, eventHandle));
+		check(eventHandle != nullptr, "createEvent Fail");
+		ThrowIfFailed(_fence->SetEventOnCompletion(currentFrameFence, eventHandle), "fence set fail : " + std::to_string(currentFrameFence));
 		WaitForSingleObject(eventHandle, INFINITE);
 		CloseHandle(eventHandle);
 	}
@@ -609,10 +560,10 @@ void D3DApp::Update(void)
 
 void D3DApp::Draw(void)
 {
-	auto cmdListAlloc = _frameResources[_frameIndex]->_commandListAlloc.Get();
-	ThrowIfFailed(cmdListAlloc->Reset());
+	ID3D12CommandAllocator* cmdListAlloc = _frameResources[_frameIndex]->getCommandListAlloc();
+	ThrowIfFailed(cmdListAlloc->Reset(), "reset in Draw Failed");
 
-	ThrowIfFailed(_commandList->Reset(cmdListAlloc, _pipelineStateObjectMap[_psoType].Get()));
+	ThrowIfFailed(_commandList->Reset(cmdListAlloc, _pipelineStateObjectMap[_psoType].Get()), "psoType:" + std::to_string((int)_psoType));
 
 	_commandList->RSSetViewports(1, &_viewPort);
 	_commandList->RSSetScissorRects(1, &_scissorRect);
@@ -636,7 +587,7 @@ void D3DApp::Draw(void)
 
 	_commandList->SetGraphicsRootSignature(_rootSignature.Get());
 
-	_commandList->SetGraphicsRootConstantBufferView(3, _frameResources[_frameIndex]->_passConstantBuffer->getResource()->GetGPUVirtualAddress());
+	_commandList->SetGraphicsRootConstantBufferView(3, _frameResources[_frameIndex]->getPassCBVirtualAddress());
 
 	for (auto e : RenderLayers)
 	{
@@ -657,7 +608,7 @@ void D3DApp::Draw(void)
 	ThrowIfFailed(_swapChain->Present(0, 0));
 	_currentBackBuffer = (_currentBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
-	_frameResources[_frameIndex]->_fence = ++_currentFence;
+	_frameResources[_frameIndex]->setFence(++_currentFence);
 	_commandQueue->Signal(_fence.Get(), _currentFence);
 }
 
@@ -809,9 +760,11 @@ void D3DApp::onKeyboardInput(void) noexcept
 void D3DApp::buildFrameResources(void)
 {
 	UINT objectCount = getTotalRenderItemCount();
+	UINT materialCount = _materials.size();
+	UINT skinnedCount = _skinnedInstance.size();
 	for (int i = 0; i < FRAME_RESOURCE_COUNT; ++i)
 	{
-		auto frameResource = make_unique<FrameResource>(_device.Get(), 1, objectCount, _materials.size(), _skinnedInstance.size());
+		auto frameResource = std::make_unique<FrameResource>(_device.Get(), 1, objectCount, materialCount, skinnedCount);
 		_frameResources.push_back(std::move(frameResource));
 	}
 }
@@ -836,7 +789,7 @@ void D3DApp::updateCamera(void)
 
 void D3DApp::updateObjectConstantBuffer()
 {
-	auto objectContantBuffer = _frameResources[_frameIndex]->_objectConstantBuffer.get();
+	auto& currentFrameResource = _frameResources[_frameIndex];
 	for (const auto& e : _renderItemsUniquePtrXXX)
 	{
 		if (e->_dirtyFrames > 0)
@@ -849,7 +802,7 @@ void D3DApp::updateObjectConstantBuffer()
 			XMMATRIX textureTransform = XMLoadFloat4x4(&e->_textureTransform);
 			XMStoreFloat4x4(&objectConstants._textureTransform, XMMatrixTranspose(textureTransform));
 				
-			objectContantBuffer->copyData(e->_objConstantBufferIndex, objectConstants);
+			currentFrameResource->setObjectCB(e->_objConstantBufferIndex, objectConstants);
 			--e->_dirtyFrames;
 		}
 	}
@@ -857,7 +810,7 @@ void D3DApp::updateObjectConstantBuffer()
 
 void D3DApp::updateSkinnedConstantBuffer(void)
 {
-	auto skinnedConstantBuffer = _frameResources[_frameIndex]->_skinnedConstantBuffer.get();
+	auto& currentFrameResource = _frameResources[_frameIndex];
 
 	for (const auto& e : _skinnedInstance)
 	{
@@ -866,7 +819,7 @@ void D3DApp::updateSkinnedConstantBuffer(void)
 		const auto& matrixes = e->getTransformMatrixes();
 		std::copy(std::begin(matrixes), std::end(matrixes), &skinnedConstants._boneTransforms[0]);
 
-		skinnedConstantBuffer->copyData(e->getIndex(), skinnedConstants);
+		currentFrameResource->setSkinnedCB(e->getIndex(), skinnedConstants);
 	}
 }
 
@@ -923,7 +876,7 @@ void D3DApp::updatePassConstantBuffer()
 	_passConstants._lights[2]._strength = { 1.f, 1.f, 0.9f };
 	_passConstants._lights[2]._falloffEnd = 200.f;
 	
-	_frameResources[_frameIndex]->_passConstantBuffer->copyData(0, _passConstants);
+	_frameResources[_frameIndex]->setPassCB(0, _passConstants);
 
 
 // 	XMVECTOR shadowPlane = XMVectorSet(0.f, 1.f, 0.f, 0.f);
@@ -942,7 +895,7 @@ void D3DApp::initializeManagers()
 // 	_fileManager->Initialize();
 }
 
-HRESULT D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode) noexcept
+ErrCode D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode) noexcept
 {
 	const auto& nodes = rootNode.getChildNodes();
 	for (int i = 0; i < nodes.size(); ++i)
@@ -967,16 +920,17 @@ HRESULT D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode) noexcept
 		wstring textureNameWstring;
 		textureNameWstring.assign(textureName.begin(), textureName.end());
 		textureNameWstring = L"../Resources/XmlFiles/Asset/Texture/" + textureNameWstring + L".dds";
-		int diffuseSRVIndex = loadTexture(textureName, textureNameWstring);
-		unique_ptr<Material> material(new Material(_materials.size(), diffuseSRVIndex, -1, diffuseAlbedo, fresnelR0, roughness));
+
+		CommonIndex diffuseSRVIndex = loadTexture(textureName, textureNameWstring);
+		unique_ptr<Material> material(new Material(_materials.size(), diffuseSRVIndex, UNDEFINED_COMMON_INDEX, diffuseAlbedo, fresnelR0, roughness));
 		
 		_materials.emplace(materialName, move(material));
 	}
 
-	return S_OK;
+	return ErrCode::Success;
 }
 
-HRESULT D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
+ErrCode D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 {
 	// getChildNode(nodeName)을 구현하면 수정할것 [1/28/2021 qwerw]
 	const auto& childNodes = rootNode.getChildNodes();
@@ -997,8 +951,8 @@ HRESULT D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 			auto boneIt = _boneInfoMap.find(skeletonName);
 			if (boneIt == _boneInfoMap.end())
 			{
-				assert(false);
-				return E_FAIL;
+				check(false, "skeleton file : " + skeletonName + "이 _boneInfoMap에 없습니다.");
+				return ErrCode::FileNotFound;
 			}
 			boneInfo = boneIt->second.get();
 
@@ -1006,8 +960,8 @@ HRESULT D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 		}
 		else
 		{
-			assert(false);
-			return E_FAIL;
+			check(false, "Skeleton 노드가 없습니다.");
+			return ErrCode::NodeNotFound;
 		}
 		
 		if (childNodes[nodeIndex].getNodeName() == "Animation")
@@ -1017,16 +971,16 @@ HRESULT D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 			auto animIt = _animationInfoMap.find(animationInfoName);
 			if (animIt == _animationInfoMap.end())
 			{
-				assert(false);
-				return E_FAIL;
+				check(false, "Animation File : " + animationInfoName + "이 없습니다.");
+				return ErrCode::FileNotFound;
 			}
 			animationInfo = animIt->second.get();
 			++nodeIndex;
 		}
 		else
 		{
-			assert(false);
-			return E_FAIL;
+			check(false, "Animation 노드가 없습니다.");
+			return ErrCode::NodeNotFound;
 		}
 
 		skinnedConstantBufferIndex = _skinnedInstance.size();
@@ -1041,8 +995,8 @@ HRESULT D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 		auto meshIt = _geometries.find(meshFileName);
 		if (meshIt == _geometries.end())
 		{
-			assert(false);
-			return E_FAIL;
+			check(false, "Mesh File : " + meshFileName + "이 없습니다.");
+			return ErrCode::FileNotFound;
 		}
 		const auto& subMeshMap = meshIt->second->_subMeshMap;
 		const auto& subMeshNodes = childNodes[nodeIndex].getChildNodes();
@@ -1053,8 +1007,8 @@ HRESULT D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 			const auto& subMeshIt = subMeshMap.find(subMeshName);
 			if (subMeshIt == subMeshMap.end())
 			{
-				assert(false);
-				return E_FAIL;
+				check(false, "SubMeshName : " + subMeshName + "이 " + meshFileName + "에 없습니다.");
+				return ErrCode::SubMeshNotFound;
 			}
 			string materialFile, materialName;
 			subMeshNodes[j].loadAttribute("MaterialFile", materialFile);
@@ -1062,8 +1016,8 @@ HRESULT D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 			auto materialIt = _materials.find(materialFile + '/' + materialName);
 			if (materialIt == _materials.end())
 			{
-				assert(false);
-				return E_FAIL;
+				check(false, "Material : " + materialFile + '/' + materialName + "이 없습니다.");
+				return ErrCode::MaterialNotFound;
 			}
 			Material* material = materialIt->second.get();
 			// material에서 RenderLayer 정할수 있도록 추가해야함 [1/28/2021 qwerw]
@@ -1090,9 +1044,8 @@ HRESULT D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 	}
 	else
 	{
-
-		assert(false);
-		return E_FAIL;
+		check(false, "Mesh 노드가 없습니다.");
+		return ErrCode::NodeNotFound;
 	}
 
 	if (childNodes[nodeIndex].getNodeName() == "ActionStates")
@@ -1101,17 +1054,16 @@ HRESULT D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 	}
 	else
 	{
-
-		assert(false);
-		return E_FAIL;
+		check(false, "ActionStates 노드가 없습니다.");
+		return ErrCode::NodeNotFound;
 	}
 	
-	return S_OK;
+	return ErrCode::Success;
 }
 
 void D3DApp::updateMaterialConstantBuffer(void)
 {
-	auto currentMaterialBuffer = _frameResources[_frameIndex]->_materialConstantBuffer.get();
+	auto& currentFrameResource = _frameResources[_frameIndex];
 	for (auto it = _materials.begin(); it != _materials.end(); ++it)
 	{
 		Material* mat = it->second.get();
@@ -1125,7 +1077,7 @@ void D3DApp::updateMaterialConstantBuffer(void)
 			XMMATRIX matTransform = XMLoadFloat4x4(&mat->getMaterialTransform());
 			XMStoreFloat4x4(&matConstants._materialTransform, XMMatrixTranspose(matTransform));
 
-			currentMaterialBuffer->copyData(mat->getMaterialCBIndex(), matConstants);
+			currentFrameResource->setMaterialCB(mat->getMaterialCBIndex(), matConstants);
 
 			--mat->_dirtyFrames;
 		}
@@ -1136,49 +1088,49 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 {
 	switch (renderLayer)
 	{
-	case RenderLayer::Opaque:
-	{
-		__noop;
-	}
-	break;
-	case RenderLayer::AlphaTested:
-	{
-		_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::BackSideNotCulling].Get());
-	}
-	break;
-	case RenderLayer::Transparent:
-	{
-		_commandList->SetGraphicsRootConstantBufferView(2,
-			_frameResources[_frameIndex]->_passConstantBuffer->getResource()->GetGPUVirtualAddress());
-		_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Transparent].Get());
-	}
-	break;
-	case RenderLayer::Shadow:
-	{
-		_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
-	}
-	break;
-	case RenderLayer::Count:
-	default:
-	{
-		static_assert(static_cast<int>(RenderLayer::Count) == 4, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
-		static_assert(static_cast<int>(PSOType::Count) == 4, "PSO 타입이 추가되었다면 확인해주세요");
-		assert(true);
-	}
+		case RenderLayer::Opaque:
+		{
+			__noop;
+		}
+		break;
+		case RenderLayer::AlphaTested:
+		{
+			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::BackSideNotCulling].Get());
+		}
+		break;
+		case RenderLayer::Transparent:
+		{
+			_commandList->SetGraphicsRootConstantBufferView(2,
+				_frameResources[_frameIndex]->getPassCBVirtualAddress());
+			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Transparent].Get());
+		}
+		break;
+		case RenderLayer::Shadow:
+		{
+			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
+		}
+		break;
+		case RenderLayer::Count:
+		default:
+		{
+			static_assert(static_cast<int>(RenderLayer::Count) == 4, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
+			static_assert(static_cast<int>(PSOType::Count) == 4, "PSO 타입이 추가되었다면 확인해주세요");
+			check(false, "비정상입니다");
+		}
 	}
 	int renderLayerIdx = static_cast<int>(renderLayer);
 	UINT objectCBByteSize = D3DUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 	UINT skinnedCBByteSize = D3DUtil::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
 	UINT materialCBByteSize = D3DUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
 
-	auto objectCB = _frameResources[_frameIndex]->_objectConstantBuffer->getResource();
-	auto skinnedCB = _frameResources[_frameIndex]->_skinnedConstantBuffer->getResource();
-	auto materialCB = _frameResources[_frameIndex]->_materialConstantBuffer->getResource();
+	D3D12_GPU_VIRTUAL_ADDRESS objectCBBaseAddress = _frameResources[_frameIndex]->getObjectCBVirtualAddress();
+	D3D12_GPU_VIRTUAL_ADDRESS skinnedCBBaseAddress = _frameResources[_frameIndex]->getSkinnedCBVirtualAddress();
+	D3D12_GPU_VIRTUAL_ADDRESS materialCBBaseAddress = _frameResources[_frameIndex]->getMaterialCBVirtualAddress();
 	
 	for (int rIdx = 0; rIdx < _renderItems[renderLayerIdx].size(); ++rIdx)
 	{
 		auto renderItem = _renderItems[renderLayerIdx][rIdx];
-		assert(renderItem != nullptr);
+		check(renderItem != nullptr, "비정상입니다.");
 
 		D3D12_VERTEX_BUFFER_VIEW vbv = renderItem->_geometry->getVertexBufferView();
 		_commandList->IASetVertexBuffers(0, 1, &vbv);
@@ -1190,13 +1142,13 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		textureHandle.Offset(renderItem->_material->getDiffuseSRVHeapIndex(), _cbvSrcUavDescriptorSize);
 		_commandList->SetGraphicsRootDescriptorTable(0, textureHandle);
 
-		D3D12_GPU_VIRTUAL_ADDRESS objectCBaddress = objectCB->GetGPUVirtualAddress() + renderItem->_objConstantBufferIndex * objectCBByteSize;
+		D3D12_GPU_VIRTUAL_ADDRESS objectCBaddress = objectCBBaseAddress + renderItem->_objConstantBufferIndex * objectCBByteSize;
 		_commandList->SetGraphicsRootConstantBufferView(1, objectCBaddress);
 
-		D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCB->GetGPUVirtualAddress() + renderItem->_skinnedConstantBufferIndex * skinnedCBByteSize;
+		D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCBBaseAddress + renderItem->_skinnedConstantBufferIndex * skinnedCBByteSize;
 		_commandList->SetGraphicsRootConstantBufferView(2, skinnedCBAdress);
 
-		D3D12_GPU_VIRTUAL_ADDRESS materialCBAddress = materialCB->GetGPUVirtualAddress() + renderItem->_material->getMaterialCBIndex() * materialCBByteSize;
+		D3D12_GPU_VIRTUAL_ADDRESS materialCBAddress = materialCBBaseAddress + renderItem->_material->getMaterialCBIndex() * materialCBByteSize;
 		_commandList->SetGraphicsRootConstantBufferView(4, materialCBAddress);
 
 		_commandList->DrawIndexedInstanced(
@@ -1226,7 +1178,7 @@ void D3DApp::buildGameObjects()
 	buildGameObject("mario", scale, rotation, position);
 }
 
-void D3DApp::buildGameObject(const std::string& meshName, 
+ErrCode D3DApp::buildGameObject(const std::string& meshName, 
 	const DirectX::XMFLOAT3& scale,
 	const DirectX::XMFLOAT3& rotation,
 	const DirectX::XMFLOAT3& transition)
@@ -1234,8 +1186,8 @@ void D3DApp::buildGameObject(const std::string& meshName,
 	auto geometry = _geometries.find(meshName);
 	if (geometry == _geometries.end())
 	{
-		assert(false);
-		return;
+		check(false, "mesh " + meshName +"을 찾을 수 없습니다.");
+		return ErrCode::MeshNotFound;
 	}
 	const auto& subMeshMap = geometry->second->_subMeshMap;
 	for (auto it = subMeshMap.begin(); it != subMeshMap.end(); ++it)
@@ -1252,10 +1204,10 @@ void D3DApp::buildGameObject(const std::string& meshName,
 		renderItem->_baseVertexLocation = it->second._baseVertexLoaction;
 		renderItem->_startIndexLocation = it->second._baseIndexLoacation;
 		renderItem->_material = _materials[meshName + '/' +it->first].get();
-		_renderItems[static_cast<int>(RenderLayer::Opaque)].push_back(renderItem.get());
-		_renderItemsUniquePtrXXX.push_back(move(renderItem));
+		_renderItems[static_cast<int>(RenderLayer::Opaque)].emplace_back(renderItem.get());
+		_renderItemsUniquePtrXXX.emplace_back(move(renderItem));
 	}
-	
+	return ErrCode::Success;
 }
 
 void D3DApp::BuildObject(void)
@@ -1339,13 +1291,13 @@ void D3DApp::buildRootSignature(void)
 	{
 		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 	}
-	ThrowIfFailed(hr);
+	ThrowIfFailed(hr, "RootSignature serialize fail!");
 
 	ThrowIfFailed(_device->CreateRootSignature(
 		0, 
 		serializedRootSig->GetBufferPointer(), 
 		serializedRootSig->GetBufferSize(), 
-		IID_PPV_ARGS(_rootSignature.GetAddressOf())));
+		IID_PPV_ARGS(_rootSignature.GetAddressOf())), "create root signature fail");
 }
 
 void D3DApp::buildShaders(void)
@@ -1356,7 +1308,7 @@ void D3DApp::buildShaders(void)
 
 void D3DApp::buildPipelineStateObject(void)
 {
-	assert(_pipelineStateObjectMap.size() == 0);
+	check(_pipelineStateObjectMap.size() == 0, "pso가 이미 생성되어있습니다");
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescNormal;
 	ZeroMemory(&psoDescNormal, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
@@ -1435,15 +1387,18 @@ void D3DApp::buildPipelineStateObject(void)
 	{
 
 		auto normalPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Normal, nullptr));
-		assert(normalPSO.second);
-		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescNormal, IID_PPV_ARGS(&normalPSO.first->second)));
+		check(normalPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Normal");
+		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescNormal, IID_PPV_ARGS(&normalPSO.first->second)),
+						"PSO 생성 실패! PSOType::Normal");
 	}
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescBackSideNotCulling = psoDescNormal;
 		psoDescBackSideNotCulling.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 		auto backSideNotCullingPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::BackSideNotCulling, nullptr));
-		assert(backSideNotCullingPSO.second);
-		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescBackSideNotCulling, IID_PPV_ARGS(&backSideNotCullingPSO.first->second)));
+		check(backSideNotCullingPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::BackSideNotCulling");
+
+		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescBackSideNotCulling, IID_PPV_ARGS(&backSideNotCullingPSO.first->second)),
+						"PSO 생성 실패! PSOType::BackSideNotCulling");
 	}
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescTransparent = psoDescNormal;
@@ -1452,8 +1407,10 @@ void D3DApp::buildPipelineStateObject(void)
 		psoDescTransparent.BlendState.RenderTarget[0] = blendDesc;
 		psoDescTransparent.DepthStencilState = transparentStencilDesc;
 		auto transparentPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Transparent, nullptr));
-		assert(transparentPSO.second);
-		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescTransparent, IID_PPV_ARGS(&transparentPSO.first->second)));
+		check(transparentPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Transparent");
+
+		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescTransparent, IID_PPV_ARGS(&transparentPSO.first->second)),
+					"PSO 생성 실패! PSOType::Transparent");
 	}
 
 	{
@@ -1462,9 +1419,11 @@ void D3DApp::buildPipelineStateObject(void)
 
 		psoDescShadow.BlendState.RenderTarget[0] = blendDesc;
 		psoDescShadow.DepthStencilState = shadowDesc;
-		auto transparentPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Shadow, nullptr));
-		assert(transparentPSO.second);
-		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescShadow, IID_PPV_ARGS(&transparentPSO.first->second)));
+		auto shadowPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Shadow, nullptr));
+		check(shadowPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Shadow");
+
+		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescShadow, IID_PPV_ARGS(&shadowPSO.first->second)),
+					"PSO 생성 실패! PSOType::Shadow");
 	}
 	static_assert(static_cast<int>(PSOType::Count) == 4, "PSO 타입이 추가되었다면 확인해주세요.");
 }
@@ -1631,7 +1590,9 @@ int D3DApp::Run(void)
 				calculateFrameStats();
 				//UpdateGameObject();
 				Update();
+
 				Draw();
+
 				Sleep(10);
 			}
 			else
@@ -1645,12 +1606,12 @@ int D3DApp::Run(void)
 
 float D3DApp::aspectRatio(void) const
 {
-	assert(_clientHeight != 0);
+	check(_clientHeight != 0, "zero divide");
 	
 	return static_cast<float>(_clientWidth) / _clientHeight;
 }
 
-int D3DApp::loadTexture(const string& textureName, const wstring& fileName)
+CommonIndex D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 {
 	auto texture = std::make_unique<Texture>();
 	texture->_name = textureName;
@@ -1659,17 +1620,14 @@ int D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 	std::unique_ptr<uint8_t[]> ddsData;
 	std::vector<D3D12_SUBRESOURCE_DATA> subresources;
 
-	HRESULT rv = LoadDDSTextureFromFile(
-		_device.Get(),
-		texture->_fileName.c_str(),
-		texture->_resource.GetAddressOf(),
-		ddsData,
-		subresources);
-	if (FAILED(rv))
-	{
-		assert(false);
-		return -1;
-	}
+	ThrowIfFailed(
+		LoadDDSTextureFromFile(
+			_device.Get(),
+			texture->_fileName.c_str(),
+			texture->_resource.GetAddressOf(),
+			ddsData,
+			subresources),
+		"LoadDDSTexture Fail : " + textureName);
 
 	const UINT64 uploadBufferSize = GetRequiredIntermediateSize(texture->_resource.Get(), 0,
 		static_cast<UINT>(subresources.size()));
@@ -1686,7 +1644,7 @@ int D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 			&desc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(texture->_uploader.GetAddressOf())));
+			IID_PPV_ARGS(texture->_uploader.GetAddressOf())), "texture upload fail");
 
 	UpdateSubresources(_commandList.Get(), texture->_resource.Get(), texture->_uploader.Get(),
 		0, 0, static_cast<UINT>(subresources.size()), subresources.data());
@@ -1698,7 +1656,7 @@ int D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 	CommonIndex textureSRVIndex = _textures.size();
 	texture->_index = textureSRVIndex;
 	_textures.emplace_back(std::move(texture));
-
+	
 	return textureSRVIndex;
 }
 
@@ -1741,9 +1699,4 @@ RenderItem::RenderItem() noexcept
 	, _skinnedModelInstance(nullptr)
 {
 
-}
-
-HRESULT RenderItem::loadXML(const XMLReaderNode& rootNode) noexcept
-{
-	return S_OK;
 }

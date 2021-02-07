@@ -8,11 +8,12 @@ class DxException
 {
 public:
 	DxException();
-	DxException(HRESULT hr, const std::wstring& functionName, const std::wstring& fileName, const int lineNumber);
+	DxException(HRESULT hr, ErrCode errorCode, const std::wstring& functionName, const std::wstring& fileName, const int lineNumber);
 
 	std::wstring to_wstring() const noexcept;
 
-	HRESULT			_errorCode;
+	HRESULT			_hr;
+	ErrCode			_errorCode;
 	std::wstring	_functionName;
 	std::wstring	_fileName;
 	int				_lineNumber;
@@ -99,20 +100,68 @@ public:
 };
 
 #ifndef ThrowIfFailed
-#define ThrowIfFailed(x)                                              \
-{                                                                     \
-    HRESULT hr__ = (x);                                               \
-    std::wstring wfn = AnsiToWString(__FILE__);                       \
-    if(FAILED(hr__)) { throw DxException(hr__, L#x, wfn, __LINE__); } \
+#define ThrowIfFailed(_expr, ...)											\
+{																			\
+    HRESULT hr__ = (_expr);													\
+	if(hr__ != S_OK)														\
+	{																		\
+		std::wstring wfn = AnsiToWString(__FILE__);							\
+		DxException e(hr__, ErrCode::HRESULTFail, L#_expr, wfn, __LINE__);	\
+		USES_CONVERSION;													\
+		std::string errorString(W2A(e.to_wstring().c_str()));				\
+		errorString.append({__VA_ARGS__});									\
+		OutputDebugStringA(("Error! " + errorString).c_str());				\
+		MessageBoxA(NULL, errorString.c_str(), "Assert Check", MB_OK);		\
+		DebugBreak();														\
+		throw e;															\
+	}																		\
 }
 #endif
 
-#ifndef ReturnIfFailed
-#define ReturnIfFailed(x)                                              \
-{                                                                     \
-    HRESULT hr__ = (x);                                               \
-    std::wstring wfn = AnsiToWString(__FILE__);                       \
-	assert(SUCCEEDED(hr__));										\
-    if(FAILED(hr__)) { return hr__; } \
+#ifndef ThrowErrCode
+#define ThrowErrCode(_err, ...)												\
+{																			\
+	{																		\
+		std::wstring wfn = AnsiToWString(__FILE__);							\
+		DxException e(E_FAIL, _err, L#_err, wfn, __LINE__);					\
+		USES_CONVERSION;													\
+		std::string errorString(W2A(e.to_wstring().c_str()));				\
+		errorString.append({__VA_ARGS__});									\
+		OutputDebugStringA(("Error! " + errorString).c_str());				\
+		MessageBoxA(NULL, errorString.c_str(), "Assert Check", MB_OK);		\
+		DebugBreak();														\
+		throw e;															\
+	}																		\
+}
+#endif
+
+#ifndef check
+#define check(_val, _msg)																										\
+{																																\
+	if((_val) == false)																											\
+	{																															\
+		static bool ignore = false;																								\
+		if(!ignore)																												\
+		{																														\
+			std::string fileName = __FILE__;																					\
+			size_t fileNameOffset = fileName.find("Codes");																		\
+			fileName = fileName.substr(fileNameOffset);																			\
+			std::string text = "In " + fileName + ": line " + std::to_string(__LINE__) + "\n" + #_val + "\n" + _msg + "\n";		\
+			OutputDebugStringA(("Assert! " + text).c_str());																	\
+			switch(MessageBoxA(NULL, text.c_str(), "Assert Check", MB_ICONERROR | MB_ABORTRETRYIGNORE))							\
+			{																													\
+				case IDABORT:																									\
+				case IDRETRY:																									\
+					DebugBreak();																								\
+					break;																										\
+				case IDIGNORE:																									\
+					ignore = true;																								\
+					break;																										\
+				default:																										\
+					__noop;																										\
+																																\
+			}																													\
+		}																														\
+	}																															\
 }
 #endif

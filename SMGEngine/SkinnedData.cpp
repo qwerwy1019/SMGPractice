@@ -12,11 +12,8 @@ BoneAnimation::BoneAnimation(std::vector<KeyFrame>&& keyFrames) noexcept
 
 void BoneAnimation::interpolate(const float t, DirectX::XMFLOAT4X4& matrix) const noexcept
 {
-	if (_keyFrames.empty())
-	{
-		matrix = MathHelper::Identity4x4;
-		return;
-	}
+	check(!_keyFrames.empty(), "keyFrame이 없습니다.");
+
 	const XMVECTOR zero = XMVectorSet(0.f, 0.f, 0.f, 1.f);
 	if (t <= _keyFrames.front()._timePos)
 	{
@@ -25,7 +22,6 @@ void BoneAnimation::interpolate(const float t, DirectX::XMFLOAT4X4& matrix) cons
 		XMVECTOR Q = XMLoadFloat4(&_keyFrames.front()._rotationQuat);
 
 		XMStoreFloat4x4(&matrix, XMMatrixAffineTransformation(S, zero, Q, P));
-		//matrix = _keyFrames.front()._transform;
 	}
 	else if (t >= _keyFrames.back()._timePos)
 	{
@@ -34,7 +30,6 @@ void BoneAnimation::interpolate(const float t, DirectX::XMFLOAT4X4& matrix) cons
 		XMVECTOR Q = XMLoadFloat4(&_keyFrames.back()._rotationQuat);
 
 		XMStoreFloat4x4(&matrix, XMMatrixAffineTransformation(S, zero, Q, P));
-		//matrix = _keyFrames.back()._transform;
 	}
 	else
 	{
@@ -57,38 +52,30 @@ void BoneAnimation::interpolate(const float t, DirectX::XMFLOAT4X4& matrix) cons
 		XMVECTOR Q = XMQuaternionSlerp(q0, q1, lerpPercent);
 
 		XMStoreFloat4x4(&matrix, XMMatrixAffineTransformation(S, zero, Q, P));
-
-		//MathHelper::interpolateMatrix(it0->_transform, it1->_transform, lerpPercent, matrix);
 	}
-
-	//matrix = MathHelper::Identity4x4;
 }
 
-HRESULT BoneAnimation::loadXML(const XMLReaderNode& node, float timeOffset) noexcept
+void BoneAnimation::loadXML(const XMLReaderNode& node, float timeOffset)
 {
-	HRESULT rv;
 	const auto& childNodes = node.getChildNodes();
+
 	_keyFrames.resize(childNodes.size());
 	for (int i = 0; i < childNodes.size(); ++i)
 	{
 		childNodes[i].loadAttribute("Time", _keyFrames[i]._timePos);
 		_keyFrames[i]._timePos -= timeOffset;
+		if (i != 0 && _keyFrames[i - 1]._timePos > _keyFrames[i]._timePos)
+		{
+			ThrowErrCode(ErrCode::InvalidAnimationData, "시간이 역행합니다.");
+		}
+		if (_keyFrames[i]._timePos < 0.f)
+		{
+			ThrowErrCode(ErrCode::InvalidAnimationData, "시간 값이 음수입니다.");
+		}
 		childNodes[i].loadAttribute("Translation", _keyFrames[i]._translation);
 		childNodes[i].loadAttribute("Scale", _keyFrames[i]._scale);
 		childNodes[i].loadAttribute("RotationQuat", _keyFrames[i]._rotationQuat);
-
-		// directX랑 fbx랑 quaternion순서가 다른것같음 [2/3/2021 qwerw]
-// 		{
-// 			float tempX = _keyFrames[i]._rotationQuat.x;
-// 			_keyFrames[i]._rotationQuat.x = _keyFrames[i]._rotationQuat.y;
-// 			_keyFrames[i]._rotationQuat.y = _keyFrames[i]._rotationQuat.z;
-// 			_keyFrames[i]._rotationQuat.z = _keyFrames[i]._rotationQuat.w;
-// 			_keyFrames[i]._rotationQuat.w = tempX;
-// 		}
-
-		//childNodes[i].loadAttribute("Transform", _keyFrames[i]._transform);
 	}
-	return S_OK;
 }
 
 const std::vector<KeyFrame>& BoneAnimation::getKeyFrameReferenceXXX(void) const noexcept
@@ -126,9 +113,8 @@ void BoneInfo::getFinalTransforms(const std::vector<DirectX::XMFLOAT4X4>& toPare
 	}
 }
 
-HRESULT BoneInfo::loadXML(const XMLReaderNode& rootNode) noexcept
+ErrCode BoneInfo::loadXML(const XMLReaderNode& rootNode) noexcept
 {
-	HRESULT rv;
 	rootNode.loadAttribute("Hierarchy", _boneHierarchy);
 	_boneOffsets.resize(_boneHierarchy.size());
 	const auto& childNodes = rootNode.getChildNodes();
@@ -138,18 +124,21 @@ HRESULT BoneInfo::loadXML(const XMLReaderNode& rootNode) noexcept
 		childNodes[i].loadAttribute("Offset", _boneOffsets[i]);
 	}
 
-	return S_OK;
+	return ErrCode::Success;
 }
 
-// 쓰나?? [1/29/2021 qwerw]
-AnimationClip::AnimationClip(const CommonIndex boneCount) noexcept
+AnimationClip::AnimationClip(std::vector<BoneAnimation>&& boneAnimations, float clipEndTime) noexcept
 {
-	_boneAnimations.resize(boneCount);
+	check(!boneAnimations.empty(), "비정상입니다.");
+	check(clipEndTime > 0.f, "애니메이션 길이가 0이하입니다.");
+
+	_boneAnimations = std::move(boneAnimations);
+	_clipEndTime = clipEndTime;
 }
 
 void AnimationClip::interpolate(const float t, std::vector<DirectX::XMFLOAT4X4>& matrixes) const noexcept
 {
-	assert(matrixes.empty());
+	check(matrixes.empty(), "outMatrix는 빈 상태로 들어와야 합니다.");
 
 	matrixes.resize(_boneAnimations.size());
 	for (int i = 0; i < _boneAnimations.size(); ++i)
@@ -158,21 +147,21 @@ void AnimationClip::interpolate(const float t, std::vector<DirectX::XMFLOAT4X4>&
 	}
 }
 
-void AnimationClip::setBoneAnimationXXX(const CommonIndex boneIndex, BoneAnimation&& boneAnimation) noexcept
-{
-	assert(boneIndex < _boneAnimations.size());
-	_boneAnimations[boneIndex] = std::move(boneAnimation);
-}
+// void AnimationClip::setBoneAnimationXXX(std::vector<BoneAnimation>&& boneAnimation) noexcept
+// {
+// 	check(!boneAnimation.empty(), "빈 데이터가 생성됩니다.");
+// 
+// 	_boneAnimations = boneAnimation;
+// }
 
-HRESULT AnimationClip::loadXML(const XMLReaderNode& node) noexcept
+void AnimationClip::loadXML(const XMLReaderNode& node)
 {
 	float startTime, endTime;
 	node.loadAttribute("StartTime", startTime);
 	node.loadAttribute("EndTime", endTime);
 	if (startTime >= endTime)
 	{
-		assert(false);
-		return E_FAIL;
+		ThrowErrCode(ErrCode::InvalidTimeInfo, "StartTime이 EndTime보다 큽니다.");
 	}
 	_clipEndTime = endTime - startTime;
 
@@ -181,14 +170,8 @@ HRESULT AnimationClip::loadXML(const XMLReaderNode& node) noexcept
 	for (int i = 0; i < childNodes.size(); ++i)
 	{
 		
-		HRESULT rv = _boneAnimations[i].loadXML(childNodes[i], startTime);
-		if (FAILED(rv))
-		{
-			assert(false);
-			return rv;
-		}
+		_boneAnimations[i].loadXML(childNodes[i], startTime);
 	}
-	return S_OK;
 }
 
 const std::vector<BoneAnimation>& AnimationClip::getBoneAnimationXXX(void) const noexcept
@@ -204,17 +187,17 @@ KeyFrame::KeyFrame() noexcept
 {
 }
 
-KeyFrame::KeyFrame(float timePos,
-	const DirectX::XMFLOAT3& translation,
-	const DirectX::XMFLOAT3& scale,
-	const DirectX::XMFLOAT4& rotationQuat) noexcept
-	: _timePos(timePos)
-	, _translation(translation)
-	, _scale(scale)
-	, _rotationQuat(rotationQuat)
-{
-
-}
+// KeyFrame::KeyFrame(float timePos,
+// 	const DirectX::XMFLOAT3& translation,
+// 	const DirectX::XMFLOAT3& scale,
+// 	const DirectX::XMFLOAT4& rotationQuat) noexcept
+// 	: _timePos(timePos)
+// 	, _translation(translation)
+// 	, _scale(scale)
+// 	, _rotationQuat(rotationQuat)
+// {
+// 
+// }
 
 SkinnedModelInstance::SkinnedModelInstance(CommonIndex index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept
 	: _timePos(0.f)
@@ -230,7 +213,7 @@ void SkinnedModelInstance::updateSkinnedAnimation(float dt) noexcept
 {
 	_timePos += dt;
 	const AnimationClip* animationClip = _animationInfo->getAnimationClip(_animationClipName);
-	assert(animationClip != nullptr);
+	check(animationClip != nullptr, "애니메이션을 찾을 수 없습니다. " + _animationClipName);
 	if (_timePos > animationClip->getClipEndTime())
 	{
 		_timePos = 0.f;
@@ -240,12 +223,6 @@ void SkinnedModelInstance::updateSkinnedAnimation(float dt) noexcept
 	animationClip->interpolate(_timePos, toParentTransforms);
 
 	_boneInfo->getFinalTransforms(toParentTransforms, _transformMatrixes);
-
-// 	for (int i = 0; i < _transformMatrixes.size(); ++i)
-// 	{
-// 		XMMATRIX identityMatrix = XMLoadFloat4x4(&MathHelper::Identity4x4);
-// 		XMStoreFloat4x4(&_transformMatrixes[i], XMMatrixTranspose(identityMatrix));
-// 	}
 }
 
 const AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) const noexcept
@@ -260,7 +237,7 @@ const AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName
 	return &(it->second);
 }
 
-HRESULT AnimationInfo::loadXML(const XMLReaderNode& rootNode) noexcept
+void AnimationInfo::loadXML(const XMLReaderNode& rootNode)
 {
 	const auto& childNodes = rootNode.getChildNodes();
 	_animations.reserve(childNodes.size());
@@ -269,18 +246,12 @@ HRESULT AnimationInfo::loadXML(const XMLReaderNode& rootNode) noexcept
 		std::string clipName;
 		childNodes[i].loadAttribute("Name", clipName);
 		AnimationClip clip;
-		HRESULT rv = clip.loadXML(childNodes[i]);
-		if (FAILED(rv))
-		{
-			assert(false);
-			return rv;
-		}
+		clip.loadXML(childNodes[i]);
+
 		auto it = _animations.emplace(clipName, std::move(clip));
 		if (it.second == false)
 		{
-			assert(false && L"이름 중복");
-			return E_FAIL;
+			ThrowErrCode(ErrCode::KeyDuplicated, "clipName : " + clipName + " 중복");
 		}
 	}
-	return S_OK;
 }

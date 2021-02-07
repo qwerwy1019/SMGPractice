@@ -6,7 +6,7 @@
 class Material
 {
 public:
-	Material() noexcept;
+	//Material() noexcept;
 	Material(const int materialCBIndex,
 		const int diffuseSRVHeapIndex,
 		const int normalSRVHeapIndex,
@@ -25,8 +25,8 @@ public:
 	int _dirtyFrames;
 private:
 	int _materialCBIndex;
-	int _diffuseSRVHeapIndex;
-	int _normalSRVHeapIndex;
+	CommonIndex _diffuseSRVHeapIndex;
+	CommonIndex _normalSRVHeapIndex;
 
 	DirectX::XMFLOAT4 _diffuseAlbedo;
 	DirectX::XMFLOAT3 _fresnelR0;

@@ -29,5 +29,5 @@ struct StageInfo
 	LandscapeType _landscapeType;
 	std::vector<SpawnInfo> _spawnInfo;
 
-	HRESULT loadXml(const std::string& fileName);
+	ErrCode loadXml(const std::string& fileName);
 };

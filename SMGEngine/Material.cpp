@@ -31,15 +31,15 @@ Material::Material(const int materialCBIndex,
 // 	, _info(info)
 // {}
 
-Material::Material() noexcept
-	: _materialCBIndex(-1)
-	, _diffuseSRVHeapIndex(-1)
-	, _normalSRVHeapIndex(-1)
-	, _dirtyFrames(FRAME_RESOURCE_COUNT)
-	, _materialTransform(MathHelper::Identity4x4)
-	, _diffuseAlbedo(0.f, 0.f, 0.f, 0.f)
-	, _fresnelR0(0.f, 0.f, 0.f)
-	, _roughness(0.f)
-{
-
-}
+//Material::Material() noexcept
+//	: _materialCBIndex(-1)
+//	, _diffuseSRVHeapIndex(UNDEFINED_COMMON_INDEX)
+//	, _normalSRVHeapIndex(UNDEFINED_COMMON_INDEX)
+//	, _dirtyFrames(FRAME_RESOURCE_COUNT)
+//	, _materialTransform(MathHelper::Identity4x4)
+//	, _diffuseAlbedo(0.f, 0.f, 0.f, 0.f)
+//	, _fresnelR0(0.f, 0.f, 0.f)
+//	, _roughness(0.f)
+//{
+//
+//}

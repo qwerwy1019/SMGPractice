@@ -32,7 +32,7 @@ const D3D12_INPUT_ELEMENT_DESC SKINNED_VERTEX_INPUT_LAYOUT[SKINNED_VERTEX_INPUT_
 	{"BONEINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 };
 
-enum class PSOType
+enum class PSOType : uint8_t
 {
 	Normal,
 	//WireFrame,
@@ -66,7 +66,6 @@ struct RenderItem
 
 	CommonIndex _skinnedConstantBufferIndex;
 	SkinnedModelInstance* _skinnedModelInstance;
-	HRESULT loadXML(const XMLReaderNode& rootNode) noexcept;
 };
 
 enum class RenderLayer : uint8_t
@@ -111,24 +110,7 @@ public:
 	D3DApp(HINSTANCE hInstance);
 	~D3DApp();
 
-	template <typename VertexCont>
-	void createAndAddMeshGeometry(const std::string& geoName,
-		const std::vector<string>& subMeshNames,
-		const VertexCont& vertices,
-		const std::vector<vector<Index>>& indices)
-	{
-		assert(_geometries.find(geoName) == _geometries.end());
-		assert(!subMeshNames.empty());
-		assert(subMeshNames.size() == vertices.size());
-		assert(subMeshNames.size() == indices.size());
-
-		unique_ptr<MeshGeometry> mesh(new MeshGeometry(_device.Get(), _commandList.Get(), geoName, subMeshNames, vertices, indices));
-
-		_geometries[geoName] = std::move(mesh);
-	}
-	HRESULT addMaterial(const string& materialName, const string& d);
-
-	int loadTexture(const string& textureName, const wstring& fileName);
+	CommonIndex loadTexture(const string& textureName, const wstring& fileName);
 
 private:
 	////////////////////////////////////////////////////////////////////////
@@ -178,7 +160,7 @@ private:
 	// 정점 버퍼 초기화
 	void buildConstantGeometry(void);
 	void buildGameObjects(void);
-	void buildGameObject(const std::string& meshName,
+	ErrCode buildGameObject(const std::string& meshName,
 		const DirectX::XMFLOAT3& scale,
 		const DirectX::XMFLOAT3& rotation, 
 		const DirectX::XMFLOAT3& transition);
@@ -205,8 +187,8 @@ private:
 	void animateMaterials(void);
 	void initializeManagers();
 
-	HRESULT loadXmlMaterial(const XMLReaderNode& rootNode) noexcept;
-	HRESULT loadXmlGameObject(const XMLReaderNode& rootNode) noexcept;
+	ErrCode loadXmlMaterial(const XMLReaderNode& rootNode) noexcept;
+	ErrCode loadXmlGameObject(const XMLReaderNode& rootNode) noexcept;
 private:
 	HINSTANCE _hInstance;
 	HWND _hMainWnd;
@@ -288,8 +270,6 @@ private:
 	D3D12_RECT _scissorRect;
 	GameTimer _timer;
 
-	RenderItem* _shadowItem;
-
 	static D3DApp* _app;
 	//_resourceManager : 스테이지매니저가 요청한 자료들을 로드/언로드한다. 멀티스레드 적용이 되었으면 좋겠음.
 	//_stageManager : 스테이지를 불러오고, 오브젝트를 배치한다.
@@ -309,6 +289,6 @@ public:
 	vector<unique_ptr<SkinnedModelInstance>> _skinnedInstance;
 	
 
-	HRESULT loadInfoMap(void) noexcept;
+	void loadInfoMap(void);
 };
 

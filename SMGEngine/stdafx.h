@@ -3,7 +3,6 @@
 #include <winerror.h>
 #include <comdef.h>
 #include <wrl.h>
-#include <cassert>
 
 #include <fstream>
 #include <iostream>
@@ -26,3 +25,5 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "d3dcompiler.lib")
+
+#include "PreDefines.h"

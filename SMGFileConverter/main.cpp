@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <assert.h>
 #include "SMGFileConverter/FbxLoader.h"
+#include "SMGEngine/D3DUtil.h"
 using namespace std;
 
 int main(int argc, char *argv[])
@@ -15,21 +16,16 @@ int main(int argc, char *argv[])
 	const string objectFolderPath = argv[3];
     if (mode == "fbxToXml")
 	{
-        FbxLoader fbxLoader;
-        HRESULT rv = fbxLoader.LoadFbxFiles(scope, objectFolderPath);
-        if (FAILED(rv))
-        {
-            assert(false && L"Fbx File load에 실패했습니다.");
-            return -1;
+        try
+		{
+			FbxLoader fbxLoader;
+			fbxLoader.ConvertFbxFiles(scope, objectFolderPath);
         }
-        
-        //rv = fbxLoader.WriteXmlFiles(objectFolderPath);
-        if (FAILED(rv))
+        catch (DxException& e)
         {
-			assert(false && L"Fbx File->loadXml Write에 실패했습니다.");
-			return -1;
+			MessageBox(nullptr, e.to_wstring().c_str(), L"초기화 실패 !", MB_RETRYCANCEL);
+			return 1;
         }
-
     }
     else if (mode == "xmlToBinary")
 	{
