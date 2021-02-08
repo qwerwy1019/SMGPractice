@@ -1,8 +1,9 @@
 #pragma once
 #include "stdafx.h"
-#include "TypeData.h"
 #include <sstream>
+#include "TypeD3d.h"
 #include "TypeGeometry.h"
+#include "Exception.h"
 
 class DxException
 {
@@ -94,74 +95,11 @@ public:
 		std::istringstream ss(str);
 		unsigned int value;
 		ss >> value;
-		assert(value <= std::numeric_limits<BoneIndex>::max());
+		if (value > std::numeric_limits<BoneIndex>::max())
+		{
+			ThrowErrCode(ErrCode::Overflow, str + "°¡ boneIndex ¹üÀ§¸¦ ¹þ¾î³³´Ï´Ù.");
+		}
 		return value;
 	}
 };
 
-#ifndef ThrowIfFailed
-#define ThrowIfFailed(_expr, ...)											\
-{																			\
-    HRESULT hr__ = (_expr);													\
-	if(hr__ != S_OK)														\
-	{																		\
-		std::wstring wfn = AnsiToWString(__FILE__);							\
-		DxException e(hr__, ErrCode::HRESULTFail, L#_expr, wfn, __LINE__);	\
-		USES_CONVERSION;													\
-		std::string errorString(W2A(e.to_wstring().c_str()));				\
-		errorString.append({__VA_ARGS__});									\
-		OutputDebugStringA(("Error! " + errorString).c_str());				\
-		MessageBoxA(NULL, errorString.c_str(), "Assert Check", MB_OK);		\
-		DebugBreak();														\
-		throw e;															\
-	}																		\
-}
-#endif
-
-#ifndef ThrowErrCode
-#define ThrowErrCode(_err, ...)												\
-{																			\
-	{																		\
-		std::wstring wfn = AnsiToWString(__FILE__);							\
-		DxException e(E_FAIL, _err, L#_err, wfn, __LINE__);					\
-		USES_CONVERSION;													\
-		std::string errorString(W2A(e.to_wstring().c_str()));				\
-		errorString.append({__VA_ARGS__});									\
-		OutputDebugStringA(("Error! " + errorString).c_str());				\
-		MessageBoxA(NULL, errorString.c_str(), "Assert Check", MB_OK);		\
-		DebugBreak();														\
-		throw e;															\
-	}																		\
-}
-#endif
-
-#ifndef check
-#define check(_val, _msg)																										\
-{																																\
-	if((_val) == false)																											\
-	{																															\
-		static bool ignore = false;																								\
-		if(!ignore)																												\
-		{																														\
-			std::string fileName = __FILE__;																					\
-			size_t fileNameOffset = fileName.find("Codes");																		\
-			fileName = fileName.substr(fileNameOffset);																			\
-			std::string text = "In " + fileName + ": line " + std::to_string(__LINE__) + "\n" + #_val + "\n" + _msg + "\n";		\
-			OutputDebugStringA(("Assert! " + text).c_str());																	\
-			switch(MessageBoxA(NULL, text.c_str(), "Assert Check", MB_ICONERROR | MB_ABORTRETRYIGNORE))							\
-			{																													\
-				case IDABORT:																									\
-				case IDRETRY:																									\
-					DebugBreak();																								\
-					break;																										\
-				case IDIGNORE:																									\
-					ignore = true;																								\
-					break;																										\
-				default:																										\
-					__noop;																										\
-																																\
-			}																													\
-		}																														\
-	}																															\
-}
-#endif

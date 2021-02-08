@@ -1,5 +1,4 @@
 ﻿#include <iostream>
-#include <assert.h>
 #include "SMGFileConverter/FbxLoader.h"
 #include "SMGEngine/D3DUtil.h"
 using namespace std;
@@ -8,7 +7,7 @@ int main(int argc, char *argv[])
 {
     if (argc != 4)
     {
-        assert(false && L"인자 수가 이상합니다.");
+        check(false, "인자 수가 이상합니다.");
         return -1;
     }
 	const string mode = argv[1];
@@ -32,7 +31,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-		assert(false && L"mode 인자가 이상합니다.");
+		check(false, "mode 인자가 이상합니다.");
 		return -1;
     }
 

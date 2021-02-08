@@ -64,7 +64,7 @@ struct RenderItem
 
 	D3D12_PRIMITIVE_TOPOLOGY _primitive;
 
-	CommonIndex _skinnedConstantBufferIndex;
+	Index16 _skinnedConstantBufferIndex;
 	SkinnedModelInstance* _skinnedModelInstance;
 };
 
@@ -110,7 +110,7 @@ public:
 	D3DApp(HINSTANCE hInstance);
 	~D3DApp();
 
-	CommonIndex loadTexture(const string& textureName, const wstring& fileName);
+	Index16 loadTexture(const string& textureName, const wstring& fileName);
 
 private:
 	////////////////////////////////////////////////////////////////////////
@@ -160,12 +160,10 @@ private:
 	// 정점 버퍼 초기화
 	void buildConstantGeometry(void);
 	void buildGameObjects(void);
-	ErrCode buildGameObject(const std::string& meshName,
+	void buildGameObject(const std::string& meshName,
 		const DirectX::XMFLOAT3& scale,
 		const DirectX::XMFLOAT3& rotation, 
 		const DirectX::XMFLOAT3& transition);
-
-	void BuildObject(void);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> getStaticSampler(void) const;
 	void updateCamera(void);
@@ -187,8 +185,8 @@ private:
 	void animateMaterials(void);
 	void initializeManagers();
 
-	ErrCode loadXmlMaterial(const XMLReaderNode& rootNode) noexcept;
-	ErrCode loadXmlGameObject(const XMLReaderNode& rootNode) noexcept;
+	void loadXmlMaterial(const XMLReaderNode& rootNode);
+	void loadXmlGameObject(const XMLReaderNode& rootNode);
 private:
 	HINSTANCE _hInstance;
 	HWND _hMainWnd;

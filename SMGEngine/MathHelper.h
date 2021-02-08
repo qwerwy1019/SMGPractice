@@ -1,6 +1,7 @@
 #pragma once
 #include <math.h>
 #include <DirectXMath.h>
+#include "Exception.h"
 
 class MathHelper
 {
@@ -23,7 +24,7 @@ public:
 
 	static int Rand(const int a, const int b)
 	{
-		assert(a < b);
+		check(a < b, std::to_string(a) + " " + std::to_string(b));
 		return a + rand() % ((b - a) + 1);
 	}
 
@@ -34,7 +35,7 @@ public:
 
 	static float RandF(const float a, const float b)
 	{
-		assert(a < b);
+		check(a < b, std::to_string(a) + " " + std::to_string(b));
 		return a + RandF() * (b - a);
 	}
 
@@ -82,6 +83,4 @@ public:
 			}
 		}
 	}
-
-
 };

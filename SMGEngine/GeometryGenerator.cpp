@@ -14,11 +14,11 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(
 	uint32_t sliceCount,
 	uint32_t stackCount)
 {
-	assert(height > 0);
-	assert(((uint64_t)stackCount + 1) * ((uint64_t)sliceCount + 1) + ((uint64_t)sliceCount * 3) < std::numeric_limits<uint16_t>::max()
-		&& L"uint16 인덱스 범위를 넘어가는 정점 갯수입니다.");
-	assert(((uint64_t)sliceCount * stackCount + sliceCount) * 6 < std::numeric_limits<uint32_t>::max()
-		&& L"오버플로우가 납니다.");
+	check(height > 0, "비정상입니다.");
+	check(((uint64_t)stackCount + 1) * ((uint64_t)sliceCount + 1) + ((uint64_t)sliceCount * 3) < std::numeric_limits<uint16_t>::max()
+		, "uint16 인덱스 범위를 넘어가는 정점 갯수입니다.");
+	check(((uint64_t)sliceCount * stackCount + sliceCount) * 6 < std::numeric_limits<uint32_t>::max()
+		, "오버플로우가 납니다.");
 	
 	MeshData result;
 	result._vertices.reserve((stackCount + 1) * (sliceCount + 1) + (sliceCount * 3));
@@ -120,11 +120,11 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(
 
 GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32_t sliceCount, uint32_t stackCount)
 {
-	assert(radius > 0);
-	assert(((uint64_t)stackCount - 1) * ((uint64_t)sliceCount + 1) + ((uint64_t)sliceCount * 3) < std::numeric_limits<uint16_t>::max()
-		&& L"uint16 인덱스 범위를 넘어가는 정점 갯수입니다.");
-	assert(((uint64_t)sliceCount * stackCount - sliceCount) * 6 < std::numeric_limits<uint32_t>::max()
-		&& L"오버플로우가 납니다.");
+	check(radius > 0, "비정상입니다.");
+	check(((uint64_t)stackCount - 1) * ((uint64_t)sliceCount + 1) + ((uint64_t)sliceCount * 3) < std::numeric_limits<uint16_t>::max()
+		, "uint16 인덱스 범위를 넘어가는 정점 갯수입니다.");
+	check(((uint64_t)sliceCount * stackCount - sliceCount) * 6 < std::numeric_limits<uint32_t>::max()
+		, "오버플로우가 납니다.");
 
 	MeshData result;
 	result._vertices.reserve((stackCount - 1) * (sliceCount + 1) + (sliceCount * 3));
@@ -157,7 +157,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
 	result._vertices.emplace_back(0.f, -radius, 0.f, 0.f, -1.f, 0.f, 1.f, 0.f, 0.f, 0.f, 1.f);
 
 	// 인덱스
-	for (int32_t i = 0; i < sliceCount; ++i)
+	for (uint32_t i = 0; i < sliceCount; ++i)
 	{
 		result._indices.push_back(0);
 		result._indices.push_back(i + 2);
@@ -181,9 +181,12 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
 			result._indices.push_back(p3);
 		}
 	}
-	const int32_t bottemIndex = result._vertices.size() - 1;
-	const int32_t baseIndex = bottemIndex - sliceCount - 1;
-	for (int32_t i = 0; i < sliceCount; ++i)
+	check(result._vertices.size() - 1 >= 0, "underflow");
+	const uint32_t bottemIndex = result._vertices.size() - 1;
+	check(bottemIndex - sliceCount - 1 >= 0, "underflow");
+	const uint32_t baseIndex = bottemIndex - sliceCount - 1;
+
+	for (uint32_t i = 0; i < sliceCount; ++i)
 	{
 		result._indices.push_back(bottemIndex);
 		result._indices.push_back(i + baseIndex);
@@ -197,7 +200,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGeosphere(float radius, uin
 {
 	MeshData result;
 
-	assert(subDivisions < 7 && L"division level이 너무 큽니다. 6으로 조정됩니다.");
+	check(subDivisions < 7, "division level이 너무 큽니다. 6으로 조정됩니다.");
 	subDivisions = std::min<uint32_t>(subDivisions, 6);
 
 	const float X = 0.525731f;
@@ -226,7 +229,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGeosphere(float radius, uin
 	{
 		result._vertices[i]._position = defaultPos[i];
 	}
-	for (int i = 0; i < subDivisions; ++i)
+	for (uint32_t i = 0; i < subDivisions; ++i)
 	{
 		SubDivide(result);
 	}
@@ -262,7 +265,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 {
 	MeshData result;
 
-	assert(m * n <= std::numeric_limits<uint16_t>::max() && L"인덱스가 범위를 넘어갑니다.");
+	check(m * n <= std::numeric_limits<uint16_t>::max(), "인덱스가 범위를 넘어갑니다.");
 	
 	float dx = width / (n - 1);
 	float dz = depth / (m - 1);
@@ -271,10 +274,10 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 	float dv = 1.f / (m - 1);
 
 	result._vertices.resize(m * n);
-	for (int i = 0; i < m; ++i)
+	for (uint32_t i = 0; i < m; ++i)
 	{
 		float z = (depth / 2.0f) - (i * dz);
-		for (int j = 0; j < n; ++j)
+		for (uint32_t j = 0; j < n; ++j)
 		{
 			float x = -(width / 2.0f) + (j * dx);
 			result._vertices[i * n + j]._position = XMFLOAT3(x, 0.f, z);
@@ -285,9 +288,9 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 	}
 	result._indices.resize((n - 1) * (m - 1) * 6);
 	uint32_t k = 0;
-	for (int i = 0; i < m - 1; ++i)
+	for (uint32_t i = 0; i < m - 1; ++i)
 	{
-		for (int j = 0; j < n - 1; ++j, k+=6)
+		for (uint32_t j = 0; j < n - 1; ++j, k+=6)
 		{
 			result._indices[k] = i * n + j;
 			result._indices[k + 1] = i * n + j + 1;
@@ -354,7 +357,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateBox(float width, float heig
 
 	result._indices.assign(&i[0], &i[36]);
 
-	for (int i = 0; i < subDivisions; ++i)
+	for (uint32_t i = 0; i < subDivisions; ++i)
 	{
 		SubDivide(result);
 	}
@@ -368,8 +371,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateFromTextFile(const std::str
 	std::ifstream file(fileNameFull.c_str());
 	if (!file.is_open())
 	{
-		assert(L"파일 오픈 실패 !");
-		throw DxException();
+		ThrowErrCode(ErrCode::PathNotFound, "파일 오픈 실패 !" + fileNameFull);
 	}
 	std::string line;
 
@@ -423,8 +425,8 @@ GeometryGenerator::MeshData GeometryGenerator::CreateFromTextFile(const std::str
 
 void GeometryGenerator::SubDivide(MeshData& result)
 {
-	assert(result._indices.size() % 3 == 0 && L"index가 비정상입니다.");
-	assert(result._vertices.size() * 2 < std::numeric_limits<uint16_t>::max() && L"index가 너무 커집니다.");
+	check(result._indices.size() % 3 == 0, "index가 비정상입니다.");
+	check(result._vertices.size() * 2 < std::numeric_limits<uint16_t>::max(), "index가 너무 커집니다.");
 
 	const MeshData inputCopy = result;
 	result._vertices.clear();

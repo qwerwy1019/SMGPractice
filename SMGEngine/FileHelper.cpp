@@ -43,7 +43,6 @@ void XMLWriter::addNode(const std::string& name)
 
 	insertTab();
 
-	HRESULT rv;
 	_bstr_t bstrName = name.c_str();
 	IXMLDOMElementPtr element;
 	ThrowIfFailed(_document->createElement(bstrName, &element), "xml element create fail : " + name);
@@ -76,7 +75,6 @@ void XMLWriter::closeChildNode(void)
 	_cursor = _cursorParent;
 
 	IXMLDOMNodePtr outParent;
-	HRESULT rv;
 
 	ThrowIfFailed(_cursorParent->get_parentNode(&outParent), "get_parentNode fail");
 	check(outParent != nullptr, "get_parentNode fail");
@@ -123,7 +121,6 @@ void XMLWriter::insertTab(void)
 	std::string tab(_tabCount, '\t');
 	_bstr_t bstrTab = tab.c_str();
 
-	HRESULT rv;
 	ThrowIfFailed(_document->createTextNode(bstrTab, &text));
 
 	ThrowIfFailed(_cursorParent->appendChild(text, nullptr));

@@ -1,7 +1,8 @@
 #pragma once
-#include "TypeData.h"
+#include "TypeD3d.h"
 
 struct StageInfo;
+enum class ErrCode : uint32_t;
 
 class StageManager
 {

@@ -189,7 +189,7 @@ void MeshGeometry::setVertexBufferGPUXXXXX(ID3D12Resource* buffer) noexcept
 
 void MeshGeometry::createIndexBufferXXX(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, const std::vector<Index>& ib)
 {
-	assert(ib.size() != 0);
+	check(ib.size() != 0, "buffer size가 0입니다.");
 	const UINT ibByteSize = (UINT)ib.size() * sizeof(Index);
 	ThrowIfFailed(D3DCreateBlob(ibByteSize, &_indexBufferCPU));
 
@@ -200,7 +200,7 @@ void MeshGeometry::createIndexBufferXXX(ID3D12Device* device, ID3D12GraphicsComm
 
 D3D12_VERTEX_BUFFER_VIEW MeshGeometry::getVertexBufferView(void) const noexcept
 {
-	assert(_vertexBufferGPU != nullptr);
+	check(_vertexBufferGPU != nullptr, "vertexBuffer가 할당된 상태가 아닙니다.");
 	D3D12_VERTEX_BUFFER_VIEW vbv;
 	vbv.BufferLocation = _vertexBufferGPU->GetGPUVirtualAddress();
 	vbv.StrideInBytes = _vertexByteStride;
@@ -211,7 +211,7 @@ D3D12_VERTEX_BUFFER_VIEW MeshGeometry::getVertexBufferView(void) const noexcept
 
 D3D12_INDEX_BUFFER_VIEW MeshGeometry::getIndexBufferView(void) const noexcept
 {
-	assert(_indexBufferGPU != nullptr);
+	check(_indexBufferGPU != nullptr, "indexBuffer가 할당된 상태가 아닙니다.");
 	D3D12_INDEX_BUFFER_VIEW ibv;
 	ibv.BufferLocation = _indexBufferGPU->GetGPUVirtualAddress();
 	ibv.Format = _indexFormat;

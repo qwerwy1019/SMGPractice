@@ -67,7 +67,7 @@ private:
 class AnimationInfo
 {
 public:
-	const AnimationClip* getAnimationClip(const std::string& clipName) const noexcept;
+	const AnimationClip* getAnimationClip(const std::string& clipName) const;
 
 	void loadXML(const XMLReaderNode& rootNode);
 private:
@@ -79,25 +79,25 @@ class BoneInfo
 public:
 	void getFinalTransforms(const std::vector<DirectX::XMFLOAT4X4>& toParentTransforms,
 		std::vector<DirectX::XMFLOAT4X4>& finalTransforms) const noexcept;
-	ErrCode loadXML(const XMLReaderNode& rootNode) noexcept;
-	int getBoneCount(void) const noexcept { return _boneOffsets.size(); }
+	void loadXML(const XMLReaderNode& rootNode);
+	BoneIndex getBoneCount(void) const noexcept;
 private:
-	std::vector<CommonIndex> _boneHierarchy;
+	std::vector<Index16> _boneHierarchy;
 	std::vector<DirectX::XMFLOAT4X4> _boneOffsets;
 };
 
 class SkinnedModelInstance
 {
 public:
-	SkinnedModelInstance(CommonIndex index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept;
+	SkinnedModelInstance(Index16 index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept;
 	void updateSkinnedAnimation(float dt) noexcept;
 	const std::vector<DirectX::XMFLOAT4X4>& getTransformMatrixes(void) const noexcept { return _transformMatrixes; }
-	CommonIndex getIndex(void) const noexcept { return _index; }
+	Index16 getIndex(void) const noexcept { return _index; }
 
 private:
 	float _timePos;
 	std::string _animationClipName;
-	CommonIndex _index;
+	Index16 _index;
 	
 	BoneInfo* _boneInfo;
 	AnimationInfo* _animationInfo;

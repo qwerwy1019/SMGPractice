@@ -99,7 +99,8 @@ XMFLOAT3 D3DApp::getHillsNormal(const float x, const float z)
 
 void D3DApp::buildShaderResourceViews()
 {
-	assert(!_textures.empty());
+	check(!_textures.empty(), "texture info가 먼저 로드되어야 합니다.");
+
 	CD3DX12_CPU_DESCRIPTOR_HANDLE handle(_srvHeap->GetCPUDescriptorHandleForHeapStart());
 
 	for (auto it = _textures.begin(); it != _textures.end(); ++it)
@@ -262,7 +263,7 @@ void D3DApp::checkFeatureSupport(void) noexcept
 
 D3DApp* D3DApp::getApp(void) noexcept
 {
-	assert(_app != nullptr);
+	check(_app != nullptr, "d3d app이 초기화되지 않았습니다.");
 	return _app;
 }
 
@@ -341,7 +342,7 @@ bool D3DApp::initDirect3D()
 		sizeof(multiSampleQualityLevels)));
 
 	_4xMsaaQuality = multiSampleQualityLevels.NumQualityLevels;
-	assert(_4xMsaaQuality > 0 && "Unexpected MSAA quality.");
+	check(_4xMsaaQuality > 0, "Unexpected MSAA quality.");
 
 	createCommandObjects();
 	createSwapChain();
@@ -895,7 +896,7 @@ void D3DApp::initializeManagers()
 // 	_fileManager->Initialize();
 }
 
-ErrCode D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode) noexcept
+void D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode)
 {
 	const auto& nodes = rootNode.getChildNodes();
 	for (int i = 0; i < nodes.size(); ++i)
@@ -921,22 +922,20 @@ ErrCode D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode) noexcept
 		textureNameWstring.assign(textureName.begin(), textureName.end());
 		textureNameWstring = L"../Resources/XmlFiles/Asset/Texture/" + textureNameWstring + L".dds";
 
-		CommonIndex diffuseSRVIndex = loadTexture(textureName, textureNameWstring);
+		Index16 diffuseSRVIndex = loadTexture(textureName, textureNameWstring);
 		unique_ptr<Material> material(new Material(_materials.size(), diffuseSRVIndex, UNDEFINED_COMMON_INDEX, diffuseAlbedo, fresnelR0, roughness));
 		
 		_materials.emplace(materialName, move(material));
 	}
-
-	return ErrCode::Success;
 }
 
-ErrCode D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
+void D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode)
 {
 	// getChildNode(nodeName)을 구현하면 수정할것 [1/28/2021 qwerw]
 	const auto& childNodes = rootNode.getChildNodes();
 	bool isSkinned = (childNodes.size() == 4);
 	int nodeIndex = 0;
-	CommonIndex skinnedConstantBufferIndex = UNDEFINED_COMMON_INDEX;
+	Index16 skinnedConstantBufferIndex = UNDEFINED_COMMON_INDEX;
 	SkinnedModelInstance* skinnedInstance = nullptr;
 
 	if (isSkinned)
@@ -951,8 +950,7 @@ ErrCode D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 			auto boneIt = _boneInfoMap.find(skeletonName);
 			if (boneIt == _boneInfoMap.end())
 			{
-				check(false, "skeleton file : " + skeletonName + "이 _boneInfoMap에 없습니다.");
-				return ErrCode::FileNotFound;
+				ThrowErrCode(ErrCode::FileNotFound, "skeleton file : " + skeletonName + "이 _boneInfoMap에 없습니다.");
 			}
 			boneInfo = boneIt->second.get();
 
@@ -960,8 +958,7 @@ ErrCode D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 		}
 		else
 		{
-			check(false, "Skeleton 노드가 없습니다.");
-			return ErrCode::NodeNotFound;
+			ThrowErrCode(ErrCode::NodeNotFound, "Skeleton 노드가 없습니다.");
 		}
 		
 		if (childNodes[nodeIndex].getNodeName() == "Animation")
@@ -971,16 +968,14 @@ ErrCode D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 			auto animIt = _animationInfoMap.find(animationInfoName);
 			if (animIt == _animationInfoMap.end())
 			{
-				check(false, "Animation File : " + animationInfoName + "이 없습니다.");
-				return ErrCode::FileNotFound;
+				ThrowErrCode(ErrCode::FileNotFound, "Animation File : " + animationInfoName + "이 없습니다.");
 			}
 			animationInfo = animIt->second.get();
 			++nodeIndex;
 		}
 		else
 		{
-			check(false, "Animation 노드가 없습니다.");
-			return ErrCode::NodeNotFound;
+			ThrowErrCode(ErrCode::NodeNotFound, "Animation 노드가 없습니다.");
 		}
 
 		skinnedConstantBufferIndex = _skinnedInstance.size();
@@ -995,8 +990,7 @@ ErrCode D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 		auto meshIt = _geometries.find(meshFileName);
 		if (meshIt == _geometries.end())
 		{
-			check(false, "Mesh File : " + meshFileName + "이 없습니다.");
-			return ErrCode::FileNotFound;
+			ThrowErrCode(ErrCode::FileNotFound, "Mesh File : " + meshFileName + "이 없습니다.");
 		}
 		const auto& subMeshMap = meshIt->second->_subMeshMap;
 		const auto& subMeshNodes = childNodes[nodeIndex].getChildNodes();
@@ -1007,8 +1001,7 @@ ErrCode D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 			const auto& subMeshIt = subMeshMap.find(subMeshName);
 			if (subMeshIt == subMeshMap.end())
 			{
-				check(false, "SubMeshName : " + subMeshName + "이 " + meshFileName + "에 없습니다.");
-				return ErrCode::SubMeshNotFound;
+				ThrowErrCode(ErrCode::SubMeshNotFound, "SubMeshName : " + subMeshName + "이 " + meshFileName + "에 없습니다.");
 			}
 			string materialFile, materialName;
 			subMeshNodes[j].loadAttribute("MaterialFile", materialFile);
@@ -1016,8 +1009,7 @@ ErrCode D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 			auto materialIt = _materials.find(materialFile + '/' + materialName);
 			if (materialIt == _materials.end())
 			{
-				check(false, "Material : " + materialFile + '/' + materialName + "이 없습니다.");
-				return ErrCode::MaterialNotFound;
+				ThrowErrCode(ErrCode::MaterialNotFound, "Material : " + materialFile + '/' + materialName + "이 없습니다.");
 			}
 			Material* material = materialIt->second.get();
 			// material에서 RenderLayer 정할수 있도록 추가해야함 [1/28/2021 qwerw]
@@ -1044,8 +1036,7 @@ ErrCode D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 	}
 	else
 	{
-		check(false, "Mesh 노드가 없습니다.");
-		return ErrCode::NodeNotFound;
+		ThrowErrCode(ErrCode::NodeNotFound, "Mesh 노드가 없습니다.");
 	}
 
 	if (childNodes[nodeIndex].getNodeName() == "ActionStates")
@@ -1054,11 +1045,8 @@ ErrCode D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode) noexcept
 	}
 	else
 	{
-		check(false, "ActionStates 노드가 없습니다.");
-		return ErrCode::NodeNotFound;
+		ThrowErrCode(ErrCode::NodeNotFound, "ActionStates 노드가 없습니다.");
 	}
-	
-	return ErrCode::Success;
 }
 
 void D3DApp::updateMaterialConstantBuffer(void)
@@ -1115,7 +1103,7 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		{
 			static_assert(static_cast<int>(RenderLayer::Count) == 4, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
 			static_assert(static_cast<int>(PSOType::Count) == 4, "PSO 타입이 추가되었다면 확인해주세요");
-			check(false, "비정상입니다");
+			ThrowErrCode(ErrCode::UndefinedType, "비정상입니다");
 		}
 	}
 	int renderLayerIdx = static_cast<int>(renderLayer);
@@ -1178,7 +1166,7 @@ void D3DApp::buildGameObjects()
 	buildGameObject("mario", scale, rotation, position);
 }
 
-ErrCode D3DApp::buildGameObject(const std::string& meshName, 
+void D3DApp::buildGameObject(const std::string& meshName, 
 	const DirectX::XMFLOAT3& scale,
 	const DirectX::XMFLOAT3& rotation,
 	const DirectX::XMFLOAT3& transition)
@@ -1186,8 +1174,7 @@ ErrCode D3DApp::buildGameObject(const std::string& meshName,
 	auto geometry = _geometries.find(meshName);
 	if (geometry == _geometries.end())
 	{
-		check(false, "mesh " + meshName +"을 찾을 수 없습니다.");
-		return ErrCode::MeshNotFound;
+		ThrowErrCode(ErrCode::MeshNotFound, "mesh " + meshName +"을 찾을 수 없습니다.");\
 	}
 	const auto& subMeshMap = geometry->second->_subMeshMap;
 	for (auto it = subMeshMap.begin(); it != subMeshMap.end(); ++it)
@@ -1207,15 +1194,6 @@ ErrCode D3DApp::buildGameObject(const std::string& meshName,
 		_renderItems[static_cast<int>(RenderLayer::Opaque)].emplace_back(renderItem.get());
 		_renderItemsUniquePtrXXX.emplace_back(move(renderItem));
 	}
-	return ErrCode::Success;
-}
-
-void D3DApp::BuildObject(void)
-{
-	string meshFile;
-	string skeletonFile;
-	string animationFile;
-
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> D3DApp::getStaticSampler(void) const
@@ -1611,7 +1589,7 @@ float D3DApp::aspectRatio(void) const
 	return static_cast<float>(_clientWidth) / _clientHeight;
 }
 
-CommonIndex D3DApp::loadTexture(const string& textureName, const wstring& fileName)
+Index16 D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 {
 	auto texture = std::make_unique<Texture>();
 	texture->_name = textureName;
@@ -1653,7 +1631,7 @@ CommonIndex D3DApp::loadTexture(const string& textureName, const wstring& fileNa
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	_commandList->ResourceBarrier(1, &barrier);
 
-	CommonIndex textureSRVIndex = _textures.size();
+	Index16 textureSRVIndex = _textures.size();
 	texture->_index = textureSRVIndex;
 	_textures.emplace_back(std::move(texture));
 	

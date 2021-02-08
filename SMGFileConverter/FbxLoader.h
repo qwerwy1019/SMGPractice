@@ -4,7 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include "SMGEngine/TypeGeometry.h"
-#include "SMGEngine/TypeData.h"
+#include "SMGEngine/TypeD3d.h"
 #include <set>
 #include "SMGEngine/PreDefines.h"
 
@@ -23,11 +23,11 @@ private:
 
 	struct FbxPolygonVertexInfo
 	{
-		CommonIndex _materialIndex = UNDEFINED_COMMON_INDEX;
-		CommonIndex _controlPointIndex = UNDEFINED_COMMON_INDEX;
-		CommonIndex _uvIndex = UNDEFINED_COMMON_INDEX;
-		CommonIndex _normalIndex = UNDEFINED_COMMON_INDEX;
-		CommonIndex _colorIndex = UNDEFINED_COMMON_INDEX;
+		Index16 _materialIndex = UNDEFINED_COMMON_INDEX;
+		Index16 _controlPointIndex = UNDEFINED_COMMON_INDEX;
+		Index16 _uvIndex = UNDEFINED_COMMON_INDEX;
+		Index16 _normalIndex = UNDEFINED_COMMON_INDEX;
+		Index16 _colorIndex = UNDEFINED_COMMON_INDEX;
 	};
 
 	enum class IndexMappingType
@@ -43,7 +43,7 @@ private:
 	struct FbxVertexSkinningInfo
 	{
 		FbxVertexSkinningInfo() noexcept;
-		void insert(CommonIndex boneIndex, float weight) noexcept;
+		void insert(Index16 boneIndex, float weight) noexcept;
 		std::array<BoneIndex, BONE_WEIGHT_COUNT> _boneIndex;
 		std::array<float, BONE_WEIGHT_COUNT> _weight;
 	};

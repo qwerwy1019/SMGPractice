@@ -86,17 +86,17 @@ const std::vector<KeyFrame>& BoneAnimation::getKeyFrameReferenceXXX(void) const 
 void BoneInfo::getFinalTransforms(const std::vector<DirectX::XMFLOAT4X4>& toParentTransforms,
 								std::vector<DirectX::XMFLOAT4X4>& transformMatrixes) const noexcept
 {
-	assert(toParentTransforms.size() == _boneOffsets.size());
-	CommonIndex boneCount = _boneOffsets.size();
+	check(toParentTransforms.size() == _boneOffsets.size(), "비정상입니다.");
+	Index16 boneCount = getBoneCount();
 
 	std::vector<XMFLOAT4X4> toRootTransforms(boneCount);
 	toRootTransforms[0] = toParentTransforms[0];
 
-	for (CommonIndex i = 1; i < boneCount; ++i)
+	for (Index16 i = 1; i < boneCount; ++i)
 	{
 		XMMATRIX toParent = XMLoadFloat4x4(&toParentTransforms[i]);
 		int parentIndex = _boneHierarchy[i];
-		assert(!MathHelper::equal(toRootTransforms[parentIndex], MathHelper::Zero4x4));
+		check(parentIndex < i, "parent index는 child보다 작아야 합니다.");
 		XMMATRIX parentToRoot = XMLoadFloat4x4(&toRootTransforms[parentIndex]);
 
 		XMMATRIX toRoot = XMMatrixMultiply(toParent, parentToRoot);
@@ -104,7 +104,7 @@ void BoneInfo::getFinalTransforms(const std::vector<DirectX::XMFLOAT4X4>& toPare
 		XMStoreFloat4x4(&toRootTransforms[i], toRoot);
 	}
 
-	for (CommonIndex i = 0; i < boneCount; ++i)
+	for (Index16 i = 0; i < boneCount; ++i)
 	{
 		XMMATRIX offset = XMLoadFloat4x4(&_boneOffsets[i]);
 		XMMATRIX toRoot = XMLoadFloat4x4(&toRootTransforms[i]);
@@ -113,18 +113,32 @@ void BoneInfo::getFinalTransforms(const std::vector<DirectX::XMFLOAT4X4>& toPare
 	}
 }
 
-ErrCode BoneInfo::loadXML(const XMLReaderNode& rootNode) noexcept
+void BoneInfo::loadXML(const XMLReaderNode& rootNode)
 {
 	rootNode.loadAttribute("Hierarchy", _boneHierarchy);
+	if (BONE_INDEX_MAX < _boneHierarchy.size())
+	{
+		ThrowErrCode(ErrCode::Overflow, "boneHierarchy는 " + std::to_string(BONE_INDEX_MAX) + "이하여야 합니다.");
+	}
 	_boneOffsets.resize(_boneHierarchy.size());
 	const auto& childNodes = rootNode.getChildNodes();
-	assert(_boneHierarchy.size() == childNodes.size());
+	if (_boneHierarchy.size() != childNodes.size())
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData,
+			"hierarchy:" + std::to_string(_boneHierarchy.size()) +
+			"child count:" + std::to_string(childNodes.size()));
+	}
 	for (int i = 0; i < childNodes.size(); ++i)
 	{
 		childNodes[i].loadAttribute("Offset", _boneOffsets[i]);
 	}
+}
 
-	return ErrCode::Success;
+BoneIndex BoneInfo::getBoneCount(void) const noexcept
+{
+	check(_boneOffsets.size() < BONE_INDEX_MAX, "비정상입니다.");
+
+	return _boneOffsets.size();
 }
 
 AnimationClip::AnimationClip(std::vector<BoneAnimation>&& boneAnimations, float clipEndTime) noexcept
@@ -199,7 +213,7 @@ KeyFrame::KeyFrame() noexcept
 // 
 // }
 
-SkinnedModelInstance::SkinnedModelInstance(CommonIndex index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept
+SkinnedModelInstance::SkinnedModelInstance(Index16 index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept
 	: _timePos(0.f)
 	, _animationClipName("BaseLayer")
 	, _index(index)
@@ -225,13 +239,12 @@ void SkinnedModelInstance::updateSkinnedAnimation(float dt) noexcept
 	_boneInfo->getFinalTransforms(toParentTransforms, _transformMatrixes);
 }
 
-const AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) const noexcept
+const AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) const
 {
 	auto it = _animations.find(clipName);
 	if (it == _animations.end())
 	{
-		assert(false);
-		return nullptr;
+		ThrowErrCode(ErrCode::AnimationNotFound, clipName);
 	}
 	
 	return &(it->second);

@@ -1,6 +1,6 @@
 #pragma once
 #include "TypeGeometry.h"
-#include "TypeData.h"
+#include "TypeD3d.h"
 #include "D3DUtil.h"
 
 class XMLReaderNode;

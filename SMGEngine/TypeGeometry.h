@@ -1,6 +1,6 @@
 #pragma once
 #include "stdafx.h"
-#include "TypeData.h"
+#include "TypeD3d.h"
 
 // MAX_LIGHT_COUNT 값 수정 시 LightingUtil.hlsl 의 값 수정해야함.
 constexpr int MAX_LIGHT_COUNT = 16;
@@ -56,11 +56,6 @@ struct MaterialConstants
 	float _roughness;
 	DirectX::XMFLOAT4X4 _materialTransform;
 };
-struct SkinnedConstants
-{
-	SkinnedConstants() noexcept;
-	DirectX::XMFLOAT4X4 _boneTransforms[96];
-};
 struct Vertex
 {
 	Vertex() noexcept;
@@ -69,8 +64,9 @@ struct Vertex
 	DirectX::XMFLOAT3 _normal;
 	DirectX::XMFLOAT2 _textureCoord;
 };
-using BoneIndex = BYTE;
+using BoneIndex = uint8_t;
 constexpr BoneIndex UNDEFINED_BONE_INDEX = static_cast<BoneIndex>(-1);
+constexpr BoneIndex BONE_INDEX_MAX = 96;
 constexpr int BONE_WEIGHT_COUNT = 4;
 struct SkinnedVertex
 {
@@ -88,6 +84,12 @@ struct SkinnedVertex
 	std::array<BoneIndex, BONE_WEIGHT_COUNT> _boneIndices;
 };
 
+struct SkinnedConstants
+{
+	SkinnedConstants() noexcept;
+	DirectX::XMFLOAT4X4 _boneTransforms[BONE_INDEX_MAX];
+};
+
 using Index = uint16_t;
 constexpr Index UNDEFINED_INDEX = static_cast<Index>(-1);
 
@@ -96,7 +98,7 @@ struct Texture
 	std::string _name;
 	std::wstring _fileName;
 
-	CommonIndex _index;
+	Index16 _index;
 	WComPtr<ID3D12Resource> _resource;
 	WComPtr<ID3D12Resource> _uploader;
 };

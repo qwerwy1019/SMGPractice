@@ -174,9 +174,9 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 
 	struct VertexKey
 	{
-		CommonIndex material;
-		CommonIndex controlPoint;
-		CommonIndex uv;
+		Index16 material;
+		Index16 controlPoint;
+		Index16 uv;
 		bool operator==(const VertexKey& rhs) const
 		{
 			return (material == rhs.material)
@@ -979,7 +979,7 @@ void FbxLoader::loadFbxSkeletonNode(FbxNode* node, bool& nodeFound)
 	if (node->GetNodeAttribute() != nullptr &&
 		node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
 	{
-		const CommonIndex expectedBoneCount = node->GetChildCount(true) + 1;
+		const Index16 expectedBoneCount = node->GetChildCount(true) + 1;
 		_boneHierarchy.reserve(expectedBoneCount);
 		_boneIndexMap.reserve(expectedBoneCount);
 		_boneOffsets.reserve(expectedBoneCount);
@@ -1065,7 +1065,7 @@ FbxLoader::FbxVertexSkinningInfo::FbxVertexSkinningInfo() noexcept
 	}
 }
 
-void FbxLoader::FbxVertexSkinningInfo::insert(CommonIndex boneIndex, float weight) noexcept
+void FbxLoader::FbxVertexSkinningInfo::insert(Index16 boneIndex, float weight) noexcept
 {
 	if (_weight[BONE_WEIGHT_COUNT - 1] >= weight)
 	{

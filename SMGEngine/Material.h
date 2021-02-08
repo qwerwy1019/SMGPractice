@@ -25,8 +25,8 @@ public:
 	int _dirtyFrames;
 private:
 	int _materialCBIndex;
-	CommonIndex _diffuseSRVHeapIndex;
-	CommonIndex _normalSRVHeapIndex;
+	Index16 _diffuseSRVHeapIndex;
+	Index16 _normalSRVHeapIndex;
 
 	DirectX::XMFLOAT4 _diffuseAlbedo;
 	DirectX::XMFLOAT3 _fresnelR0;

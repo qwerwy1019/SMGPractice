@@ -33,7 +33,7 @@ WComPtr<ID3D12Resource> D3DUtil::CreateDefaultBuffer(ID3D12Device* device,
 													 WComPtr<ID3D12Resource>& uploadBuffer)
 {
 	check(byteSize != 0, "Buffer size가 0입니다.");
-	check(byteSize < std::numeric_limits<LONG_PTR>::max(), "할당하려는 버퍼 크기가 너무 큽니다. 오버플로우가 일어납니다.");
+	check(byteSize < static_cast<UINT64>(std::numeric_limits<LONG_PTR>::max()), "할당하려는 버퍼 크기가 너무 큽니다. 오버플로우가 일어납니다.");
 
 	WComPtr<ID3D12Resource> defaultBuffer;
 
