@@ -16,6 +16,14 @@ struct IDXGIAdapter;
 struct IDXGIOutput;
 class Material;
 
+static constexpr D2D1_BITMAP_PROPERTIES1 bitmapProperty =
+{
+	{ BACK_BUFFER_FORMAT, D2D1_ALPHA_MODE_PREMULTIPLIED },
+	96.f, 96.f,
+	D2D1_BITMAP_OPTIONS_TARGET,
+	nullptr
+};
+
 // 정점 관련
 static constexpr size_t VERTEX_INPUT_DESC_SIZE = 3;
 const D3D12_INPUT_ELEMENT_DESC VERTEX_INPUT_LAYOUT[VERTEX_INPUT_DESC_SIZE] = {
@@ -42,6 +50,7 @@ enum class PSOType : uint8_t
 	//ReflectedTransparent,
 	Transparent,
 	Shadow,
+	UI,
 	Count,
 };
 
@@ -125,7 +134,8 @@ private:
 	bool initMainWindow(void);
 
 	// Direct3D 초기화
-	bool initDirect3D(void);
+	void initDirect3D(void);
+	void initDirect2D(void);
 	void flushCommandQueue();
 	void set4XMsaaState(bool value);
 	void createCommandObjects(void);
@@ -203,7 +213,7 @@ private:
 
 	WComPtr<IDXGIFactory4> _factory;
 	WComPtr<IDXGISwapChain> _swapChain;
-	WComPtr<ID3D12Device> _device;
+	WComPtr<ID3D12Device> _deviceD3d12;
 
 	WComPtr<ID3D12Fence> _fence;
 	UINT64 _currentFence;
@@ -288,5 +298,28 @@ public:
 	
 
 	void loadInfoMap(void);
+
+	WComPtr<ID3D11Resource> _backBufferWrapped[SWAP_CHAIN_BUFFER_COUNT];
+	WComPtr<ID2D1Bitmap1> _backBufferBitmap[SWAP_CHAIN_BUFFER_COUNT];
+	WComPtr<ID2D1Factory3> _d2dFactory;
+	WComPtr<ID2D1Device2> _deviceD2d;
+	WComPtr<ID2D1DeviceContext1> _d2dContext;
+
+	WComPtr<ID3D11On12Device> _deviceD3d11On12;
+	WComPtr<IDWriteFactory3> _writeFactory;
+	WComPtr<IDWriteTextFormat> _textFormat;
+	WComPtr<ID2D1SolidColorBrush> _whiteBrush;
+	WComPtr<ID2D1SolidColorBrush> _transparentBrush;
+
+	void DrawUI(void);
+private:
+	void loadUi();
+
+	WComPtr<ID2D1Bitmap1> _text = nullptr;
+	WComPtr<ID2D1Bitmap1> _bitmap = nullptr;
+	WComPtr<IDXGISurface> _surface;
+	WComPtr<ID3D11DeviceContext3> _immediateContext;
+
+
 };
 

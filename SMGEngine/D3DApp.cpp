@@ -38,7 +38,7 @@ void D3DApp::loadInfoMap(void)
 			xmlMeshGeometry.loadXMLFile(filePath);
 
 			unique_ptr<MeshGeometry> mesh(new MeshGeometry);
-			mesh->loadXml(xmlMeshGeometry.getRootNode(), _device.Get(), _commandList.Get());
+			mesh->loadXml(xmlMeshGeometry.getRootNode(), _deviceD3d12.Get(), _commandList.Get());
 
 			_geometries["marioMesh"] = move(mesh);
 		}
@@ -79,6 +79,46 @@ void D3DApp::loadInfoMap(void)
 	}
 }
 
+void D3DApp::DrawUI(void)
+{
+	D2D1_PRIMITIVE_BLEND prevBlend;
+
+	_deviceD3d11On12->AcquireWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);
+
+	_d2dContext->SetTarget(_backBufferBitmap[_currentBackBuffer].Get());
+	_d2dContext->BeginDraw();
+
+	_d2dContext->EndDraw();
+}
+
+void D3DApp::loadUi()
+{
+	ThrowIfFailed(_d2dContext->CreateBitmap(D2D1::SizeU(73, 21),
+		_backBufferBitmap[0].Get(),
+		4,
+		bitmapProperty,
+		&_text));
+	ThrowIfFailed(_d2dContext->CreateBitmap(D2D1::SizeU(73, 21),
+		_backBufferBitmap[0].Get(),
+		4,
+		bitmapProperty,
+		&_bitmap));
+
+	std::wstring testText = L"Hello world!";
+	_d2dContext->SetTarget(_text.Get());
+	_d2dContext->BeginDraw();
+	_d2dContext->SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_COPY);
+	D2D1_RECT_F entire = { 0.f, 0.f, 73, 21 };
+	_d2dContext->FillRectangle(entire, _transparentBrush.Get());
+	_d2dContext->SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
+
+	WComPtr<IDWriteTextFormat> textFormat = nullptr;
+	
+	_d2dContext->DrawTextW(testText.c_str(), testText.length(), _textFormat.Get(), entire, _whiteBrush.Get());
+	ThrowIfFailed(_d2dContext->EndDraw());
+
+}
+
 float D3DApp::getHillsHeight(const float x, const float z)
 {
 	return 0.3f * (z * sinf(0.1f * x) + x * cosf(0.1f * z));
@@ -113,7 +153,7 @@ void D3DApp::buildShaderResourceViews()
 		desc.Texture2D.MipLevels = (*it)->_resource->GetDesc().MipLevels;
 		desc.Texture2D.PlaneSlice = 0;
 		desc.Texture2D.ResourceMinLODClamp = 0.f;
-		_device->CreateShaderResourceView((*it)->_resource.Get(), &desc, handle);
+		_deviceD3d12->CreateShaderResourceView((*it)->_resource.Get(), &desc, handle);
 		handle.Offset(1, _cbvSrcUavDescriptorSize);
 	}
 }
@@ -128,7 +168,7 @@ D3DApp::D3DApp(HINSTANCE hInstance)
 	, _resizing(false)
 	, _factory(nullptr)
 	, _swapChain(nullptr)
-	, _device(nullptr)
+	, _deviceD3d12(nullptr)
 	, _fence(nullptr)
 	, _currentFence(0)
 	, _commandQueue(nullptr)
@@ -168,7 +208,7 @@ D3DApp::D3DApp(HINSTANCE hInstance)
 }
 D3DApp::~D3DApp()
 {
-	if (_device != nullptr)
+	if (_deviceD3d12 != nullptr)
 		flushCommandQueue();
 }
 
@@ -305,7 +345,7 @@ bool D3DApp::initMainWindow()
 
 	return true;
 }
-bool D3DApp::initDirect3D()
+void D3DApp::initDirect3D()
 {
 #if defined(DEBUG) || defined(_DEBUG)
 	{
@@ -318,26 +358,26 @@ bool D3DApp::initDirect3D()
 #endif
 	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&_factory)));
 
-	HRESULT hardwareResult = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&_device));
+	HRESULT hardwareResult = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&_deviceD3d12));
 	if (FAILED(hardwareResult))
 	{
 		WComPtr<IDXGIAdapter> warpAdapter;
 		ThrowIfFailed(_factory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter)));
 
-		ThrowIfFailed(D3D12CreateDevice(warpAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&_device)));
+		ThrowIfFailed(D3D12CreateDevice(warpAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&_deviceD3d12)));
 	}
-	ThrowIfFailed(_device->CreateFence(_currentFence, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&_fence)));
+	ThrowIfFailed(_deviceD3d12->CreateFence(_currentFence, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&_fence)));
 
-	_rtvDescriptorSize = _device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	_dsvDescriptorSize = _device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	_cbvSrcUavDescriptorSize = _device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	_rtvDescriptorSize = _deviceD3d12->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	_dsvDescriptorSize = _deviceD3d12->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	_cbvSrcUavDescriptorSize = _deviceD3d12->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS multiSampleQualityLevels;
 	multiSampleQualityLevels.Format = BACK_BUFFER_FORMAT;
 	multiSampleQualityLevels.SampleCount = 4;
 	multiSampleQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
 	multiSampleQualityLevels.NumQualityLevels = 0;
-	ThrowIfFailed(_device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, 
+	ThrowIfFailed(_deviceD3d12->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, 
 		&multiSampleQualityLevels, 
 		sizeof(multiSampleQualityLevels)));
 
@@ -347,8 +387,47 @@ bool D3DApp::initDirect3D()
 	createCommandObjects();
 	createSwapChain();
 	createDescriptorHeaps();
-	return true;
 }
+
+void D3DApp::initDirect2D(void)
+{
+	D2D1_FACTORY_OPTIONS options;
+	options.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+	D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, options, _d2dFactory.GetAddressOf());
+
+	WComPtr<IDXGIDevice> deviceDxgi;
+	WComPtr<ID3D11Device> deviceD3d11;
+	WComPtr<ID3D11Device4> deviceD3d114;
+	IUnknown* commandQueue = nullptr;
+
+	ThrowIfFailed(_commandQueue->QueryInterface(&commandQueue));
+	unsigned __int32 DeviceFlags = ::D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+	D3D11On12CreateDevice(_deviceD3d12.Get(),
+		DeviceFlags, nullptr, 0, &commandQueue, 1, 0x00000001, &deviceD3d11, nullptr, nullptr);
+	
+	ThrowIfFailed(deviceD3d11->QueryInterface(deviceD3d114.GetAddressOf()));
+
+	ThrowIfFailed(deviceD3d114->QueryInterface(_deviceD3d11On12.GetAddressOf()));
+	ThrowIfFailed(_deviceD3d11On12->QueryInterface(deviceDxgi.GetAddressOf()));
+	_d2dFactory->CreateDevice(deviceDxgi.Get(), _deviceD2d.GetAddressOf());
+	
+	ThrowIfFailed(_deviceD2d->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_ENABLE_MULTITHREADED_OPTIMIZATIONS, &_d2dContext));
+
+	deviceD3d114->GetImmediateContext3(_immediateContext.GetAddressOf());
+
+	ThrowIfFailed(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), (IUnknown**)&_writeFactory));
+	ThrowIfFailed(_writeFactory->CreateTextFormat(L"굴림체", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		13.f,
+		L"ko-KR",
+		&_textFormat));
+	ThrowIfFailed(_textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
+	ThrowIfFailed(_textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
+	ThrowIfFailed(_d2dContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &_transparentBrush));
+	ThrowIfFailed(_d2dContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &_whiteBrush));
+}
+
 void D3DApp::flushCommandQueue()
 {
 	_currentFence++;
@@ -385,9 +464,9 @@ void D3DApp::createCommandObjects(void)
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	ThrowIfFailed(_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&_commandQueue)));
-	ThrowIfFailed(_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(_commandAlloc.GetAddressOf())));
-	ThrowIfFailed(_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, _commandAlloc.Get(), nullptr, 
+	ThrowIfFailed(_deviceD3d12->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&_commandQueue)));
+	ThrowIfFailed(_deviceD3d12->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(_commandAlloc.GetAddressOf())));
+	ThrowIfFailed(_deviceD3d12->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, _commandAlloc.Get(), nullptr, 
 		IID_PPV_ARGS(_commandList.GetAddressOf())));
 
 	_commandList->Close();
@@ -415,7 +494,10 @@ void D3DApp::createSwapChain(void)
 	sd.Windowed = true;
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-	ThrowIfFailed(_factory->CreateSwapChain(_commandQueue.Get(), &sd, _swapChain.GetAddressOf()));
+
+	WComPtr<IDXGISwapChain> swapChain;
+	ThrowIfFailed(_factory->CreateSwapChain(_commandQueue.Get(), &sd, &swapChain));
+	ThrowIfFailed(swapChain->QueryInterface(_swapChain.GetAddressOf()));
 }
 
 void D3DApp::createDescriptorHeaps(void)
@@ -425,26 +507,26 @@ void D3DApp::createDescriptorHeaps(void)
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask = 0;
-	ThrowIfFailed(_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(_rtvHeap.GetAddressOf())));
+	ThrowIfFailed(_deviceD3d12->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(_rtvHeap.GetAddressOf())));
 
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
 	dsvHeapDesc.NumDescriptors = 1;
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask = 0;
-	ThrowIfFailed(_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(_dsvHeap.GetAddressOf())));
+	ThrowIfFailed(_deviceD3d12->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(_dsvHeap.GetAddressOf())));
 
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc;
 	srvHeapDesc.NumDescriptors = 20;
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	srvHeapDesc.NodeMask = 0;
-	ThrowIfFailed(_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(_srvHeap.GetAddressOf())));
+	ThrowIfFailed(_deviceD3d12->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(_srvHeap.GetAddressOf())));
 }
 
 void D3DApp::OnResize(void)
 {
-	check(_device != nullptr, "device가 null입니다. 초기화를 확인하세요.");
+	check(_deviceD3d12 != nullptr, "device가 null입니다. 초기화를 확인하세요.");
 	check(_swapChain != nullptr, "swapChain이 null입니다. 초기화를 확인하세요.");
 	check(_commandAlloc != nullptr, "commandAlloc이 null입니다. 초기화를 확인하세요.");
 
@@ -463,13 +545,36 @@ void D3DApp::OnResize(void)
 		BACK_BUFFER_FORMAT,
 		DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
 
+// 	D2D1_RENDER_TARGET_PROPERTIES d2dProps =
+// 		D2D1::RenderTargetProperties(
+// 			D2D1_RENDER_TARGET_TYPE_DEFAULT,
+// 			D2D1::PixelFormat(DXGI_FORMAT_UNKNOWN, D2D1_ALPHA_MODE_PREMULTIPLIED),
+// 			_clientWidth,
+// 			_clientHeight
+// 		);
+	
+	D3D11_RESOURCE_FLAGS resourceFlags = { ::D3D11_BIND_RENDER_TARGET | ::D3D11_BIND_SHADER_RESOURCE };
+
 	_currentBackBuffer = 0;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(_rtvHeap->GetCPUDescriptorHandleForHeapStart());
 	for (UINT i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
 	{
 		ThrowIfFailed(_swapChain->GetBuffer(i, IID_PPV_ARGS(&_swapChainBuffer[i])));
-		_device->CreateRenderTargetView(_swapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
+		_deviceD3d12->CreateRenderTargetView(_swapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		rtvHeapHandle.Offset(1, _rtvDescriptorSize);
+
+		ThrowIfFailed(_deviceD3d11On12->CreateWrappedResource(_swapChainBuffer[i].Get(),
+			&resourceFlags,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT,
+			IID_PPV_ARGS(_backBufferWrapped[i].GetAddressOf())
+		));
+
+		ThrowIfFailed(_backBufferWrapped[i]->QueryInterface(_surface.GetAddressOf()));
+
+		ThrowIfFailed(_d2dContext->CreateBitmapFromDxgiSurface(_surface.Get(), &bitmapProperty, &_backBufferBitmap[i]));
+
+		//_d2dContext->SetTarget(targetBitmap.Get());
 	}
 
 	D3D12_RESOURCE_DESC depthStencilDesc;
@@ -492,7 +597,7 @@ void D3DApp::OnResize(void)
 	optClear.DepthStencil.Depth = 1.0f;
 	optClear.DepthStencil.Stencil = 0;
 	CD3DX12_HEAP_PROPERTIES defaultHeapProperty(D3D12_HEAP_TYPE_DEFAULT);
-	ThrowIfFailed(_device->CreateCommittedResource(
+	ThrowIfFailed(_deviceD3d12->CreateCommittedResource(
 		&defaultHeapProperty,
 		D3D12_HEAP_FLAG_NONE,
 		&depthStencilDesc,
@@ -506,7 +611,7 @@ void D3DApp::OnResize(void)
 	dsvDesc.Format = DEPTH_STENCIL_FORMAT;
 	dsvDesc.Texture2D.MipSlice = 0;
 
-	_device->CreateDepthStencilView(
+	_deviceD3d12->CreateDepthStencilView(
 		_depthStencilBuffer.Get(),
 		&dsvDesc,
 		getDepthStencilView());
@@ -541,6 +646,7 @@ void D3DApp::Update(void)
 	onKeyboardInput();
 	updateCamera();
 
+	loadUi();
 	_frameIndex = (_frameIndex + 1) % FRAME_RESOURCE_COUNT;
 	const UINT64& currentFrameFence = _frameResources[_frameIndex]->getFence();
 
@@ -557,6 +663,7 @@ void D3DApp::Update(void)
 	updateSkinnedConstantBuffer();
 	updatePassConstantBuffer();
 	updateMaterialConstantBuffer();
+
 }
 
 void D3DApp::Draw(void)
@@ -605,6 +712,18 @@ void D3DApp::Draw(void)
 
 	ID3D12CommandList* cmdLists[] = { _commandList.Get() };
 	_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+
+	//UI
+	_deviceD3d11On12->AcquireWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);
+	_d2dContext->SetTarget(_backBufferBitmap[_currentBackBuffer].Get());
+	_d2dContext->BeginDraw();
+	_d2dContext->DrawBitmap(_text.Get(), nullptr, 1.f);
+	_d2dContext->EndDraw();
+	_d2dContext->SetTarget(nullptr);
+
+	_deviceD3d11On12->ReleaseWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);
+
+	_immediateContext->Flush();
 
 	ThrowIfFailed(_swapChain->Present(0, 0));
 	_currentBackBuffer = (_currentBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
@@ -765,7 +884,7 @@ void D3DApp::buildFrameResources(void)
 	UINT skinnedCount = _skinnedInstance.size();
 	for (int i = 0; i < FRAME_RESOURCE_COUNT; ++i)
 	{
-		auto frameResource = std::make_unique<FrameResource>(_device.Get(), 1, objectCount, materialCount, skinnedCount);
+		auto frameResource = std::make_unique<FrameResource>(_deviceD3d12.Get(), 1, objectCount, materialCount, skinnedCount);
 		_frameResources.push_back(std::move(frameResource));
 	}
 }
@@ -1102,7 +1221,7 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		default:
 		{
 			static_assert(static_cast<int>(RenderLayer::Count) == 4, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
-			static_assert(static_cast<int>(PSOType::Count) == 4, "PSO 타입이 추가되었다면 확인해주세요");
+			static_assert(static_cast<int>(PSOType::Count) == 5, "PSO 타입이 추가되었다면 확인해주세요");
 			ThrowErrCode(ErrCode::UndefinedType, "비정상입니다");
 		}
 	}
@@ -1271,7 +1390,7 @@ void D3DApp::buildRootSignature(void)
 	}
 	ThrowIfFailed(hr, "RootSignature serialize fail!");
 
-	ThrowIfFailed(_device->CreateRootSignature(
+	ThrowIfFailed(_deviceD3d12->CreateRootSignature(
 		0, 
 		serializedRootSig->GetBufferPointer(), 
 		serializedRootSig->GetBufferSize(), 
@@ -1293,6 +1412,7 @@ void D3DApp::buildPipelineStateObject(void)
 	D3D12_RENDER_TARGET_BLEND_DESC blendDesc;
 	D3D12_DEPTH_STENCIL_DESC transparentStencilDesc;
 	D3D12_DEPTH_STENCIL_DESC shadowDesc;
+	D3D12_DEPTH_STENCIL_DESC uiDepthStencilesc;
 
 	// psoDescNormal
 	{
@@ -1345,6 +1465,10 @@ void D3DApp::buildPipelineStateObject(void)
 	}
 	//shadowDesc
 	{
+		uiDepthStencilesc.DepthEnable = false;
+	}
+	//shadowDesc
+	{
 		shadowDesc.DepthEnable = true;
 		shadowDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 		shadowDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
@@ -1366,7 +1490,7 @@ void D3DApp::buildPipelineStateObject(void)
 
 		auto normalPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Normal, nullptr));
 		check(normalPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Normal");
-		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescNormal, IID_PPV_ARGS(&normalPSO.first->second)),
+		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescNormal, IID_PPV_ARGS(&normalPSO.first->second)),
 						"PSO 생성 실패! PSOType::Normal");
 	}
 	{
@@ -1375,7 +1499,7 @@ void D3DApp::buildPipelineStateObject(void)
 		auto backSideNotCullingPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::BackSideNotCulling, nullptr));
 		check(backSideNotCullingPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::BackSideNotCulling");
 
-		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescBackSideNotCulling, IID_PPV_ARGS(&backSideNotCullingPSO.first->second)),
+		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescBackSideNotCulling, IID_PPV_ARGS(&backSideNotCullingPSO.first->second)),
 						"PSO 생성 실패! PSOType::BackSideNotCulling");
 	}
 	{
@@ -1387,7 +1511,7 @@ void D3DApp::buildPipelineStateObject(void)
 		auto transparentPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Transparent, nullptr));
 		check(transparentPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Transparent");
 
-		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescTransparent, IID_PPV_ARGS(&transparentPSO.first->second)),
+		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescTransparent, IID_PPV_ARGS(&transparentPSO.first->second)),
 					"PSO 생성 실패! PSOType::Transparent");
 	}
 
@@ -1395,15 +1519,26 @@ void D3DApp::buildPipelineStateObject(void)
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescShadow = psoDescNormal;
 
 
-		psoDescShadow.BlendState.RenderTarget[0] = blendDesc;
-		psoDescShadow.DepthStencilState = shadowDesc;
+		psoDescShadow.DepthStencilState.DepthEnable = false;
 		auto shadowPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Shadow, nullptr));
 		check(shadowPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Shadow");
 
-		ThrowIfFailed(_device->CreateGraphicsPipelineState(&psoDescShadow, IID_PPV_ARGS(&shadowPSO.first->second)),
+		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescShadow, IID_PPV_ARGS(&shadowPSO.first->second)),
 					"PSO 생성 실패! PSOType::Shadow");
 	}
-	static_assert(static_cast<int>(PSOType::Count) == 4, "PSO 타입이 추가되었다면 확인해주세요.");
+	{
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescUI = psoDescNormal;
+
+
+		psoDescUI.BlendState.RenderTarget[0] = blendDesc;
+		psoDescUI.DepthStencilState = shadowDesc;
+		auto UIPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::UI, nullptr));
+		check(UIPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Shadow");
+
+		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescUI, IID_PPV_ARGS(&UIPSO.first->second)),
+			"PSO 생성 실패! PSOType::UIPSO");
+	}
+	static_assert(static_cast<int>(PSOType::Count) == 5, "PSO 타입이 추가되었다면 확인해주세요.");
 }
 
 LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -1423,7 +1558,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_SIZE:
 		_clientWidth = LOWORD(lParam);
 		_clientHeight = HIWORD(lParam);
-		if (_device != nullptr)
+		if (_deviceD3d12 != nullptr)
 		{
 			if (wParam == SIZE_MINIMIZED)
 			{
@@ -1514,9 +1649,8 @@ bool D3DApp::Initialize(void)
 {
 	if (!initMainWindow())
 		return false;
-	if (!initDirect3D())
-		return false;
-
+	initDirect3D();
+	initDirect2D();
 	initializeManagers();
 	OnResize();
 
@@ -1543,7 +1677,7 @@ bool D3DApp::Initialize(void)
 	ThrowIfFailed(_commandList->Close());
 	ID3D12CommandList* cmdLists[] = { _commandList.Get() };
 	_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
-
+	_immediateContext->Flush();
 	flushCommandQueue();
 
 	return true;
@@ -1600,7 +1734,7 @@ Index16 D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 
 	ThrowIfFailed(
 		LoadDDSTextureFromFile(
-			_device.Get(),
+			_deviceD3d12.Get(),
 			texture->_fileName.c_str(),
 			texture->_resource.GetAddressOf(),
 			ddsData,
@@ -1616,7 +1750,7 @@ Index16 D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 	auto desc = CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize);
 
 	ThrowIfFailed(
-		_device->CreateCommittedResource(
+		_deviceD3d12->CreateCommittedResource(
 			&heapProps,
 			D3D12_HEAP_FLAG_NONE,
 			&desc,

@@ -42,6 +42,7 @@ PassConstants::PassConstants() noexcept
 	, pad2(0.f, 0.f)
 	, _ambientLight(0.25, 0.25, 0.35f, 1.f)
 	, _lights()
+	, _orthogonalView(MathHelper::Identity4x4)
 {
 
 }
