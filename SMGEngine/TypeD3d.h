@@ -31,11 +31,5 @@ const D3D_SHADER_MACRO definesForShader[] =
 	NULL, NULL
 };
 
-
-using Index16 = uint16_t;
-constexpr Index16 UNDEFINED_COMMON_INDEX = static_cast<Index16>(-1);
-
 constexpr int FPS = 60;
 constexpr float FPS_f = static_cast<float>(FPS);
-
-using CharacterKey = Index16;

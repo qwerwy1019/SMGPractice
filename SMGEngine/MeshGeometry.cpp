@@ -51,12 +51,12 @@ void MeshGeometry::loadXmlVertices(const XMLReaderNode& node, std::vector<Vertex
 	}
 }
 
-void MeshGeometry::loadXmlIndices(const XMLReaderNode& node, std::vector<Index>& indices) const
+void MeshGeometry::loadXmlIndices(const XMLReaderNode& node, std::vector<GeoIndex>& indices) const
 {
 	const auto& childNodes = node.getChildNodes();
 	for (int i = 0; i < childNodes.size(); ++i)
 	{
-		Index index0, index1, index2;
+		GeoIndex index0, index1, index2;
 		childNodes[i].loadAttribute("_0", index0);
 		childNodes[i].loadAttribute("_1", index1);
 		childNodes[i].loadAttribute("_2", index2);
@@ -88,7 +88,7 @@ void MeshGeometry::loadXml(const XMLReaderNode& rootNode, ID3D12Device* device, 
 
 	std::vector<SkinnedVertex> skinnedVertices;
 	std::vector<Vertex> vertices;
-	std::vector<Index> indices;
+	std::vector<GeoIndex> indices;
 	if (isSkinned)
 	{
 		_vertexByteStride = sizeof(SkinnedVertex);
@@ -103,7 +103,7 @@ void MeshGeometry::loadXml(const XMLReaderNode& rootNode, ID3D12Device* device, 
 
 		_vertexByteStride = sizeof(Vertex);
 	}
-	_indexBufferByteSize = totalIndexCount * sizeof(Index);
+	_indexBufferByteSize = totalIndexCount * sizeof(GeoIndex);
 	indices.reserve(totalIndexCount);
 
 	UINT baseIndexLocation = 0;
@@ -187,10 +187,10 @@ void MeshGeometry::setVertexBufferGPUXXXXX(ID3D12Resource* buffer) noexcept
 	_vertexBufferGPU = buffer;
 }
 
-void MeshGeometry::createIndexBufferXXX(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, const std::vector<Index>& ib)
+void MeshGeometry::createIndexBufferXXX(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, const std::vector<GeoIndex>& ib)
 {
 	check(ib.size() != 0, "buffer size가 0입니다.");
-	const UINT ibByteSize = (UINT)ib.size() * sizeof(Index);
+	const UINT ibByteSize = (UINT)ib.size() * sizeof(GeoIndex);
 	ThrowIfFailed(D3DCreateBlob(ibByteSize, &_indexBufferCPU));
 
 	CopyMemory(_indexBufferCPU->GetBufferPointer(), ib.data(), ibByteSize);

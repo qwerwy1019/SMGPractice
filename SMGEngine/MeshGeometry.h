@@ -26,7 +26,7 @@ public:
 	void createIndexBufferXXX(
 		ID3D12Device* device,
 		ID3D12GraphicsCommandList* commandList,
-		const std::vector<Index>& ib);
+		const std::vector<GeoIndex>& ib);
 
 	D3D12_VERTEX_BUFFER_VIEW getVertexBufferView(void) const noexcept;
 
@@ -56,6 +56,6 @@ private:
 	WComPtr<ID3D12Resource> _indexBufferUploader;
 	void loadXmlSkinnedVertices(const  XMLReaderNode& node, std::vector<SkinnedVertex>& skinnedVertices) const;
 	void loadXmlVertices(const  XMLReaderNode& node, std::vector<Vertex>& vertices) const;
-	void loadXmlIndices(const  XMLReaderNode& node, std::vector<Index>& indices) const;
+	void loadXmlIndices(const  XMLReaderNode& node, std::vector<GeoIndex>& indices) const;
 };
 

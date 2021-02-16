@@ -17,6 +17,7 @@
 #include "Material.h"
 #include "PreDefines.h"
 #include "D3DUtil.h"
+#include "UiManager.h"
 
 LRESULT CALLBACK
 MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -77,64 +78,6 @@ void D3DApp::loadInfoMap(void)
 
 		::CoUninitialize();
 	}
-}
-
-void D3DApp::DrawUI(void)
-{
-	D2D1_PRIMITIVE_BLEND prevBlend;
-
-	_deviceD3d11On12->AcquireWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);
-
-	_d2dContext->SetTarget(_backBufferBitmap[_currentBackBuffer].Get());
-	_d2dContext->BeginDraw();
-
-	_d2dContext->EndDraw();
-}
-
-void D3DApp::loadUi()
-{
-	ThrowIfFailed(_d2dContext->CreateBitmap(D2D1::SizeU(73, 21),
-		_backBufferBitmap[0].Get(),
-		4,
-		bitmapProperty,
-		&_text));
-	ThrowIfFailed(_d2dContext->CreateBitmap(D2D1::SizeU(73, 21),
-		_backBufferBitmap[0].Get(),
-		4,
-		bitmapProperty,
-		&_bitmap));
-
-	std::wstring testText = L"Hello world!";
-	_d2dContext->SetTarget(_text.Get());
-	_d2dContext->BeginDraw();
-	_d2dContext->SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_COPY);
-	D2D1_RECT_F entire = { 0.f, 0.f, 73, 21 };
-	_d2dContext->FillRectangle(entire, _transparentBrush.Get());
-	_d2dContext->SetPrimitiveBlend(D2D1_PRIMITIVE_BLEND_SOURCE_OVER);
-
-	WComPtr<IDWriteTextFormat> textFormat = nullptr;
-	
-	_d2dContext->DrawTextW(testText.c_str(), testText.length(), _textFormat.Get(), entire, _whiteBrush.Get());
-	ThrowIfFailed(_d2dContext->EndDraw());
-
-}
-
-float D3DApp::getHillsHeight(const float x, const float z)
-{
-	return 0.3f * (z * sinf(0.1f * x) + x * cosf(0.1f * z));
-}
-
-XMFLOAT3 D3DApp::getHillsNormal(const float x, const float z)
-{
-	XMFLOAT3 n(
-		-0.03f * z * cosf(0.1f * x) - 0.3f * cosf(0.1f * z),
-		1.0f,
-		-0.3f * sinf(0.1f * x) + 0.03f * x * sinf(0.1f * z));
-
-	XMVECTOR unitNormal = XMVector3Normalize(XMLoadFloat3(&n));
-	XMStoreFloat3(&n, unitNormal);
-
-	return n;
 }
 
 void D3DApp::buildShaderResourceViews()
@@ -307,7 +250,13 @@ D3DApp* D3DApp::getApp(void) noexcept
 	return _app;
 }
 
-bool D3DApp::initMainWindow()
+UIManager* D3DApp::getUIManager(void) noexcept
+{
+	check(_app->_uiManager != nullptr, "ui manager가 초기화되지 않았습니다.");
+	return _app->_uiManager.get();
+}
+
+void D3DApp::initMainWindow()
 {
 	WNDCLASS wc;
 	wc.style			= CS_HREDRAW | CS_VREDRAW;
@@ -323,8 +272,7 @@ bool D3DApp::initMainWindow()
 
 	if (!RegisterClass(&wc))
 	{
-		MessageBox(nullptr, L"RegisterClass Failed.", nullptr, 0);
-		return false;
+		ThrowErrCode(ErrCode::InitFail, "RegisterClass Failed.");
 	}
 
 	RECT R = { 0, 0, _clientWidth, _clientHeight };
@@ -336,15 +284,13 @@ bool D3DApp::initMainWindow()
 		WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, nullptr, nullptr, _hInstance, nullptr);
 	if (nullptr == _hMainWnd)
 	{
-		MessageBox(nullptr, L"CreateWindow Failed.", nullptr, 0);
-		return false;
+		ThrowErrCode(ErrCode::InitFail, "CreateWindow Failed.");
 	}
 
 	ShowWindow(_hMainWnd, SW_SHOW);
 	UpdateWindow(_hMainWnd);
-
-	return true;
 }
+
 void D3DApp::initDirect3D()
 {
 #if defined(DEBUG) || defined(_DEBUG)
@@ -387,45 +333,6 @@ void D3DApp::initDirect3D()
 	createCommandObjects();
 	createSwapChain();
 	createDescriptorHeaps();
-}
-
-void D3DApp::initDirect2D(void)
-{
-	D2D1_FACTORY_OPTIONS options;
-	options.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
-	D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, options, _d2dFactory.GetAddressOf());
-
-	WComPtr<IDXGIDevice> deviceDxgi;
-	WComPtr<ID3D11Device> deviceD3d11;
-	WComPtr<ID3D11Device4> deviceD3d114;
-	IUnknown* commandQueue = nullptr;
-
-	ThrowIfFailed(_commandQueue->QueryInterface(&commandQueue));
-	unsigned __int32 DeviceFlags = ::D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-	D3D11On12CreateDevice(_deviceD3d12.Get(),
-		DeviceFlags, nullptr, 0, &commandQueue, 1, 0x00000001, &deviceD3d11, nullptr, nullptr);
-	
-	ThrowIfFailed(deviceD3d11->QueryInterface(deviceD3d114.GetAddressOf()));
-
-	ThrowIfFailed(deviceD3d114->QueryInterface(_deviceD3d11On12.GetAddressOf()));
-	ThrowIfFailed(_deviceD3d11On12->QueryInterface(deviceDxgi.GetAddressOf()));
-	_d2dFactory->CreateDevice(deviceDxgi.Get(), _deviceD2d.GetAddressOf());
-	
-	ThrowIfFailed(_deviceD2d->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_ENABLE_MULTITHREADED_OPTIMIZATIONS, &_d2dContext));
-
-	deviceD3d114->GetImmediateContext3(_immediateContext.GetAddressOf());
-
-	ThrowIfFailed(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), (IUnknown**)&_writeFactory));
-	ThrowIfFailed(_writeFactory->CreateTextFormat(L"굴림체", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		13.f,
-		L"ko-KR",
-		&_textFormat));
-	ThrowIfFailed(_textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
-	ThrowIfFailed(_textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
-	ThrowIfFailed(_d2dContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &_transparentBrush));
-	ThrowIfFailed(_d2dContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &_whiteBrush));
 }
 
 void D3DApp::flushCommandQueue()
@@ -495,9 +402,7 @@ void D3DApp::createSwapChain(void)
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
-	WComPtr<IDXGISwapChain> swapChain;
-	ThrowIfFailed(_factory->CreateSwapChain(_commandQueue.Get(), &sd, &swapChain));
-	ThrowIfFailed(swapChain->QueryInterface(_swapChain.GetAddressOf()));
+	ThrowIfFailed(_factory->CreateSwapChain(_commandQueue.Get(), &sd, _swapChain.GetAddressOf()));
 }
 
 void D3DApp::createDescriptorHeaps(void)
@@ -531,8 +436,8 @@ void D3DApp::OnResize(void)
 	check(_commandAlloc != nullptr, "commandAlloc이 null입니다. 초기화를 확인하세요.");
 
 	flushCommandQueue();
+	_uiManager->beforeResize();
 	ThrowIfFailed(_commandList->Reset(_commandAlloc.Get(), nullptr), "error!");
-
 	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
 	{
 		_swapChainBuffer[i].Reset();
@@ -544,17 +449,7 @@ void D3DApp::OnResize(void)
 		_clientWidth, _clientHeight,
 		BACK_BUFFER_FORMAT,
 		DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
-
-// 	D2D1_RENDER_TARGET_PROPERTIES d2dProps =
-// 		D2D1::RenderTargetProperties(
-// 			D2D1_RENDER_TARGET_TYPE_DEFAULT,
-// 			D2D1::PixelFormat(DXGI_FORMAT_UNKNOWN, D2D1_ALPHA_MODE_PREMULTIPLIED),
-// 			_clientWidth,
-// 			_clientHeight
-// 		);
 	
-	D3D11_RESOURCE_FLAGS resourceFlags = { ::D3D11_BIND_RENDER_TARGET | ::D3D11_BIND_SHADER_RESOURCE };
-
 	_currentBackBuffer = 0;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(_rtvHeap->GetCPUDescriptorHandleForHeapStart());
 	for (UINT i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
@@ -563,18 +458,8 @@ void D3DApp::OnResize(void)
 		_deviceD3d12->CreateRenderTargetView(_swapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		rtvHeapHandle.Offset(1, _rtvDescriptorSize);
 
-		ThrowIfFailed(_deviceD3d11On12->CreateWrappedResource(_swapChainBuffer[i].Get(),
-			&resourceFlags,
-			D3D12_RESOURCE_STATE_RENDER_TARGET,
-			D3D12_RESOURCE_STATE_PRESENT,
-			IID_PPV_ARGS(_backBufferWrapped[i].GetAddressOf())
-		));
-
-		ThrowIfFailed(_backBufferWrapped[i]->QueryInterface(_surface.GetAddressOf()));
-
-		ThrowIfFailed(_d2dContext->CreateBitmapFromDxgiSurface(_surface.Get(), &bitmapProperty, &_backBufferBitmap[i]));
-
-		//_d2dContext->SetTarget(targetBitmap.Get());
+		_uiManager->onResize(_swapChainBuffer[i].Get(), i);
+		
 	}
 
 	D3D12_RESOURCE_DESC depthStencilDesc;
@@ -646,7 +531,6 @@ void D3DApp::Update(void)
 	onKeyboardInput();
 	updateCamera();
 
-	loadUi();
 	_frameIndex = (_frameIndex + 1) % FRAME_RESOURCE_COUNT;
 	const UINT64& currentFrameFence = _frameResources[_frameIndex]->getFence();
 
@@ -658,7 +542,6 @@ void D3DApp::Update(void)
 		WaitForSingleObject(eventHandle, INFINITE);
 		CloseHandle(eventHandle);
 	}
-	animateMaterials();
 	updateObjectConstantBuffer();
 	updateSkinnedConstantBuffer();
 	updatePassConstantBuffer();
@@ -681,8 +564,7 @@ void D3DApp::Draw(void)
 			D3D12_RESOURCE_STATE_PRESENT,
 			D3D12_RESOURCE_STATE_RENDER_TARGET);
 	_commandList->ResourceBarrier(1, &transitionBarrier1);
-	sizeof(DWORD);
-	sizeof(XMFLOAT4X4);
+	
 	_commandList->ClearRenderTargetView(getCurrentBackBufferView(), DirectX::Colors::LightSteelBlue, 0, nullptr);
 	_commandList->ClearDepthStencilView(getDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
@@ -702,11 +584,12 @@ void D3DApp::Draw(void)
 		drawRenderItems(e);
  	}
 
-	const CD3DX12_RESOURCE_BARRIER& transitionBarrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
-		getCurrentBackBuffer(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET,
-		D3D12_RESOURCE_STATE_PRESENT);
-	_commandList->ResourceBarrier(1, &transitionBarrier2);
+	// drawUI 때문에 삭제함 [2/16/2021 qwerwy]
+// 	const CD3DX12_RESOURCE_BARRIER& transitionBarrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
+// 		getCurrentBackBuffer(),
+// 		D3D12_RESOURCE_STATE_RENDER_TARGET,
+// 		D3D12_RESOURCE_STATE_PRESENT);
+// 	_commandList->ResourceBarrier(1, &transitionBarrier2);
 
 	ThrowIfFailed(_commandList->Close());
 
@@ -714,17 +597,8 @@ void D3DApp::Draw(void)
 	_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
 	//UI
-	_deviceD3d11On12->AcquireWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);
-	_d2dContext->SetTarget(_backBufferBitmap[_currentBackBuffer].Get());
-	_d2dContext->BeginDraw();
-	_d2dContext->DrawBitmap(_text.Get(), nullptr, 1.f);
-	_d2dContext->EndDraw();
-	_d2dContext->SetTarget(nullptr);
-
-	_deviceD3d11On12->ReleaseWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);
-
-	_immediateContext->Flush();
-
+	_uiManager->drawUI(_currentBackBuffer);
+	
 	ThrowIfFailed(_swapChain->Present(0, 0));
 	_currentBackBuffer = (_currentBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
@@ -737,8 +611,9 @@ bool D3DApp::isAppPaused(void) const noexcept
 	return _timer.isTimerStopped();
 }
 
-void D3DApp::calculateFrameStats(void)
+void D3DApp::calculateFrameStats(void) noexcept
 {
+	check(_hMainWnd != nullptr, "_hMainWnd가 초기화되지 않음");
 	static int frameCnt = 0;
 	static double timeElapsed = _timer.getTotalTime();
 
@@ -773,15 +648,15 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3DApp::getDepthStencilView() const noexcept
 	return _dsvHeap->GetCPUDescriptorHandleForHeapStart();
 }
 
-void D3DApp::onMouseDown(WPARAM buttonState, int x, int y)
+void D3DApp::onMouseDown(WPARAM buttonState, int x, int y) noexcept
 {
 }
 
-void D3DApp::onMouseUp(WPARAM buttonState, int x, int y)
+void D3DApp::onMouseUp(WPARAM buttonState, int x, int y) noexcept
 {
 }
 
-void D3DApp::onMouseMove(WPARAM buttonState, int x, int y)
+void D3DApp::onMouseMove(WPARAM buttonState, int x, int y) noexcept
 {
 	if ((buttonState & MK_LBUTTON) != 0)
 	{
@@ -1011,8 +886,7 @@ void D3DApp::updatePassConstantBuffer()
 
 void D3DApp::initializeManagers()
 {
-// 	_fileManager = std::make_unique<FbxLoader>();
-// 	_fileManager->Initialize();
+	_uiManager = make_unique<UIManager>(_commandQueue.Get(), _deviceD3d12.Get());
 }
 
 void D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode)
@@ -1041,8 +915,8 @@ void D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode)
 		textureNameWstring.assign(textureName.begin(), textureName.end());
 		textureNameWstring = L"../Resources/XmlFiles/Asset/Texture/" + textureNameWstring + L".dds";
 
-		Index16 diffuseSRVIndex = loadTexture(textureName, textureNameWstring);
-		unique_ptr<Material> material(new Material(_materials.size(), diffuseSRVIndex, UNDEFINED_COMMON_INDEX, diffuseAlbedo, fresnelR0, roughness));
+		uint16_t diffuseSRVIndex = loadTexture(textureName, textureNameWstring);
+		unique_ptr<Material> material(new Material(_materials.size(), diffuseSRVIndex, 0, diffuseAlbedo, fresnelR0, roughness));
 		
 		_materials.emplace(materialName, move(material));
 	}
@@ -1054,7 +928,7 @@ void D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode)
 	const auto& childNodes = rootNode.getChildNodes();
 	bool isSkinned = (childNodes.size() == 4);
 	int nodeIndex = 0;
-	Index16 skinnedConstantBufferIndex = UNDEFINED_COMMON_INDEX;
+	uint16_t skinnedConstantBufferIndex = std::numeric_limits<uint16_t>::max();
 	SkinnedModelInstance* skinnedInstance = nullptr;
 
 	if (isSkinned)
@@ -1274,15 +1148,6 @@ void D3DApp::buildConstantBufferViews()
 UINT D3DApp::getTotalRenderItemCount(void) const noexcept
 {
 	return _renderItemsUniquePtrXXX.size();
-}
-
-void D3DApp::buildGameObjects()
-{
-	XMFLOAT3 position(0.f, 0.f, 0.f);
-	XMFLOAT3 rotation(0.f, 0.f, 0.f);
-	XMFLOAT3 scale(1.f, 1.f, 1.f);
-	
-	buildGameObject("mario", scale, rotation, position);
 }
 
 void D3DApp::buildGameObject(const std::string& meshName, 
@@ -1558,6 +1423,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_SIZE:
 		_clientWidth = LOWORD(lParam);
 		_clientHeight = HIWORD(lParam);
+		
 		if (_deviceD3d12 != nullptr)
 		{
 			if (wParam == SIZE_MINIMIZED)
@@ -1647,10 +1513,8 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 bool D3DApp::Initialize(void)
 {
-	if (!initMainWindow())
-		return false;
+	initMainWindow();
 	initDirect3D();
-	initDirect2D();
 	initializeManagers();
 	OnResize();
 
@@ -1661,10 +1525,8 @@ bool D3DApp::Initialize(void)
 	buildPipelineStateObject();
 
 	// 이 이후로는 맵 전환마다 수행되어야 할듯 [1/21/2021 qwerw]
-// 	FbxLoader loader;
-// 	ThrowIfFailed(loader.LoadFbxFiles());
-	//ThrowIfFailed(_fileManager->LoadTextures());
 
+	_uiManager->loadUI();
 	loadInfoMap();
 	buildShaderResourceViews();
 
@@ -1677,7 +1539,7 @@ bool D3DApp::Initialize(void)
 	ThrowIfFailed(_commandList->Close());
 	ID3D12CommandList* cmdLists[] = { _commandList.Get() };
 	_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
-	_immediateContext->Flush();
+
 	flushCommandQueue();
 
 	return true;
@@ -1723,8 +1585,13 @@ float D3DApp::aspectRatio(void) const
 	return static_cast<float>(_clientWidth) / _clientHeight;
 }
 
-Index16 D3DApp::loadTexture(const string& textureName, const wstring& fileName)
+uint16_t D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 {
+	if (std::numeric_limits<uint16_t>::max() <= _textures.size())
+	{
+		ThrowErrCode(ErrCode::Overflow, "Texture index가 범위를 넘어갑니다.");
+	}
+
 	auto texture = std::make_unique<Texture>();
 	texture->_name = textureName;
 	texture->_fileName = fileName;
@@ -1765,35 +1632,11 @@ Index16 D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	_commandList->ResourceBarrier(1, &barrier);
 
-	Index16 textureSRVIndex = _textures.size();
+	uint16_t textureSRVIndex = static_cast<uint16_t>(_textures.size());
 	texture->_index = textureSRVIndex;
 	_textures.emplace_back(std::move(texture));
 	
 	return textureSRVIndex;
-}
-
-void D3DApp::animateMaterials(void)
-{
-// 	auto waterMaterial = _materials["water"].get();
-// 
-// 	float tu = waterMaterial->_materialTransform(3, 0);
-// 	float tv = waterMaterial->_materialTransform(3, 1);
-// 	double deltaTime = _timer.GetDeltaTime();
-// 	tu += 0.1f * deltaTime;
-// 	tv += 0.02f * deltaTime;
-// 	if (tu > 1.f)
-// 	{
-// 		tu -= 1.f;
-// 	}
-// 	if (tv > 1.f)
-// 	{
-// 		tv -= 1.f;
-// 	}
-// 
-// 	waterMaterial->_materialTransform(3, 0) = tu;
-// 	waterMaterial->_materialTransform(3, 1) = tv;
-// 
-// 	waterMaterial->_dirtyFrames = FRAME_RESOURCE_COUNT;
 }
 
 RenderItem::RenderItem() noexcept
@@ -1807,7 +1650,7 @@ RenderItem::RenderItem() noexcept
 	, _startIndexLocation(0)
 	, _baseVertexLocation(0)
 	, _material(nullptr)
-	, _skinnedConstantBufferIndex(UNDEFINED_COMMON_INDEX)
+	, _skinnedConstantBufferIndex(std::numeric_limits<uint16_t>::max())
 	, _skinnedModelInstance(nullptr)
 {
 

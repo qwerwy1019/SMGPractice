@@ -82,22 +82,22 @@ public:
 	void loadXML(const XMLReaderNode& rootNode);
 	BoneIndex getBoneCount(void) const noexcept;
 private:
-	std::vector<Index16> _boneHierarchy;
+	std::vector<BoneIndex> _boneHierarchy;
 	std::vector<DirectX::XMFLOAT4X4> _boneOffsets;
 };
 
 class SkinnedModelInstance
 {
 public:
-	SkinnedModelInstance(Index16 index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept;
+	SkinnedModelInstance(uint16_t index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept;
 	void updateSkinnedAnimation(float dt) noexcept;
 	const std::vector<DirectX::XMFLOAT4X4>& getTransformMatrixes(void) const noexcept { return _transformMatrixes; }
-	Index16 getIndex(void) const noexcept { return _index; }
+	uint16_t getIndex(void) const noexcept { return _index; }
 
 private:
 	float _timePos;
 	std::string _animationClipName;
-	Index16 _index;
+	uint16_t _index;
 	
 	BoneInfo* _boneInfo;
 	AnimationInfo* _animationInfo;

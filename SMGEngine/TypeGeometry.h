@@ -91,15 +91,14 @@ struct SkinnedConstants
 	DirectX::XMFLOAT4X4 _boneTransforms[BONE_INDEX_MAX];
 };
 
-using Index = uint16_t;
-constexpr Index UNDEFINED_INDEX = static_cast<Index>(-1);
+using GeoIndex = uint16_t;
 
 struct Texture
 {
 	std::string _name;
 	std::wstring _fileName;
 
-	Index16 _index;
+	uint16_t _index;
 	WComPtr<ID3D12Resource> _resource;
 	WComPtr<ID3D12Resource> _uploader;
 };

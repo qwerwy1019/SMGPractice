@@ -106,7 +106,7 @@ void FbxLoader::loadFbxPolygons(FbxMesh* mesh, std::vector<FbxPolygonVertexInfo>
 					polygonVertexInfo._colorIndex = layerColors->GetIndexArray().GetAt(polygonVertices.size());
 					break;
 				case IndexMappingType::Undefined:
-					polygonVertexInfo._colorIndex = UNDEFINED_INDEX;
+					polygonVertexInfo._colorIndex = UNDEFINED_COMMON_INDEX;
 					break;
 				default:
 					ThrowErrCode(ErrCode::UndefinedType, "타입이 추가되었나?");
@@ -154,7 +154,7 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 			vertices[i].reserve(controlPointCount);
 		}
 	}
-	vector<vector<Index>> indices(_materialsInfos.size());
+	vector<vector<GeoIndex>> indices(_materialsInfos.size());
 	for (int i = 0; i < indices.size(); ++i)
 	{
 		indices[i].reserve(polygonVertices.size());
@@ -193,7 +193,7 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 				+ (key.uv & 0xF);
 		}
 	};
-	unordered_map<VertexKey, Index, VertexKeyHasher> indexMap;
+	unordered_map<VertexKey, GeoIndex, VertexKeyHasher> indexMap;
 
 	for (const auto& pv : polygonVertices)
 	{
@@ -223,7 +223,7 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 				v._textureCoord.y *= -1;
 
 				vector<SkinnedVertex>& subMeshVertices = skinnedVertices[pv._materialIndex];
-				const Index index = subMeshVertices.size();
+				const GeoIndex index = subMeshVertices.size();
 				indices[pv._materialIndex].push_back(index);
 				indexMap.emplace(make_pair(key, index));
 				subMeshVertices.push_back(v);
@@ -239,7 +239,7 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 				v._textureCoord.y *= -1;
 
 				vector<Vertex>& subMeshVertices = vertices[pv._materialIndex];
-				const Index index = subMeshVertices.size();
+				const GeoIndex index = subMeshVertices.size();
 				indices[pv._materialIndex].push_back(index);
 				indexMap.emplace(make_pair(key, index));
 				subMeshVertices.push_back(v);
@@ -887,7 +887,7 @@ void FbxLoader::loadFbxSkeleton(FbxNode* node, BoneIndex parentIndex)
 	if (node->GetNodeAttribute() != nullptr &&
 		node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
 	{
-		if (numeric_limits<BoneIndex>::max() < _boneHierarchy.size())
+		if (BONE_INDEX_MAX <= _boneHierarchy.size())
 		{
 			ThrowErrCode(ErrCode::Overflow, "Bone이 너무 많습니다.");
 		}
@@ -1094,7 +1094,7 @@ void FbxLoader::FbxVertexSkinningInfo::insert(Index16 boneIndex, float weight) n
 FbxLoader::FbxMeshInfo::FbxMeshInfo(string&& name,
 	vector<vector<Vertex>>&& vertices,
 	vector<vector<SkinnedVertex>>&& skinnedVertices,
-	vector<vector<Index>>&& indices)
+	vector<vector<GeoIndex>>&& indices)
 	: _name(name)
 	, _vertices(vertices)
 	, _skinnedVertices(skinnedVertices)

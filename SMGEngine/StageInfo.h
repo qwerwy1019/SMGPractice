@@ -4,6 +4,7 @@
 
 enum class ErrCode : uint32_t;
 
+using CharacterKey = uint16_t;
 struct StageInfo
 {
 	enum class LandscapeType

@@ -58,12 +58,12 @@ private:
 		FbxMeshInfo(string&& name,
 			vector<vector<Vertex>>&& vertices,
 			vector<vector<SkinnedVertex>>&& skinnedVertices,
-			vector<vector<Index>>&& indices);
+			vector<vector<GeoIndex>>&& indices);
 
 		string _name;
 		vector<vector<Vertex>> _vertices;
 		vector<vector<SkinnedVertex>> _skinnedVertices;
-		vector<vector<Index>> _indices;
+		vector<vector<GeoIndex>> _indices;
 	};
 
 	struct FbxMaterialStaticInfo

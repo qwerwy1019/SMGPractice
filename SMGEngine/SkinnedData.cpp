@@ -87,15 +87,15 @@ void BoneInfo::getFinalTransforms(const std::vector<DirectX::XMFLOAT4X4>& toPare
 								std::vector<DirectX::XMFLOAT4X4>& transformMatrixes) const noexcept
 {
 	check(toParentTransforms.size() == _boneOffsets.size(), "비정상입니다.");
-	Index16 boneCount = getBoneCount();
+	BoneIndex boneCount = getBoneCount();
 
 	std::vector<XMFLOAT4X4> toRootTransforms(boneCount);
 	toRootTransforms[0] = toParentTransforms[0];
 
-	for (Index16 i = 1; i < boneCount; ++i)
+	for (BoneIndex i = 1; i < boneCount; ++i)
 	{
 		XMMATRIX toParent = XMLoadFloat4x4(&toParentTransforms[i]);
-		int parentIndex = _boneHierarchy[i];
+		BoneIndex parentIndex = _boneHierarchy[i];
 		check(parentIndex < i, "parent index는 child보다 작아야 합니다.");
 		XMMATRIX parentToRoot = XMLoadFloat4x4(&toRootTransforms[parentIndex]);
 
@@ -104,7 +104,7 @@ void BoneInfo::getFinalTransforms(const std::vector<DirectX::XMFLOAT4X4>& toPare
 		XMStoreFloat4x4(&toRootTransforms[i], toRoot);
 	}
 
-	for (Index16 i = 0; i < boneCount; ++i)
+	for (BoneIndex i = 0; i < boneCount; ++i)
 	{
 		XMMATRIX offset = XMLoadFloat4x4(&_boneOffsets[i]);
 		XMMATRIX toRoot = XMLoadFloat4x4(&toRootTransforms[i]);
@@ -213,7 +213,7 @@ KeyFrame::KeyFrame() noexcept
 // 
 // }
 
-SkinnedModelInstance::SkinnedModelInstance(Index16 index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept
+SkinnedModelInstance::SkinnedModelInstance(uint16_t index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept
 	: _timePos(0.f)
 	, _animationClipName("BaseLayer")
 	, _index(index)

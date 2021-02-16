@@ -15,14 +15,7 @@ using namespace DirectX;
 struct IDXGIAdapter;
 struct IDXGIOutput;
 class Material;
-
-static constexpr D2D1_BITMAP_PROPERTIES1 bitmapProperty =
-{
-	{ BACK_BUFFER_FORMAT, D2D1_ALPHA_MODE_PREMULTIPLIED },
-	96.f, 96.f,
-	D2D1_BITMAP_OPTIONS_TARGET,
-	nullptr
-};
+class UIManager;
 
 // 정점 관련
 static constexpr size_t VERTEX_INPUT_DESC_SIZE = 3;
@@ -73,7 +66,7 @@ struct RenderItem
 
 	D3D12_PRIMITIVE_TOPOLOGY _primitive;
 
-	Index16 _skinnedConstantBufferIndex;
+	uint16_t _skinnedConstantBufferIndex;
 	SkinnedModelInstance* _skinnedModelInstance;
 };
 
@@ -114,12 +107,13 @@ public:
 	LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 	static D3DApp* getApp(void) noexcept;
+	static UIManager* getUIManager(void) noexcept;
 
 
 	D3DApp(HINSTANCE hInstance);
 	~D3DApp();
 
-	Index16 loadTexture(const string& textureName, const wstring& fileName);
+	uint16_t loadTexture(const string& textureName, const wstring& fileName);
 
 private:
 	////////////////////////////////////////////////////////////////////////
@@ -131,11 +125,11 @@ private:
 	float aspectRatio(void) const;
 
 	// 창 띄우기(Win32)
-	bool initMainWindow(void);
+	void initMainWindow(void);
 
 	// Direct3D 초기화
 	void initDirect3D(void);
-	void initDirect2D(void);
+	//void initDirect2D(void);
 	void flushCommandQueue();
 	void set4XMsaaState(bool value);
 	void createCommandObjects(void);
@@ -148,15 +142,15 @@ private:
 	void Draw(void);
 
 	bool isAppPaused(void) const noexcept;
-	void calculateFrameStats(void);
+	void calculateFrameStats(void) noexcept;
 	ID3D12Resource* getCurrentBackBuffer() const noexcept;
 	D3D12_CPU_DESCRIPTOR_HANDLE getCurrentBackBufferView() const noexcept;
 	D3D12_CPU_DESCRIPTOR_HANDLE getDepthStencilView() const noexcept;
 
 	// 마우스 입력
-	void onMouseDown(WPARAM buttonState, int x, int y);
-	void onMouseUp(WPARAM buttonState, int x, int y);
-	void onMouseMove(WPARAM buttonState, int x, int y);
+	void onMouseDown(WPARAM buttonState, int x, int y) noexcept;
+	void onMouseUp(WPARAM buttonState, int x, int y) noexcept;
+	void onMouseMove(WPARAM buttonState, int x, int y) noexcept;
 
 	// 키보드 입력
 	void onKeyboardInput(void) noexcept;
@@ -169,7 +163,6 @@ private:
 
 	// 정점 버퍼 초기화
 	void buildConstantGeometry(void);
-	void buildGameObjects(void);
 	void buildGameObject(const std::string& meshName,
 		const DirectX::XMFLOAT3& scale,
 		const DirectX::XMFLOAT3& rotation, 
@@ -187,9 +180,6 @@ private:
 	void buildConstantBufferViews();
 	
 	UINT getTotalRenderItemCount(void) const noexcept;
-	float getHillsHeight(const float x, const float z);
-	XMFLOAT3 getHillsNormal(const float x, const float z);
-	//void BuildMaterials();
 	void buildShaderResourceViews();
 
 	void animateMaterials(void);
@@ -299,27 +289,6 @@ public:
 
 	void loadInfoMap(void);
 
-	WComPtr<ID3D11Resource> _backBufferWrapped[SWAP_CHAIN_BUFFER_COUNT];
-	WComPtr<ID2D1Bitmap1> _backBufferBitmap[SWAP_CHAIN_BUFFER_COUNT];
-	WComPtr<ID2D1Factory3> _d2dFactory;
-	WComPtr<ID2D1Device2> _deviceD2d;
-	WComPtr<ID2D1DeviceContext1> _d2dContext;
-
-	WComPtr<ID3D11On12Device> _deviceD3d11On12;
-	WComPtr<IDWriteFactory3> _writeFactory;
-	WComPtr<IDWriteTextFormat> _textFormat;
-	WComPtr<ID2D1SolidColorBrush> _whiteBrush;
-	WComPtr<ID2D1SolidColorBrush> _transparentBrush;
-
-	void DrawUI(void);
-private:
-	void loadUi();
-
-	WComPtr<ID2D1Bitmap1> _text = nullptr;
-	WComPtr<ID2D1Bitmap1> _bitmap = nullptr;
-	WComPtr<IDXGISurface> _surface;
-	WComPtr<ID3D11DeviceContext3> _immediateContext;
-
-
+	unique_ptr<UIManager> _uiManager;
 };
 

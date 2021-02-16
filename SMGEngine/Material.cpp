@@ -4,8 +4,8 @@
 #include "FileHelper.h"
 
 Material::Material(const int materialCBIndex,
-	const int diffuseSRVHeapIndex,
-	const int normalSRVHeapIndex,
+	const uint16_t diffuseSRVHeapIndex,
+	const uint16_t normalSRVHeapIndex,
 	const DirectX::XMFLOAT4& diffuseAlbedo,
 	const DirectX::XMFLOAT3& fresnelR0,
 	const float roughness) noexcept

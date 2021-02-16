@@ -8,8 +8,8 @@ class Material
 public:
 	//Material() noexcept;
 	Material(const int materialCBIndex,
-		const int diffuseSRVHeapIndex,
-		const int normalSRVHeapIndex,
+		const uint16_t diffuseSRVHeapIndex,
+		const uint16_t normalSRVHeapIndex,
 		const DirectX::XMFLOAT4& diffuseAlbedo,
 		const DirectX::XMFLOAT3& fresnelR0,
 		const float roughness) noexcept;
@@ -25,8 +25,8 @@ public:
 	int _dirtyFrames;
 private:
 	int _materialCBIndex;
-	Index16 _diffuseSRVHeapIndex;
-	Index16 _normalSRVHeapIndex;
+	uint16_t _diffuseSRVHeapIndex;
+	uint16_t _normalSRVHeapIndex;
 
 	DirectX::XMFLOAT4 _diffuseAlbedo;
 	DirectX::XMFLOAT3 _fresnelR0;
