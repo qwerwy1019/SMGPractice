@@ -1,38 +1,38 @@
 #include "stdafx.h"
 #include "GameTimer.h"
+#include "Exception.h"
 
 GameTimer::GameTimer() noexcept
-	: _deltaTime(0)
+	: _deltaTickCount(0)
 	, _currentCount(0)
 	, _baseCount(0)
 	, _pausedCount(0)
 	, _stopAccumCount(0)
 	, _stopped(false)
 {
-	__int64 countPerSec;
-	QueryPerformanceFrequency((LARGE_INTEGER*)&countPerSec);
-	_secondPerCount = 1.f / (double)countPerSec;
+	QueryPerformanceFrequency((LARGE_INTEGER*)&_countPerSec);
+	_secondPerCount = 1.f / (double)_countPerSec;
+	_countPerTickCount = _countPerSec / 1000;
 }
 
 void GameTimer::ProgressTick() noexcept
 {
 	if (_stopped)
 	{
-		_deltaTime = 0.f;
+		_deltaTickCount = 0;
 		return;
 	}
-	
+
 	__int64 currentCount = 0;
 	QueryPerformanceCounter((LARGE_INTEGER*)&currentCount);
-	_deltaTime = (currentCount - _currentCount) * _secondPerCount;
+	check(_currentCount <= currentCount, "시간이 역행합니다.");
+	_deltaTickCount = (currentCount - _currentCount) / _countPerTickCount;
 	_currentCount = currentCount;
-
-	_deltaTime = (_deltaTime < 0.f) ? 0.f : _deltaTime;
 }
 
 double GameTimer::getDeltaTime(void) const noexcept
 {
-	return _deltaTime;
+	return _deltaTickCount * _secondPerCount;
 }
 
 double GameTimer::getTotalTime(void) const noexcept
@@ -42,7 +42,7 @@ double GameTimer::getTotalTime(void) const noexcept
 
 void GameTimer::Reset(void) noexcept
 {
-	_deltaTime = 0.f;
+	_deltaTickCount = 0;
 	QueryPerformanceCounter((LARGE_INTEGER*)&_currentCount);
 	_baseCount = _currentCount;
 	_pausedCount = 0;

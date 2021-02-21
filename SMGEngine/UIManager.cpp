@@ -94,6 +94,18 @@ void UIManager::loadUI()
 	_immediateContext->Flush();
 }
 
+void UIManager::updateUI()
+{
+	auto groupIt = _uiGroups.find("fpsTextGroup");
+	if (groupIt != _uiGroups.end())
+	{
+		UIGroup* uiGroup = groupIt->second.get();
+		UIElementText* textElement = static_cast<UIElementText*>(uiGroup->findElement("fpsText"));
+		//std::wstring text = "frame: " + std::to_wstring(D3DApp::getApp()->getSelectedCharacter);
+		//textElement->setText(text);
+	}
+}
+
 void UIManager::beforeResize(void)
 {
 	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
@@ -131,7 +143,7 @@ void UIManager::afterResize(void)
 
 }
 
-const UIElement* UIGroup::findElement(const std::string& name) const noexcept
+UIElement* UIGroup::findElement(const std::string& name) const noexcept
 {
 	for (const auto& e : _child)
 	{
@@ -181,16 +193,21 @@ UIElementText::UIElementText(const std::string& name,
 	check(!text.empty(), "text가 없습니다.");
 	check(!name.empty(), "name(key)가 없습니다.");
 
-	IDWriteFactory3* writeFactory = D3DApp::getUIManager()->getWriteFactory();
-	IDWriteTextFormat* textFormat = D3DApp::getUIManager()->getTextFormat(formatType);
-	writeFactory->CreateTextLayout(
-		text.c_str(),
-		text.length(),
-		textFormat, size.x, size.y, &_textLayout);
+	setText(text);
 }
 
 void UIElementText::draw(void) const noexcept
 {
 	ID2D1Brush* brush = D3DApp::getUIManager()->getTextBrush(_brushType);
 	D3DApp::getUIManager()->getD2dContext()->DrawTextLayout(_position, _textLayout.Get(), brush);
+}
+
+void UIElementText::setText(const std::wstring& text)
+{
+	IDWriteFactory3* writeFactory = D3DApp::getUIManager()->getWriteFactory();
+	IDWriteTextFormat* textFormat = D3DApp::getUIManager()->getTextFormat(_formatType);
+	ThrowIfFailed(writeFactory->CreateTextLayout(
+		text.c_str(),
+		text.length(),
+		textFormat, _size.x, _size.y, &_textLayout));
 }

@@ -106,7 +106,7 @@ void FbxLoader::loadFbxPolygons(FbxMesh* mesh, std::vector<FbxPolygonVertexInfo>
 					polygonVertexInfo._colorIndex = layerColors->GetIndexArray().GetAt(polygonVertices.size());
 					break;
 				case IndexMappingType::Undefined:
-					polygonVertexInfo._colorIndex = UNDEFINED_COMMON_INDEX;
+					polygonVertexInfo._colorIndex = std::numeric_limits<uint16_t>::max();
 					break;
 				default:
 					ThrowErrCode(ErrCode::UndefinedType, "타입이 추가되었나?");
@@ -174,9 +174,9 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 
 	struct VertexKey
 	{
-		Index16 material;
-		Index16 controlPoint;
-		Index16 uv;
+		uint16_t material;
+		uint16_t controlPoint;
+		uint16_t uv;
 		bool operator==(const VertexKey& rhs) const
 		{
 			return (material == rhs.material)
@@ -341,27 +341,27 @@ void FbxLoader::clearCachedFbxFileInfo(void) noexcept
 	_animations.clear();
 
 	_boneIndexMap.clear();
-	
+	_animTimeList.clear();
 }
 
 void FbxLoader::loadFbxAnimations(FbxScene* fbxScene)
 {
-	const int animationStackCount = fbxScene->GetSrcObjectCount<FbxAnimStack>();
-	for (int i = 0; i < animationStackCount; ++i)
+	if (fbxScene->GetSrcObjectCount<FbxAnimStack>() == 0)
 	{
-		FbxAnimStack* animStack = fbxScene->GetSrcObject<FbxAnimStack>(i);
-		const int animationLayerCount = animStack->GetMemberCount<FbxAnimLayer>();
-		for (int j = 0; j < animationLayerCount; ++j)
-		{
-			FbxAnimLayer* animLayer = animStack->GetMember<FbxAnimLayer>(j);
-			const std::string& name = animLayer->GetName();
-			if (name.empty())
-			{
-				ThrowErrCode(ErrCode::NodeNameNotFound, "애니메이션 이름이 비정상입니다.");
-			}
-			loadKeyFrame(animLayer, name);
-		}
+		return;
 	}
+	if (fbxScene->GetSrcObjectCount<FbxAnimStack>() != 1)
+	{
+		ThrowErrCode(ErrCode::InvalidAnimationData, "animation stack이 여러개인 경우는 로드하지 못함. bake layer 고려");
+	}
+
+	FbxAnimStack* animStack = fbxScene->GetSrcObject<FbxAnimStack>(0);
+	if (animStack->GetMemberCount<FbxAnimLayer>() != 1)
+	{
+		ThrowErrCode(ErrCode::InvalidAnimationData, "animation stack이 여러개인 경우는 로드하지 못함. bake layer 고려");
+	}
+	FbxAnimLayer* animLayer = animStack->GetMember<FbxAnimLayer>(0);
+	loadFbxAnimation(animLayer);
 }
 
 void FbxLoader::writeXmlFile(const string& path, const string& fileName) const
@@ -412,11 +412,14 @@ void FbxLoader::writeXmlFile(const string& path, const string& fileName) const
 	}
 }
 
-void FbxLoader::getKeyFrames(FbxAnimLayer* animLayer, FbxNode* linkNode, std::set<FbxTime>& keyFramesTimes) const noexcept
+void FbxLoader::getKeyFrames(FbxAnimLayer* animLayer, FbxNode* linkNode, std::vector<std::set<uint32_t>>& keyFramesTimes) const noexcept
 {
 	check(animLayer != nullptr, "비정상입니다.");
 	check(linkNode != nullptr, "비정상입니다.");
 	check(keyFramesTimes.empty(), "outValue는 비어있어야 합니다.");
+	check(!_animTimeList.empty(), "animationTimelist가 비어있습니다.");
+
+	keyFramesTimes.resize(_animTimeList.size());
 
 	FbxAnimEvaluator* animEvaluator = linkNode->GetAnimationEvaluator();
 
@@ -456,17 +459,22 @@ void FbxLoader::getKeyFrames(FbxAnimLayer* animLayer, FbxNode* linkNode, std::se
 	getKeyFrameTimes(animRotationZCurve, keyFramesTimes);
 }
 		
-void FbxLoader::loadKeyFrame(FbxAnimLayer* animLayer, const string& animationName)
+void FbxLoader::loadFbxAnimation(FbxAnimLayer* animLayer)
 {
 	check(animLayer != nullptr, "비정상입니다.");
-	check(!animationName.empty(), "이름이 없습니다.");
+	check(!_animTimeList.empty(), "animation Time List가 비어있습니다.");
 
-	std::vector<BoneAnimation> boneAnimations(_boneIndexMap.size());
+	std::vector<std::vector<BoneAnimation>> boneAnimations(_animTimeList.size());
+	for (int i = 0; i < _animTimeList.size(); ++i)
+	{
+		boneAnimations[i].resize(_boneIndexMap.size());
+	}
 
-	float endTime = 0.f;
+	//uint32_t endFrame = 0;
 	for (const auto& bone : _boneIndexMap)
 	{
-		std::set<FbxTime> keyFramesTimes;
+		std::vector<std::set<uint32_t>> keyFramesTimes;
+
 		getKeyFrames(animLayer, bone.first, keyFramesTimes);
 		
 		if (keyFramesTimes.empty())
@@ -474,38 +482,49 @@ void FbxLoader::loadKeyFrame(FbxAnimLayer* animLayer, const string& animationNam
 			ThrowErrCode(ErrCode::InvalidAnimationData, "keyFrame이 없습니다.");
 		}
 
-		std::vector<KeyFrame> keyFrames;
-		keyFrames.reserve(keyFramesTimes.size());
-		for (const auto& t : keyFramesTimes)
+		for (int i = 0; i < keyFramesTimes.size(); ++i)
 		{
-			KeyFrame keyFrame;
-			keyFrame._timePos = t.GetFrameCount() / FPS_f;
-			
-			// animation이 하나일때만 돌아가는 코드. 각 애니메이션에서의 global transform이 필요하다... [2/6/2021 qwerwy]
-			FbxAMatrix worldMatrix = bone.first->EvaluateGlobalTransform(t);
-			FbxNode* parentNode = getParentLinkNode(bone.first);
-
-			if (parentNode != nullptr)
+			const auto& clip = keyFramesTimes[i];
+			std::vector<KeyFrame> keyFrames;
+			keyFrames.reserve(clip.size());
+			for (const auto& key : clip)
 			{
-				FbxAMatrix parentWorldMatrix = parentNode->EvaluateGlobalTransform(t);
-				worldMatrix = parentWorldMatrix.Inverse() * worldMatrix;
+				KeyFrame keyFrame;
+				keyFrame._frame = key - (*clip.begin());
+
+				// animation이 하나일때만 돌아가는 코드. 각 애니메이션에서의 global transform이 필요하다... [2/6/2021 qwerwy]
+				FbxTime frameTime;
+				frameTime.SetFrame(key);
+
+				FbxAMatrix worldMatrix = bone.first->EvaluateGlobalTransform(frameTime);
+				FbxNode* parentNode = getParentLinkNode(bone.first);
+
+				if (parentNode != nullptr)
+				{
+					FbxAMatrix parentWorldMatrix = parentNode->EvaluateGlobalTransform(frameTime);
+					worldMatrix = parentWorldMatrix.Inverse() * worldMatrix;
+				}
+				keyFrame._translation = fbxVector4ToXMFLOAT3(worldMatrix.GetT());
+				keyFrame._rotationQuat = fbxQuaternionToXMFLOAT4(worldMatrix.GetQ());
+				keyFrame._scale = fbxVector4ToXMFLOAT3(worldMatrix.GetS());
+
+				keyFrames.emplace_back(std::move(keyFrame));
 			}
-			keyFrame._translation = fbxVector4ToXMFLOAT3(worldMatrix.GetT());
-			keyFrame._rotationQuat = fbxQuaternionToXMFLOAT4(worldMatrix.GetQ());
-			keyFrame._scale = fbxVector4ToXMFLOAT3(worldMatrix.GetS());
-
-			keyFrames.emplace_back(std::move(keyFrame));
+			boneAnimations[i][bone.second] = BoneAnimation(std::move(keyFrames));
 		}
-		endTime = keyFrames.back()._timePos;
-
-		boneAnimations[bone.second] = BoneAnimation(std::move(keyFrames));
 	}
 
-	auto it = _animations.emplace(animationName, AnimationClip(std::move(boneAnimations), endTime));
-	if (it.second == false)
+	for (int i = 0; i < _animTimeList.size(); ++i)
 	{
-		ThrowErrCode(ErrCode::KeyDuplicated, "animationName이 겹칩니다.");
-	}
+		check(_animTimeList[i]._start <= _animTimeList[i]._end, "시간이 역행합니다.");
+		uint32_t animEndTime = _animTimeList[i]._end - _animTimeList[i]._start;
+
+		auto it = _animations.emplace(_animTimeList[i]._name, AnimationClip(std::move(boneAnimations[i]), animEndTime));
+		if (it.second == false)
+		{
+			ThrowErrCode(ErrCode::KeyDuplicated, "animationName이 겹칩니다. " + _animTimeList[i]._name);
+		}
+	}	
 }
 
 void FbxLoader::writeXmlMesh(XMLWriter& xmlMeshGeometry, const FbxMeshInfo& meshInfo, const string& fileName) const
@@ -645,8 +664,8 @@ void FbxLoader::writeXmlAnimation(XMLWriter& xmlAnimation) const
 	{
 		xmlAnimation.addNode("Animation");
 		xmlAnimation.addAttribute("Name", anim.first.c_str());
-		xmlAnimation.addAttribute("StartTime", 0.f);
-		xmlAnimation.addAttribute("EndTime", anim.second.getClipEndTime());
+		xmlAnimation.addAttribute("Start", 0);
+		xmlAnimation.addAttribute("End", anim.second.getClipEndFrame());
 		xmlAnimation.openChildNode();
 		{
 			const std::vector<BoneAnimation>& boneAnimations = anim.second.getBoneAnimationXXX();
@@ -662,7 +681,7 @@ void FbxLoader::writeXmlAnimation(XMLWriter& xmlAnimation) const
 					for (int j = 0; j < keyFrames.size(); ++j)
 					{
 						xmlAnimation.addNode("KeyFrame");
-						xmlAnimation.addAttribute("Time", keyFrames[j]._timePos);
+						xmlAnimation.addAttribute("Frame", keyFrames[j]._frame);
 
 						xmlAnimation.addAttribute("Translation", keyFrames[j]._translation);
 						xmlAnimation.addAttribute("Scale", keyFrames[j]._scale);
@@ -673,6 +692,47 @@ void FbxLoader::writeXmlAnimation(XMLWriter& xmlAnimation) const
 			}
 		}
 		xmlAnimation.closeChildNode();
+	}
+}
+
+void FbxLoader::loadFbxParseInfo(const std::string& fbxFilePath)
+{
+	check(!fbxFilePath.empty(), "비정상입니다.");
+
+	std::string animParseInfoPath = fbxFilePath.substr(0, fbxFilePath.size() - 4) + "_AnimParseInfo.txt";
+	
+	std::ifstream animParseInfo(animParseInfoPath);
+
+	if (animParseInfo.is_open()) 
+	{
+		std::string s;
+		while (animParseInfo.peek() != EOF) 
+		{
+			getline(animParseInfo, s);
+			std::vector<std::string> timeSpan = D3DUtil::tokenizeString(s, ' ');
+			if (timeSpan.size() != 3 && timeSpan.size() != 4)
+			{
+				ThrowErrCode(ErrCode::InvalidAnimationData, "animParseInfoPath 형식이 잘못되었습니다.");
+			}
+			AnimClipTimeInfo timeInfo;
+			timeInfo._name = timeSpan[2];
+			timeInfo._start = std::stoi(timeSpan[0]);
+			timeInfo._end = std::stoi(timeSpan[1]);
+			if (timeInfo._end < timeInfo._start)
+			{
+				ThrowErrCode(ErrCode::InvalidAnimationData, "animation 시간이 역행합니다.");
+			}
+			timeInfo._isReverse = false;
+
+			if (timeSpan.size() == 4)
+			{
+				if (timeSpan[3] == "reverse")
+				{
+					timeInfo._isReverse = true;
+				}
+			}
+			_animTimeList.emplace_back(timeInfo);
+		}
 	}
 }
 
@@ -710,8 +770,9 @@ FbxNode* FbxLoader::getParentLinkNode(FbxNode* linkNode) const
 	ThrowErrCode(ErrCode::NodeNotFound, "boneIndex :"+ std::to_string(boneIndex) + "의 parent를 찾지 못했습니다.");
 }
 
-void FbxLoader::getKeyFrameTimes(const FbxAnimCurve* curve, std::set<FbxTime>& keyFrameTimes) noexcept
+void FbxLoader::getKeyFrameTimes(const FbxAnimCurve* curve, std::vector<std::set<uint32_t>>& keyFrameTimes) const noexcept
 {
+	check(!_animTimeList.empty(), "anim Timelist가 비어있습니다.");
 	check(curve != nullptr, "비정상입니다.");
 	// 무의미한 keyFrame은 제거하는 작업 필요 [1/29/2021 qwerw]
 	int keyCount = curve->KeyGetCount();
@@ -719,20 +780,51 @@ void FbxLoader::getKeyFrameTimes(const FbxAnimCurve* curve, std::set<FbxTime>& k
 	{
 		return;
 	}
+	uint32_t firstKey = curve->KeyGet(0).GetTime().GetFrameCount();
+	// 바이너리서치로 변경하면 좋겠다 [2/19/2021 qwerwy]
+	int animationIndex = 0;
+	for (int i = 0; i < _animTimeList.size(); ++i)
+	{
+		if (_animTimeList[i]._start <= firstKey && firstKey <= _animTimeList[i]._end)
+		{
+			animationIndex = i;
+			break;
+		}
+	}
+	
+	if (animationIndex == _animTimeList.size())
+	{
+		return;
+	}
 
-	(void)keyFrameTimes.insert(curve->KeyGet(0).GetTime());
-	float lastValue = curve->KeyGet(0).GetValue();
-	for (int k = 1; k < keyCount; ++k)
+	for (int i = 0; i < _animTimeList.size(); ++i)
+	{
+		(void)keyFrameTimes[i].insert(_animTimeList[i]._start);
+		(void)keyFrameTimes[i].insert(_animTimeList[i]._end);
+	}
+
+	for (int k = 0; k < keyCount; ++k)
 	{
 		FbxAnimCurveKey key = curve->KeyGet(k);
-		float value = key.GetValue();
-		if (std::abs(value - lastValue) < FBXSDK_FLOAT_EPSILON)
+		FbxLongLong keyFrame = key.GetTime().GetFrameCount();
+
+		if (_animTimeList[animationIndex]._end < keyFrame)
 		{
-			continue;
+			for (int i = animationIndex; i < _animTimeList.size(); ++i)
+			{
+				if (_animTimeList[i]._start <= keyFrame && keyFrame <= _animTimeList[i]._end)
+				{
+					animationIndex = i;
+					break;
+				}
+			}
+			if (animationIndex == _animTimeList.size())
+			{
+				break;
+			}
 		}
-		lastValue = value;
-		FbxTime time = key.GetTime();
-		(void)keyFrameTimes.insert(time);
+		
+		(void)keyFrameTimes[animationIndex].insert(keyFrame);
 	}
 }
 
@@ -761,7 +853,8 @@ void FbxLoader::ConvertFbxFiles(const string& filePath, const string& objectFold
 	for (auto& p : std::filesystem::recursive_directory_iterator(fbxFolderPath + filePath))
 	{
 		if (p.is_directory()) continue;
-
+		const std::string& pathString = p.path().string();
+		if(pathString.substr(pathString.length() - 4) != ".fbx") continue;
 		bool success = importer->Initialize(p.path().string().c_str(), -1, _fbxManager->GetIOSettings());
 		if (!success)
 		{
@@ -774,22 +867,10 @@ void FbxLoader::ConvertFbxFiles(const string& filePath, const string& objectFold
 			ThrowErrCode(ErrCode::InvalidFbxData, "Import fail");
 		}
 		
-// 		FbxAxisSystem axisSystem = fbxScene->GetGlobalSettings().GetAxisSystem();
-// 
-// 		if (axisSystem != FbxAxisSystem::DirectX)
-// 		{
-// 			FbxAxisSystem directX(FbxAxisSystem::DirectX);
-// 			directX.ConvertScene(fbxScene);
-// 			check(fbxScene->GetGlobalSettings().GetAxisSystem() == FbxAxisSystem::DirectX, "좌표계 변환이 안됨.");
-// 		}
-		int dir;
-		FbxAxisSystem::EUpVector upvector;
-		upvector = fbxScene->GetGlobalSettings().GetAxisSystem().GetUpVector(dir);
+		loadFbxParseInfo(p.path().string());
 
 		FbxAxisSystem max(FbxAxisSystem::DirectX);
 		max.ConvertScene(fbxScene);
-
-		upvector = fbxScene->GetGlobalSettings().GetAxisSystem().GetUpVector(dir);
 
 		FbxGeometryConverter converter(_fbxManager);
 		success = converter.Triangulate(fbxScene, true);
@@ -979,7 +1060,7 @@ void FbxLoader::loadFbxSkeletonNode(FbxNode* node, bool& nodeFound)
 	if (node->GetNodeAttribute() != nullptr &&
 		node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
 	{
-		const Index16 expectedBoneCount = node->GetChildCount(true) + 1;
+		const uint16_t expectedBoneCount = node->GetChildCount(true) + 1;
 		_boneHierarchy.reserve(expectedBoneCount);
 		_boneIndexMap.reserve(expectedBoneCount);
 		_boneOffsets.reserve(expectedBoneCount);
@@ -1065,7 +1146,7 @@ FbxLoader::FbxVertexSkinningInfo::FbxVertexSkinningInfo() noexcept
 	}
 }
 
-void FbxLoader::FbxVertexSkinningInfo::insert(Index16 boneIndex, float weight) noexcept
+void FbxLoader::FbxVertexSkinningInfo::insert(uint16_t boneIndex, float weight) noexcept
 {
 	if (_weight[BONE_WEIGHT_COUNT - 1] >= weight)
 	{

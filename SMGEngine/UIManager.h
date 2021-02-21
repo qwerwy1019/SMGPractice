@@ -39,7 +39,7 @@ protected:
 class UIGroup
 {
 public:
-	const UIElement* findElement(const std::string& name) const noexcept;
+	UIElement* findElement(const std::string& name) const noexcept;
 	void addElement(std::unique_ptr<UIElement>&& uiElement);
 	void draw(void) const noexcept;
 private:
@@ -56,6 +56,7 @@ public:
 		TextFormatType formatType,
 		const std::wstring& text);
 	virtual void draw(void) const noexcept override;
+	void setText(const std::wstring& text);
 private:
 	WComPtr<IDWriteTextLayout> _textLayout;
 	TextFormatType _formatType;
@@ -79,6 +80,7 @@ public:
 	UIManager(ID3D12CommandQueue* commandQueueD3d12, ID3D12Device* deviceD3d12);
 	void drawUI(int backBufferIndex);
 	void loadUI();
+	void updateUI();
 
 	void beforeResize(void);
 	void onResize(ID3D12Resource* swapChainBuffer, UINT index);

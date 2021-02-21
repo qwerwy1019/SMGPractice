@@ -23,11 +23,11 @@ private:
 
 	struct FbxPolygonVertexInfo
 	{
-		Index16 _materialIndex = UNDEFINED_COMMON_INDEX;
-		Index16 _controlPointIndex = UNDEFINED_COMMON_INDEX;
-		Index16 _uvIndex = UNDEFINED_COMMON_INDEX;
-		Index16 _normalIndex = UNDEFINED_COMMON_INDEX;
-		Index16 _colorIndex = UNDEFINED_COMMON_INDEX;
+		uint16_t _materialIndex = std::numeric_limits<uint16_t>::max();
+		uint16_t _controlPointIndex = std::numeric_limits<uint16_t>::max();
+		uint16_t _uvIndex = std::numeric_limits<uint16_t>::max();
+		uint16_t _normalIndex = std::numeric_limits<uint16_t>::max();
+		uint16_t _colorIndex = std::numeric_limits<uint16_t>::max();
 	};
 
 	enum class IndexMappingType
@@ -43,7 +43,7 @@ private:
 	struct FbxVertexSkinningInfo
 	{
 		FbxVertexSkinningInfo() noexcept;
-		void insert(Index16 boneIndex, float weight) noexcept;
+		void insert(uint16_t boneIndex, float weight) noexcept;
 		std::array<BoneIndex, BONE_WEIGHT_COUNT> _boneIndex;
 		std::array<float, BONE_WEIGHT_COUNT> _weight;
 	};
@@ -104,12 +104,21 @@ private:
 		float _value;
 	};
 
-	void loadKeyFrame(FbxAnimLayer* animLayer, const string& animationName);
+	struct AnimClipTimeInfo
+	{
+		std::string _name;
+		uint32_t _start;
+		uint32_t _end;
+		bool _isReverse;
+	};
+
+	void loadFbxAnimation(FbxAnimLayer* animLayer);
 	void writeXmlMesh(XMLWriter& xmlMeshGeometry, const FbxMeshInfo& meshInfo, const string& fileName) const;
 	void writeXmlMaterial(XMLWriter& xmlMaterial) const;
 	void writeXmlSkeleton(XMLWriter& xmlSkeleton) const;
 	void writeXmlAnimation(XMLWriter& xmlAnimation) const;
 
+	void loadFbxParseInfo(const std::string& fbxFilePath);
 public:
 	FbxLoader(void);
 	~FbxLoader(void);
@@ -127,8 +136,7 @@ private:
 	std::unordered_map<std::string, AnimationClip> _animations;
 
 	std::unordered_map<FbxNode*, BoneIndex> _boneIndexMap;
-	bool _isZUpvectorSystem;
-
+	std::vector<AnimClipTimeInfo> _animTimeList;
 	const std::string fbxFolderPath = "../ResourcesRaw/FbxFiles";
 
 	void loadFbxMeshNode(FbxNode* node);
@@ -173,9 +181,9 @@ private:
 
 	static std::array<float, BONE_WEIGHT_COUNT - 1> getWeight(const std::array<float, BONE_WEIGHT_COUNT>& weightArray) noexcept;
 
-	static void getKeyFrameTimes(const FbxAnimCurve* curve, std::set<FbxTime>& keyFrameTimes) noexcept;
+	void getKeyFrameTimes(const FbxAnimCurve* curve, std::vector<std::set<uint32_t>>& keyFrameTimes) const noexcept;
 
-	void getKeyFrames(FbxAnimLayer* animLayer, FbxNode* linkNode, std::set<FbxTime>& keyFramesTimes) const noexcept;
+	void getKeyFrames(FbxAnimLayer* animLayer, FbxNode* linkNode, std::vector<std::set<uint32_t>>& keyFramesTimes) const noexcept;
 	static FbxAMatrix getGeometryTransformation(const FbxNode* inNode)
 	{
 		if (!inNode)

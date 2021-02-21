@@ -285,8 +285,9 @@ public:
 	unordered_map<string, unique_ptr<BoneInfo>> _boneInfoMap;
 	unordered_map<string, unique_ptr<AnimationInfo>> _animationInfoMap;
 	vector<unique_ptr<SkinnedModelInstance>> _skinnedInstance;
-	
 
+	vector<string> _animationNameListDev;
+	int _animationNameIndexDev = 0;
 	void loadInfoMap(void);
 
 	unique_ptr<UIManager> _uiManager;

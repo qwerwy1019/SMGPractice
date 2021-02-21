@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "stdafx.h"
 
 #include "D3DApp.h"
@@ -66,6 +67,9 @@ void D3DApp::loadInfoMap(void)
 
 			unique_ptr<AnimationInfo> animationInfo(new AnimationInfo);
 			animationInfo->loadXML(xmlAnimation.getRootNode());
+
+			_animationNameListDev = animationInfo->getAnimationNameListDev();
+
 			_animationInfoMap["marioAnim"] = move(animationInfo);
 		}
 		{
@@ -623,7 +627,16 @@ void D3DApp::calculateFrameStats(void) noexcept
 		std::wstring fpsStr = std::to_wstring(frameCnt);
 		std::wstring mspfStr = std::to_wstring(1000.f / frameCnt);
 
-		std::wstring windowText = WINDOW_CAPTION + L" fps: " + fpsStr + L" msfp: " + mspfStr;
+		std::wstring timePosStr = L"";
+		std::wstring animString = L"";
+		if (!_skinnedInstance.empty())
+		{
+			timePosStr = std::to_wstring(_skinnedInstance[0]->getTimePosDev());
+			USES_CONVERSION;
+			animString = A2W(_animationNameListDev[_animationNameIndexDev].c_str());
+		}
+
+		std::wstring windowText = WINDOW_CAPTION + L"animTime: " + timePosStr + L" name: " + animString + L" fps: " + fpsStr + L" mspf: " + mspfStr;
 		SetWindowText(_hMainWnd, windowText.c_str());
 
 		frameCnt = 0;
@@ -674,7 +687,7 @@ void D3DApp::onMouseMove(WPARAM buttonState, int x, int y) noexcept
 		float dy = 0.2f * static_cast<float>(y - _mousePos.y);
 
 		_cameraRadius += dx - dy;
-		_cameraRadius = min(max(_cameraRadius, 3.f), 200.f);
+		_cameraRadius = min(max(_cameraRadius, 3.f), 2000.f);
 	}
 
 	_mousePos.x = x;
@@ -689,11 +702,23 @@ void D3DApp::onKeyboardInput(void) noexcept
 		if (GetAsyncKeyState(VK_LEFT) && 0x8000)
 		{
 			_sunTheta -= 1.f * dt;
+			_animationNameIndexDev = _animationNameIndexDev - 1;
+			if (_animationNameIndexDev < 0)
+			{
+				_animationNameIndexDev = 0;
+			}
+			_skinnedInstance[0]->setAnimation(_animationNameListDev[_animationNameIndexDev], 100);
 		}
 
 		if (GetAsyncKeyState(VK_RIGHT) && 0x8000)
 		{
 			_sunTheta += 1.f * dt;
+			_animationNameIndexDev = _animationNameIndexDev + 1;
+			if (_animationNameIndexDev >= _animationNameListDev.size())
+			{
+				_animationNameIndexDev = _animationNameListDev.size() - 1;
+			}
+			_skinnedInstance[0]->setAnimation(_animationNameListDev[_animationNameIndexDev], 100);
 		}
 
 		if (GetAsyncKeyState(VK_UP) && 0x8000)
@@ -738,18 +763,6 @@ void D3DApp::onKeyboardInput(void) noexcept
 			_cameraCenterPos.y -= 30.f * dt;
 		}
 	}
-
-	// µð¹ö±ë¿ë [2/1/2021 qwerw]
-// 	{
-// 		if (GetAsyncKeyState('1') && 0x8000)
-// 		{
-// 			_passConstants.pad1 = 1.f;
-// 		}
-// 		else
-// 		{
-// 			_passConstants.pad1 = 0.f;
-// 		}
-// 	}
 }
 
 void D3DApp::buildFrameResources(void)
@@ -807,9 +820,10 @@ void D3DApp::updateSkinnedConstantBuffer(void)
 {
 	auto& currentFrameResource = _frameResources[_frameIndex];
 
+	__int64 deltaTick = _timer.getDeltaTickCount();
 	for (const auto& e : _skinnedInstance)
 	{
-		e->updateSkinnedAnimation(_timer.getDeltaTime());
+		e->updateSkinnedAnimation(deltaTick);
 		SkinnedConstants skinnedConstants;
 		const auto& matrixes = e->getTransformMatrixes();
 		std::copy(std::begin(matrixes), std::end(matrixes), &skinnedConstants._boneTransforms[0]);
@@ -1572,7 +1586,7 @@ int D3DApp::Run(void)
 			else
 			{
 				Sleep(100);
-			}
+ 			}
 		}
 	}
 	return (int)msg.wParam;
