@@ -421,39 +421,32 @@ void FbxLoader::getKeyFrames(FbxAnimLayer* animLayer, FbxNode* linkNode, std::ve
 
 	keyFramesTimes.resize(_animTimeList.size());
 
-	FbxAnimEvaluator* animEvaluator = linkNode->GetAnimationEvaluator();
-
-	FbxVector4& localTranslate = linkNode->EvaluateLocalTranslation();
-	FbxVector4& localRotation = linkNode->EvaluateLocalRotation();
-	FbxVector4& localScale = linkNode->EvaluateLocalScaling();
-
-
-	FbxAnimCurve* animTranslateXCurve = linkNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X);
-	FbxAnimCurve* animTranslateYCurve = linkNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y);
-	FbxAnimCurve* animTranslateZCurve = linkNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z);
-	FbxAnimCurve* animScaleXCurve = linkNode->LclScaling.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X);
-	FbxAnimCurve* animScaleYCurve = linkNode->LclScaling.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y);
-	FbxAnimCurve* animScaleZCurve = linkNode->LclScaling.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z);
+	FbxAnimCurve* animTranslationXCurve = linkNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X);
+	FbxAnimCurve* animTranslationYCurve = linkNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y);
+	FbxAnimCurve* animTranslationZCurve = linkNode->LclTranslation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z);
+	FbxAnimCurve* animScalingXCurve = linkNode->LclScaling.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X);
+	FbxAnimCurve* animScalingYCurve = linkNode->LclScaling.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y);
+	FbxAnimCurve* animScalingZCurve = linkNode->LclScaling.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z);
 	FbxAnimCurve* animRotationXCurve = linkNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_X);
 	FbxAnimCurve* animRotationYCurve = linkNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Y);
 	FbxAnimCurve* animRotationZCurve = linkNode->LclRotation.GetCurve(animLayer, FBXSDK_CURVENODE_COMPONENT_Z);
 
-	if (animTranslateXCurve == nullptr) return;
-	if (animTranslateYCurve == nullptr) return;
-	if (animTranslateZCurve == nullptr) return;
-	if (animScaleXCurve == nullptr) return;
-	if (animScaleYCurve == nullptr) return;
-	if (animScaleZCurve == nullptr) return;
+	if (animTranslationXCurve == nullptr) return;
+	if (animTranslationYCurve == nullptr) return;
+	if (animTranslationZCurve == nullptr) return;
+	if (animScalingXCurve == nullptr) return;
+	if (animScalingYCurve == nullptr) return;
+	if (animScalingZCurve == nullptr) return;
 	if (animRotationXCurve == nullptr) return;
 	if (animRotationYCurve == nullptr) return;
 	if (animRotationZCurve == nullptr) return;
 
-	getKeyFrameTimes(animTranslateXCurve, keyFramesTimes);
-	getKeyFrameTimes(animTranslateYCurve, keyFramesTimes);
-	getKeyFrameTimes(animTranslateZCurve, keyFramesTimes);
-	getKeyFrameTimes(animScaleXCurve, keyFramesTimes);
-	getKeyFrameTimes(animScaleYCurve, keyFramesTimes);
-	getKeyFrameTimes(animScaleZCurve, keyFramesTimes);
+	getKeyFrameTimes(animTranslationXCurve, keyFramesTimes);
+	getKeyFrameTimes(animTranslationYCurve, keyFramesTimes);
+	getKeyFrameTimes(animTranslationZCurve, keyFramesTimes);
+	getKeyFrameTimes(animScalingXCurve, keyFramesTimes);
+	getKeyFrameTimes(animScalingYCurve, keyFramesTimes);
+	getKeyFrameTimes(animScalingZCurve, keyFramesTimes);
 	getKeyFrameTimes(animRotationXCurve, keyFramesTimes);
 	getKeyFrameTimes(animRotationYCurve, keyFramesTimes);
 	getKeyFrameTimes(animRotationZCurve, keyFramesTimes);
@@ -506,7 +499,7 @@ void FbxLoader::loadFbxAnimation(FbxAnimLayer* animLayer)
 				}
 				keyFrame._translation = fbxVector4ToXMFLOAT3(worldMatrix.GetT());
 				keyFrame._rotationQuat = fbxQuaternionToXMFLOAT4(worldMatrix.GetQ());
-				keyFrame._scale = fbxVector4ToXMFLOAT3(worldMatrix.GetS());
+				keyFrame._scaling = fbxVector4ToXMFLOAT3(worldMatrix.GetS());
 
 				keyFrames.emplace_back(std::move(keyFrame));
 			}
@@ -684,7 +677,7 @@ void FbxLoader::writeXmlAnimation(XMLWriter& xmlAnimation) const
 						xmlAnimation.addAttribute("Frame", keyFrames[j]._frame);
 
 						xmlAnimation.addAttribute("Translation", keyFrames[j]._translation);
-						xmlAnimation.addAttribute("Scale", keyFrames[j]._scale);
+						xmlAnimation.addAttribute("Scaling", keyFrames[j]._scaling);
 						xmlAnimation.addAttribute("RotationQuat", keyFrames[j]._rotationQuat);
 					}
 				}

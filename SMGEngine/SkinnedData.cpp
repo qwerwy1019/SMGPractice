@@ -28,7 +28,7 @@ DirectX::XMMATRIX BoneAnimation::interpolateWithBlend(const TickCount64& current
 	check(!_keyFrames.empty(), "keyFrame이 없습니다.");
 	float blendLerpPecent = currentTick / static_cast<float>(blendTick);
 
-	XMVECTOR blendS = XMLoadFloat3(&blendInstance._scale);
+	XMVECTOR blendS = XMLoadFloat3(&blendInstance._scaling);
 	XMVECTOR blendP = XMLoadFloat3(&blendInstance._translation);
 	XMVECTOR blendQ = XMLoadFloat4(&blendInstance._rotationQuat);
 
@@ -50,13 +50,13 @@ void BoneAnimation::interpolateXXX(const TickCount64& currentTick, DirectX::XMVE
 
 	if (currentFrame <= _keyFrames.front()._frame)
 	{
-		S = XMLoadFloat3(&_keyFrames.back()._scale);
+		S = XMLoadFloat3(&_keyFrames.back()._scaling);
 		P = XMLoadFloat3(&_keyFrames.back()._translation);
 		Q = XMLoadFloat4(&_keyFrames.back()._rotationQuat);
 	}
 	else if (currentFrame >= _keyFrames.back()._frame)
 	{
-		S = XMLoadFloat3(&_keyFrames.back()._scale);
+		S = XMLoadFloat3(&_keyFrames.back()._scaling);
 		P = XMLoadFloat3(&_keyFrames.back()._translation);
 		Q = XMLoadFloat4(&_keyFrames.back()._rotationQuat);
 	}
@@ -67,8 +67,8 @@ void BoneAnimation::interpolateXXX(const TickCount64& currentTick, DirectX::XMVE
 		auto it0 = prev(it1);
 
 		float lerpPercent = (currentFrame - it0->_frame) / static_cast<float>(it1->_frame - it0->_frame);
-		XMVECTOR s0 = XMLoadFloat3(&it0->_scale);
-		XMVECTOR s1 = XMLoadFloat3(&it1->_scale);
+		XMVECTOR s0 = XMLoadFloat3(&it0->_scaling);
+		XMVECTOR s1 = XMLoadFloat3(&it1->_scaling);
 
 		XMVECTOR p0 = XMLoadFloat3(&it0->_translation);
 		XMVECTOR p1 = XMLoadFloat3(&it1->_translation);
@@ -100,7 +100,7 @@ void BoneAnimation::loadXML(const XMLReaderNode& node, const uint32_t start, con
 			ThrowErrCode(ErrCode::InvalidAnimationData, "시간이 범위 밖입니다. frame: " + std::to_string(_keyFrames[i]._frame));
 		}
 		childNodes[i].loadAttribute("Translation", _keyFrames[i]._translation);
-		childNodes[i].loadAttribute("Scale", _keyFrames[i]._scale);
+		childNodes[i].loadAttribute("Scaling", _keyFrames[i]._scaling);
 		childNodes[i].loadAttribute("RotationQuat", _keyFrames[i]._rotationQuat);
 	}
 }
@@ -197,10 +197,6 @@ void AnimationClip::interpolateWithBlend(const TickCount64& currentTick,
 	matrixes.reserve(_boneAnimations.size());
 	for (int i = 0; i < _boneAnimations.size(); ++i)
 	{
-		XMVECTOR scale = XMLoadFloat3(&blendInstances[i]._scale);
-		XMVECTOR translate = XMLoadFloat3(&blendInstances[i]._translation);
-		XMVECTOR rotationQuat = XMLoadFloat4(&blendInstances[i]._rotationQuat);
-
 		matrixes.emplace_back(_boneAnimations[i].interpolateWithBlend(currentTick, blendTick, blendInstances[i]));
 	}
 }
@@ -244,7 +240,7 @@ void AnimationClip::getBlendValue(const TickCount64& currentTick, std::vector<Bo
 KeyFrame::KeyFrame() noexcept
 	: _frame(0)
 	, _translation(0.f, 0.f, 0.f)
-	, _scale(0.f, 0.f, 0.f)
+	, _scaling(0.f, 0.f, 0.f)
 	, _rotationQuat(0.f, 0.f, 0.f, 0.f)
 {
 }
@@ -342,9 +338,9 @@ void AnimationInfo::loadXML(const XMLReaderNode& rootNode)
 	}
 }
 
-BoneAnimationBlendInstance::BoneAnimationBlendInstance(DirectX::FXMVECTOR scale, DirectX::FXMVECTOR translate, DirectX::FXMVECTOR rotationQuat) noexcept
+BoneAnimationBlendInstance::BoneAnimationBlendInstance(DirectX::FXMVECTOR scaling, DirectX::FXMVECTOR translation, DirectX::FXMVECTOR rotationQuat) noexcept
 {
-	XMStoreFloat3(&_scale, scale);
-	XMStoreFloat3(&_translation, translate);
+	XMStoreFloat3(&_scaling, scaling);
+	XMStoreFloat3(&_translation, translation);
 	XMStoreFloat4(&_rotationQuat, rotationQuat);
 }

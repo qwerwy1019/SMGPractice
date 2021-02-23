@@ -11,15 +11,15 @@ struct KeyFrame
 
 	uint32_t _frame;
 	DirectX::XMFLOAT3 _translation;
-	DirectX::XMFLOAT3 _scale;
+	DirectX::XMFLOAT3 _scaling;
 	DirectX::XMFLOAT4 _rotationQuat;
 };
 
 struct BoneAnimationBlendInstance
 {
-	BoneAnimationBlendInstance(DirectX::FXMVECTOR scale, DirectX::FXMVECTOR translate, DirectX::FXMVECTOR rotationQuat) noexcept;
+	BoneAnimationBlendInstance(DirectX::FXMVECTOR scaling, DirectX::FXMVECTOR translation, DirectX::FXMVECTOR rotationQuat) noexcept;
 	DirectX::XMFLOAT3 _translation;
-	DirectX::XMFLOAT3 _scale;
+	DirectX::XMFLOAT3 _scaling;
 	DirectX::XMFLOAT4 _rotationQuat;
 };
 

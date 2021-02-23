@@ -82,27 +82,6 @@ private:
 			, _fresnelR0(fresnelR0)
 			, _roughness(roughness) {}
 	};
-	
-	enum class FbxKeyFrameType
-	{
-		TranslateX,
-		TranslateY,
-		TranslateZ,
-		ScaleX,
-		ScaleY,
-		ScaleZ,
-		RotationX,
-		RotationY,
-		RotationZ,
-
-		Count,
-	};
-	struct FbxKeyFrame
-	{
-		FbxLongLong _frame;
-		FbxKeyFrameType _type;
-		float _value;
-	};
 
 	struct AnimClipTimeInfo
 	{

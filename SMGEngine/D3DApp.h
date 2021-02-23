@@ -164,7 +164,7 @@ private:
 	// 정점 버퍼 초기화
 	void buildConstantGeometry(void);
 	void buildGameObject(const std::string& meshName,
-		const DirectX::XMFLOAT3& scale,
+		const DirectX::XMFLOAT3& scaling,
 		const DirectX::XMFLOAT3& rotation, 
 		const DirectX::XMFLOAT3& transition);
 

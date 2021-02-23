@@ -1165,9 +1165,9 @@ UINT D3DApp::getTotalRenderItemCount(void) const noexcept
 }
 
 void D3DApp::buildGameObject(const std::string& meshName, 
-	const DirectX::XMFLOAT3& scale,
+	const DirectX::XMFLOAT3& scaling,
 	const DirectX::XMFLOAT3& rotation,
-	const DirectX::XMFLOAT3& transition)
+	const DirectX::XMFLOAT3& translation)
 {
 	auto geometry = _geometries.find(meshName);
 	if (geometry == _geometries.end())
@@ -1178,7 +1178,7 @@ void D3DApp::buildGameObject(const std::string& meshName,
 	for (auto it = subMeshMap.begin(); it != subMeshMap.end(); ++it)
 	{
 		auto renderItem = make_unique<RenderItem>();
-		XMMATRIX S = XMMatrixScaling(scale.x, scale.y, scale.z);
+		XMMATRIX S = XMMatrixScaling(scaling.x, scaling.y, scaling.z);
 		XMMATRIX R = XMMatrixRotationY(rotation.y);
 		XMMATRIX T = XMMatrixTranslation(0.f, 0.f, 0.f);
 		XMStoreFloat4x4(&renderItem->_worldMatrix, S * R * T);
