@@ -4,15 +4,12 @@
 
 GameTimer::GameTimer() noexcept
 	: _deltaTickCount(0)
-	, _currentCount(0)
-	, _baseCount(0)
-	, _pausedCount(0)
-	, _stopAccumCount(0)
+	, _currentTickCount(0)
+	, _baseTickCount(0)
+	, _pausedTickCount(0)
+	, _stopAccumTickCount(0)
 	, _stopped(false)
 {
-	QueryPerformanceFrequency((LARGE_INTEGER*)&_countPerSec);
-	_secondPerCount = 1.f / (double)_countPerSec;
-	_countPerTickCount = _countPerSec / 1000;
 }
 
 void GameTimer::ProgressTick() noexcept
@@ -23,30 +20,29 @@ void GameTimer::ProgressTick() noexcept
 		return;
 	}
 
-	__int64 currentCount = 0;
-	QueryPerformanceCounter((LARGE_INTEGER*)&currentCount);
-	check(_currentCount <= currentCount, "시간이 역행합니다.");
-	_deltaTickCount = (currentCount - _currentCount) / _countPerTickCount;
-	_currentCount = currentCount;
+	TickCount64 currentCount = GetTickCount64();
+	check(_currentTickCount <= currentCount, "시간이 역행합니다.");
+	_deltaTickCount = (currentCount - _currentTickCount);
+	_currentTickCount = currentCount;
 }
 
 double GameTimer::getDeltaTime(void) const noexcept
 {
-	return _deltaTickCount * _secondPerCount;
+	return _deltaTickCount * TICKCOUNT_TO_TIME;
 }
 
 double GameTimer::getTotalTime(void) const noexcept
 {
-	return (_currentCount - _baseCount - _stopAccumCount) * _secondPerCount;
+	return (_currentTickCount - _baseTickCount - _stopAccumTickCount) * TICKCOUNT_TO_TIME;
 }
 
 void GameTimer::Reset(void) noexcept
 {
 	_deltaTickCount = 0;
-	QueryPerformanceCounter((LARGE_INTEGER*)&_currentCount);
-	_baseCount = _currentCount;
-	_pausedCount = 0;
-	_stopAccumCount = 0;
+	_currentTickCount = GetTickCount64();
+	_baseTickCount = _currentTickCount;
+	_pausedTickCount = 0;
+	_stopAccumTickCount = 0;
 	_stopped = false;
 }
 
@@ -56,10 +52,9 @@ void GameTimer::Start(void) noexcept
 	{
 		return;
 	}
-	__int64 currentCount = 0;
-	QueryPerformanceCounter((LARGE_INTEGER*)&currentCount);
-	_stopAccumCount += currentCount - _pausedCount;
-	_currentCount += currentCount - _pausedCount;
+	TickCount64 currentCount = GetTickCount64();
+	_stopAccumTickCount += currentCount - _pausedTickCount;
+	_currentTickCount += currentCount - _pausedTickCount;
 
 	_stopped = false;
 }
@@ -70,7 +65,7 @@ void GameTimer::Stop(void) noexcept
 	{
 		return;
 	}
-	QueryPerformanceCounter((LARGE_INTEGER*)&_pausedCount);
+	_pausedTickCount = GetTickCount64();
 
 	_stopped = true;
 }

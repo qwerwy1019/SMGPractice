@@ -10,21 +10,23 @@ BoneAnimation::BoneAnimation(std::vector<KeyFrame>&& keyFrames) noexcept
 {
 }
 
-DirectX::XMMATRIX BoneAnimation::interpolate(const uint32_t currentTime) const noexcept
+DirectX::XMMATRIX BoneAnimation::interpolate(const TickCount64& currentTick) const noexcept
 {
 	check(!_keyFrames.empty(), "keyFrame이 없습니다.");
 	const XMVECTOR zero = XMVectorSet(0.f, 0.f, 0.f, 1.f);
 
 	XMVECTOR S, P, Q;
-	interpolateXXX(currentTime, S, P, Q);
+	interpolateXXX(currentTick, S, P, Q);
 	
 	return XMMatrixAffineTransformation(S, zero, Q, P);
 }
 
-DirectX::XMMATRIX BoneAnimation::interpolateWithBlend(const uint32_t currentTime, const BoneAnimationBlendInstance& blendInstance, const uint32_t blendTick) const noexcept
+DirectX::XMMATRIX BoneAnimation::interpolateWithBlend(const TickCount64& currentTick,
+													const TickCount64& blendTick,
+													const BoneAnimationBlendInstance& blendInstance) const noexcept
 {
 	check(!_keyFrames.empty(), "keyFrame이 없습니다.");
-	float blendLerpPecent = currentTime / static_cast<float>(blendTick);
+	float blendLerpPecent = currentTick / static_cast<float>(blendTick);
 
 	XMVECTOR blendS = XMLoadFloat3(&blendInstance._scale);
 	XMVECTOR blendP = XMLoadFloat3(&blendInstance._translation);
@@ -33,7 +35,7 @@ DirectX::XMMATRIX BoneAnimation::interpolateWithBlend(const uint32_t currentTime
 	const XMVECTOR zero = XMVectorSet(0.f, 0.f, 0.f, 1.f);
 
 	XMVECTOR S, P, Q;
-	interpolateXXX(currentTime, S, P, Q);
+	interpolateXXX(currentTick, S, P, Q);
 
 	S = XMVectorLerp(blendS, S, blendLerpPecent);
 	P = XMVectorLerp(blendP, P, blendLerpPecent);
@@ -42,15 +44,17 @@ DirectX::XMMATRIX BoneAnimation::interpolateWithBlend(const uint32_t currentTime
 	return XMMatrixAffineTransformation(S, zero, Q, P);
 }
 
-void BoneAnimation::interpolateXXX(const uint32_t currentTime, DirectX::XMVECTOR& S, DirectX::XMVECTOR& P, DirectX::XMVECTOR& Q) const noexcept
+void BoneAnimation::interpolateXXX(const TickCount64& currentTick, DirectX::XMVECTOR& S, DirectX::XMVECTOR& P, DirectX::XMVECTOR& Q) const noexcept
 {
-	if (currentTime <= _keyFrames.front()._frame * FRAME_TO_TICKCOUNT)
+	const uint32_t currentFrame = static_cast<uint32_t>(currentTick * TICKCOUNT_TO_FRAME);
+
+	if (currentFrame <= _keyFrames.front()._frame)
 	{
 		S = XMLoadFloat3(&_keyFrames.back()._scale);
 		P = XMLoadFloat3(&_keyFrames.back()._translation);
 		Q = XMLoadFloat4(&_keyFrames.back()._rotationQuat);
 	}
-	else if (currentTime >= _keyFrames.back()._frame * FRAME_TO_TICKCOUNT)
+	else if (currentFrame >= _keyFrames.back()._frame)
 	{
 		S = XMLoadFloat3(&_keyFrames.back()._scale);
 		P = XMLoadFloat3(&_keyFrames.back()._translation);
@@ -58,11 +62,11 @@ void BoneAnimation::interpolateXXX(const uint32_t currentTime, DirectX::XMVECTOR
 	}
 	else
 	{
-		auto it1 = lower_bound(_keyFrames.begin(), _keyFrames.end(), currentTime, [](const KeyFrame& itor, const uint32_t t) {
-			return itor._frame * FRAME_TO_TICKCOUNT < t; });
+		auto it1 = lower_bound(_keyFrames.begin(), _keyFrames.end(), currentFrame, [](const KeyFrame& itor, const uint32_t& t) {
+			return itor._frame < t; });
 		auto it0 = prev(it1);
 
-		float lerpPercent = (currentTime - it0->_frame * FRAME_TO_TICKCOUNT) / static_cast<float>((it1->_frame - it0->_frame) * FRAME_TO_TICKCOUNT);
+		float lerpPercent = (currentFrame - it0->_frame) / static_cast<float>(it1->_frame - it0->_frame);
 		XMVECTOR s0 = XMLoadFloat3(&it0->_scale);
 		XMVECTOR s1 = XMLoadFloat3(&it1->_scale);
 
@@ -161,15 +165,15 @@ BoneIndex BoneInfo::getBoneCount(void) const noexcept
 	return _boneOffsets.size();
 }
 
-AnimationClip::AnimationClip(std::vector<BoneAnimation>&& boneAnimations, const uint32_t clipEndTime) noexcept
+AnimationClip::AnimationClip(std::vector<BoneAnimation>&& boneAnimations, const uint32_t clipEndFrame) noexcept
 {
 	check(!boneAnimations.empty(), "비정상입니다.");
 
 	_boneAnimations = std::move(boneAnimations);
-	_clipEndFrame = clipEndTime;
+	_clipEndFrame = clipEndFrame;
 }
 
-void AnimationClip::interpolate(const uint32_t currentTime,
+void AnimationClip::interpolate(const TickCount64& currentTick,
 								std::vector<DirectX::XMMATRIX>& matrixes) const noexcept
 {
 	check(matrixes.empty(), "outMatrix는 빈 상태로 들어와야 합니다.");
@@ -177,12 +181,12 @@ void AnimationClip::interpolate(const uint32_t currentTime,
 	matrixes.reserve(_boneAnimations.size());
 	for (int i = 0; i < _boneAnimations.size(); ++i)
 	{
-		matrixes.emplace_back(_boneAnimations[i].interpolate(currentTime));
+		matrixes.emplace_back(_boneAnimations[i].interpolate(currentTick));
 	}
 }
 
-void AnimationClip::interpolateWithBlend(uint32_t currentTick,
-	uint32_t blendTick,
+void AnimationClip::interpolateWithBlend(const TickCount64& currentTick,
+	const TickCount64& blendTick,
 	const std::vector<BoneAnimationBlendInstance>& blendInstances,
 	std::vector<DirectX::XMMATRIX>& matrixes) const noexcept
 {
@@ -197,7 +201,7 @@ void AnimationClip::interpolateWithBlend(uint32_t currentTick,
 		XMVECTOR translate = XMLoadFloat3(&blendInstances[i]._translation);
 		XMVECTOR rotationQuat = XMLoadFloat4(&blendInstances[i]._rotationQuat);
 
-		matrixes.emplace_back(_boneAnimations[i].interpolateWithBlend(currentTick, blendInstances[i], blendTick));
+		matrixes.emplace_back(_boneAnimations[i].interpolateWithBlend(currentTick, blendTick, blendInstances[i]));
 	}
 }
 
@@ -225,7 +229,7 @@ const std::vector<BoneAnimation>& AnimationClip::getBoneAnimationXXX(void) const
 	return _boneAnimations;
 }
 
-void AnimationClip::getBlendValue(uint32_t currentTick, std::vector<BoneAnimationBlendInstance>& blendInstances) const
+void AnimationClip::getBlendValue(const TickCount64& currentTick, std::vector<BoneAnimationBlendInstance>& blendInstances) const
 {
 	blendInstances.clear();
 	blendInstances.reserve(_boneAnimations.size());
@@ -245,18 +249,6 @@ KeyFrame::KeyFrame() noexcept
 {
 }
 
-// KeyFrame::KeyFrame(float timePos,
-// 	const DirectX::XMFLOAT3& translation,
-// 	const DirectX::XMFLOAT3& scale,
-// 	const DirectX::XMFLOAT4& rotationQuat) noexcept
-// 	: _timePos(timePos)
-// 	, _translation(translation)
-// 	, _scale(scale)
-// 	, _rotationQuat(rotationQuat)
-// {
-// 
-// }
-
 SkinnedModelInstance::SkinnedModelInstance(uint16_t index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept
 	: _currentTick(0)
 	, _animationClipName("IDLE")
@@ -269,7 +261,7 @@ SkinnedModelInstance::SkinnedModelInstance(uint16_t index, BoneInfo* boneInfo, A
 	_transformMatrixes.resize(boneInfo->getBoneCount(), MathHelper::Identity4x4);
 }
 
-void SkinnedModelInstance::updateSkinnedAnimation(const uint32_t dt) noexcept
+void SkinnedModelInstance::updateSkinnedAnimation(const TickCount64& dt) noexcept
 {
 	const AnimationClip* animationClip = _animationInfo->getAnimationClip(_animationClipName);
 	if (animationClip == nullptr)
@@ -287,19 +279,20 @@ void SkinnedModelInstance::updateSkinnedAnimation(const uint32_t dt) noexcept
 
 	std::vector<XMMATRIX> toParentTransforms;
 
+	const TickCount64& speedAppliedTick = static_cast<TickCount64>(_currentTick * _animationSpeed);
 	if (_currentTick < _blendTick)
 	{
-		animationClip->interpolateWithBlend(_currentTick * _animationSpeed, _blendTick, _blendInstances, toParentTransforms);
+		animationClip->interpolateWithBlend(speedAppliedTick, _blendTick, _blendInstances, toParentTransforms);
 	}
 	else
 	{
-		animationClip->interpolate(_currentTick * _animationSpeed, toParentTransforms);
+		animationClip->interpolate(speedAppliedTick, toParentTransforms);
 	}
 
 	_boneInfo->getFinalTransforms(toParentTransforms, _transformMatrixes);
 }
 
-void SkinnedModelInstance::setAnimation(const std::string& animationClipName, const uint32_t blendTick) noexcept
+void SkinnedModelInstance::setAnimation(const std::string& animationClipName, const TickCount64& blendTick) noexcept
 {
 	if (blendTick != 0)
 	{

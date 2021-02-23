@@ -5,7 +5,6 @@
 #include <array>
 #include "GeometryGenerator.h"
 #include <limits>
-#include <stdint.h>
 #include <Windows.h>
 #include <windowsx.h>
 #include "DirectX/DDSTextureLoader12.h"
@@ -19,6 +18,7 @@
 #include "PreDefines.h"
 #include "D3DUtil.h"
 #include "UiManager.h"
+#include "TypeGameData.h"
 
 LRESULT CALLBACK
 MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -820,7 +820,7 @@ void D3DApp::updateSkinnedConstantBuffer(void)
 {
 	auto& currentFrameResource = _frameResources[_frameIndex];
 
-	__int64 deltaTick = _timer.getDeltaTickCount();
+	TickCount64 deltaTick = _timer.getDeltaTickCount();
 	for (const auto& e : _skinnedInstance)
 	{
 		e->updateSkinnedAnimation(deltaTick);

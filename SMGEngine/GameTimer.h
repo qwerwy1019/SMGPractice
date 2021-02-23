@@ -1,4 +1,5 @@
 #pragma once
+#include "TypeGameData.h"
 
 class GameTimer
 {
@@ -9,22 +10,21 @@ public:
 	void Start(void) noexcept;
 	void Stop(void) noexcept;
 
-	__int64 getDeltaTickCount(void) const noexcept { return _deltaTickCount; }
+	TickCount64 getDeltaTickCount(void) const noexcept { return _deltaTickCount; }
 	double getDeltaTime(void) const noexcept;
 	double getTotalTime(void) const noexcept;
 	bool isTimerStopped(void) const noexcept;
 
 private:
-	double _secondPerCount;
-	__int64 _countPerSec;
-	__int64 _countPerTickCount;
-
-	__int64 _deltaTickCount;
-	__int64 _currentCount;
-	__int64 _baseCount;
-	__int64 _pausedCount;
-	__int64 _stopAccumCount;
+	TickCount64 _deltaTickCount;
+	TickCount64 _currentTickCount;
+	TickCount64 _baseTickCount;
+	TickCount64 _pausedTickCount;
+	TickCount64 _stopAccumTickCount;
 
 	bool _stopped;
+	
+	static constexpr int TIME_TO_TICKCOUNT = 1000;
+	static constexpr double TICKCOUNT_TO_TIME = 1.f / TIME_TO_TICKCOUNT;
 };
 

@@ -1,8 +1,10 @@
 #pragma once
 #include "TypeGeometry.h"
+#include "TypeGameData.h"
 
 class XMLReaderNode;
 static constexpr int FRAME_TO_TICKCOUNT = 20;
+static constexpr double TICKCOUNT_TO_FRAME = 1.f / FRAME_TO_TICKCOUNT;
 struct KeyFrame
 {
 	KeyFrame() noexcept;
@@ -33,12 +35,12 @@ public:
 
 	BoneAnimation(std::vector<KeyFrame>&& keyFrames) noexcept;
 
-	DirectX::XMMATRIX interpolate(const uint32_t currentTime) const noexcept;
-	DirectX::XMMATRIX interpolateWithBlend(const uint32_t currentTime,
-		const BoneAnimationBlendInstance& blendInstance,
-		const uint32_t blendTick) const noexcept;
+	DirectX::XMMATRIX interpolate(const TickCount64& currentTick) const noexcept;
+	DirectX::XMMATRIX interpolateWithBlend(const TickCount64& currentTick,
+		const TickCount64& blendTick,
+		const BoneAnimationBlendInstance& blendInstance) const noexcept;
 
-	void interpolateXXX(const uint32_t currentTime, DirectX::XMVECTOR& S, DirectX::XMVECTOR& P, DirectX::XMVECTOR& Q) const noexcept;
+	void interpolateXXX(const TickCount64& currentTick, DirectX::XMVECTOR& S, DirectX::XMVECTOR& P, DirectX::XMVECTOR& Q) const noexcept;
 
 	void loadXML(const XMLReaderNode& rootNode, const uint32_t start, const uint32_t end);
 
@@ -59,11 +61,11 @@ public:
 	AnimationClip(const AnimationClip&) = delete;
 	AnimationClip& operator=(const AnimationClip&) = delete;
 
-	AnimationClip(std::vector<BoneAnimation>&& boneAnimations, const uint32_t clipEndTime) noexcept;
+	AnimationClip(std::vector<BoneAnimation>&& boneAnimations, const uint32_t clipEndFrame) noexcept;
 
-	void interpolate(const uint32_t currentTime, std::vector<DirectX::XMMATRIX>& matrixes) const noexcept;
-	void interpolateWithBlend(uint32_t currentTick,
-							uint32_t blendTick,
+	void interpolate(const TickCount64& currentTick, std::vector<DirectX::XMMATRIX>& matrixes) const noexcept;
+	void interpolateWithBlend(const TickCount64& currentTick,
+							const TickCount64& blendTick,
 							const std::vector<BoneAnimationBlendInstance>& blendInstances,
 							std::vector<DirectX::XMMATRIX>& matrixes) const noexcept;
 
@@ -73,7 +75,7 @@ public:
 
 	// fbxLoader때문에 만들긴 했는데 다른 방법을 찾으면 좋겠다. [1/26/2021 qwerw]
 	const std::vector<BoneAnimation>& getBoneAnimationXXX(void) const noexcept;
-	void getBlendValue(uint32_t currentTick, std::vector<BoneAnimationBlendInstance>& blendInstances) const;
+	void getBlendValue(const TickCount64& currentTick, std::vector<BoneAnimationBlendInstance>& blendInstances) const;
 private:
 	std::vector<BoneAnimation> _boneAnimations;
 	uint32_t _clipEndFrame;
@@ -116,14 +118,14 @@ class SkinnedModelInstance
 {
 public:
 	SkinnedModelInstance(uint16_t index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept;
-	void updateSkinnedAnimation(const uint32_t dt) noexcept;
+	void updateSkinnedAnimation(const TickCount64& dt) noexcept;
 	const std::vector<DirectX::XMFLOAT4X4>& getTransformMatrixes(void) const noexcept { return _transformMatrixes; }
 	uint16_t getIndex(void) const noexcept { return _index; }
 	uint32_t getTimePosDev(void) const noexcept { return _currentTick; }
-	void setAnimation(const std::string& animationClipName, const uint32_t blendTick) noexcept;
+	void setAnimation(const std::string& animationClipName, const TickCount64& blendTick) noexcept;
 
 private:
-	uint32_t _currentTick;
+	TickCount64 _currentTick;
 	std::string _animationClipName;
 	uint16_t _index;
 	
@@ -133,6 +135,6 @@ private:
 	std::vector<DirectX::XMFLOAT4X4> _transformMatrixes;
 
 	std::vector<BoneAnimationBlendInstance> _blendInstances;
-	uint32_t _blendTick;
+	TickCount64 _blendTick;
 	float _animationSpeed;
 };

@@ -4,6 +4,8 @@
 #include <comdef.h>
 #include <wrl.h>
 
+#include <stdint.h>
+
 #include <fstream>
 #include <iostream>
 

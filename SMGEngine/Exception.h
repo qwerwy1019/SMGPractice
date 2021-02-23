@@ -1,5 +1,4 @@
 #pragma once
-#include <stdint.h>
 #include <atlconv.h>
 
 enum class ErrCode : uint32_t
