@@ -1,10 +1,8 @@
 #pragma once
 #include "TypeGeometry.h"
-#include "TypeGameData.h"
+#include "TypeCommon.h"
 
 class XMLReaderNode;
-static constexpr int FRAME_TO_TICKCOUNT = 20;
-static constexpr double TICKCOUNT_TO_FRAME = 1.f / FRAME_TO_TICKCOUNT;
 struct KeyFrame
 {
 	KeyFrame() noexcept;
@@ -85,7 +83,7 @@ private:
 class AnimationInfo
 {
 public:
-	const AnimationClip* getAnimationClip(const std::string& clipName) const;
+	AnimationClip* getAnimationClip(const std::string& clipName) noexcept;
 
 	void loadXML(const XMLReaderNode& rootNode);
 	std::vector<std::string> getAnimationNameListDev(void) const noexcept
@@ -121,16 +119,20 @@ public:
 	void updateSkinnedAnimation(const TickCount64& dt) noexcept;
 	const std::vector<DirectX::XMFLOAT4X4>& getTransformMatrixes(void) const noexcept { return _transformMatrixes; }
 	uint16_t getIndex(void) const noexcept { return _index; }
-	uint32_t getTimePosDev(void) const noexcept { return _currentTick; }
+	uint32_t getLocalTickCount(void) const noexcept { return _currentTick; }
+	//uint32_t getCurrentFrame(void) const noexcept { return _currentFrame; }
 	void setAnimation(const std::string& animationClipName, const TickCount64& blendTick) noexcept;
 
 private:
 	TickCount64 _currentTick;
+	//uint32_t _currentFrame;
 	std::string _animationClipName;
 	uint16_t _index;
 	
 	BoneInfo* _boneInfo;
 	AnimationInfo* _animationInfo;
+
+	AnimationClip* _currentAnimationClip;
 
 	std::vector<DirectX::XMFLOAT4X4> _transformMatrixes;
 

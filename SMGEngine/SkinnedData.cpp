@@ -247,6 +247,7 @@ KeyFrame::KeyFrame() noexcept
 
 SkinnedModelInstance::SkinnedModelInstance(uint16_t index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept
 	: _currentTick(0)
+	//, _currentFrame(0)
 	, _animationClipName("IDLE")
 	, _index(index)
 	, _boneInfo(boneInfo)
@@ -254,35 +255,26 @@ SkinnedModelInstance::SkinnedModelInstance(uint16_t index, BoneInfo* boneInfo, A
 	, _blendTick(0)
 	, _animationSpeed(1.f)
 {
+	AnimationClip* animationClip = _animationInfo->getAnimationClip(_animationClipName);
+	check(animationClip != nullptr, "애니메이션을 찾을 수 없습니다. " + _animationClipName);
+	_currentAnimationClip = animationClip;
+
 	_transformMatrixes.resize(boneInfo->getBoneCount(), MathHelper::Identity4x4);
 }
 
 void SkinnedModelInstance::updateSkinnedAnimation(const TickCount64& dt) noexcept
 {
-	const AnimationClip* animationClip = _animationInfo->getAnimationClip(_animationClipName);
-	if (animationClip == nullptr)
-	{
-		// 허용해도 되는 오류일까? [2/21/2021 qwerwy]
-		check(animationClip != nullptr, "애니메이션을 찾을 수 없습니다. " + _animationClipName);
-		return;
-	}
-	// 임시처리. actionState코드가 완성되면 삭제되어야함. [2/21/2021 qwerwy]
-	if (_currentTick * _animationSpeed > ((animationClip->getClipEndFrame() + 1) * FRAME_TO_TICKCOUNT))
-	{
-		setAnimation(_animationClipName, 100);
-	}
-	_currentTick = _currentTick + dt;
-
+	_currentTick = _currentTick + (dt * _animationSpeed);
+	
 	std::vector<XMMATRIX> toParentTransforms;
 
-	const TickCount64& speedAppliedTick = static_cast<TickCount64>(_currentTick * _animationSpeed);
 	if (_currentTick < _blendTick)
 	{
-		animationClip->interpolateWithBlend(speedAppliedTick, _blendTick, _blendInstances, toParentTransforms);
+		_currentAnimationClip->interpolateWithBlend(_currentTick, _blendTick, _blendInstances, toParentTransforms);
 	}
 	else
 	{
-		animationClip->interpolate(speedAppliedTick, toParentTransforms);
+		_currentAnimationClip->interpolate(_currentTick, toParentTransforms);
 	}
 
 	_boneInfo->getFinalTransforms(toParentTransforms, _transformMatrixes);
@@ -292,28 +284,30 @@ void SkinnedModelInstance::setAnimation(const std::string& animationClipName, co
 {
 	if (blendTick != 0)
 	{
-		const AnimationClip* animationClip = _animationInfo->getAnimationClip(_animationClipName);
-		if (animationClip == nullptr)
-		{
-			// 허용해도 되는 오류일까? [2/21/2021 qwerwy]
-			check(animationClip != nullptr, "애니메이션을 찾을 수 없습니다. " + _animationClipName);
-			return;
-		}
+		AnimationClip* animationClip = _animationInfo->getAnimationClip(_animationClipName);
+		check(animationClip != nullptr, "애니메이션을 찾을 수 없습니다. " + _animationClipName);
 
 		animationClip->getBlendValue(_currentTick, _blendInstances);
 
 		_blendTick = blendTick;
 	}
+
+	AnimationClip* newAnimationClip = _animationInfo->getAnimationClip(animationClipName);
+	check(newAnimationClip != nullptr, "애니메이션을 찾을 수 없습니다. " + animationClipName);
+
+	_currentAnimationClip = newAnimationClip;
 	_animationClipName = animationClipName;
 	_currentTick = 0;
+	//_currentFrame = 0;
+
 }
 
-const AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) const
+AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) noexcept
 {
 	auto it = _animations.find(clipName);
 	if (it == _animations.end())
 	{
-		ThrowErrCode(ErrCode::AnimationNotFound, clipName);
+		return nullptr;
 	}
 	
 	return &(it->second);

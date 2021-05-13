@@ -59,18 +59,43 @@ public:
 		return true;
 	}
 
-	static bool equal(const DirectX::XMFLOAT4& lhs, const DirectX::XMFLOAT4& rhs, float epsilon)
+	static bool equal(const DirectX::XMFLOAT4& lhs, const DirectX::XMFLOAT4& rhs, float epsilon = FLT_EPSILON)
 	{
 		return equal(lhs.x, rhs.x, epsilon) && equal(lhs.y, rhs.y, epsilon)
 			&& equal(lhs.z, rhs.z, epsilon) && equal(lhs.w, rhs.w, epsilon);
 	}
-	static bool equal(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs, float epsilon)
+	static bool equal(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs, float epsilon = FLT_EPSILON)
 	{
 		return equal(lhs.x, rhs.x, epsilon) && equal(lhs.y, rhs.y, epsilon) && equal(lhs.z, rhs.z, epsilon);
 	}
-	static bool equal(float lhs, float rhs, float epsilon)
+	static bool equal(float lhs, float rhs, float epsilon = FLT_EPSILON)
 	{
 		return abs(lhs - rhs) < epsilon;
+	}
+
+	static DirectX::XMFLOAT3 add(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs)
+	{
+		return DirectX::XMFLOAT3(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z);
+	}
+
+	static DirectX::XMFLOAT4 add(const DirectX::XMFLOAT4& lhs, const DirectX::XMFLOAT4& rhs)
+	{
+		return DirectX::XMFLOAT4(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w);
+	}
+
+	static DirectX::XMFLOAT3 sub(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs)
+	{
+		return DirectX::XMFLOAT3(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z);
+	}
+
+	static DirectX::XMFLOAT4 sub(const DirectX::XMFLOAT4& lhs, const DirectX::XMFLOAT4& rhs)
+	{
+		return DirectX::XMFLOAT4(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w);
+	}
+
+	static float distanceSq(const DirectX::XMFLOAT3& lhs)
+	{
+		return lhs.x * lhs.x + lhs.y * lhs.y + lhs.z * lhs.z;
 	}
 
 	static void interpolateMatrix(const DirectX::XMFLOAT4X4& mat0, const DirectX::XMFLOAT4X4& mat1, float lerpPercent, DirectX::XMFLOAT4X4& matrix)

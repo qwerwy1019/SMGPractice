@@ -18,16 +18,8 @@
 #include "PreDefines.h"
 #include "D3DUtil.h"
 #include "UiManager.h"
-#include "TypeGameData.h"
-
-LRESULT CALLBACK
-MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-	return D3DApp::getApp()->MsgProc(hwnd, msg, wParam, lParam);
-}
-
-
-D3DApp* D3DApp::_app = nullptr;
+#include "TypeCommon.h"
+#include "SMGFramework.h"
 
 void D3DApp::loadInfoMap(void)
 {
@@ -79,7 +71,11 @@ void D3DApp::loadInfoMap(void)
 
 			loadXmlGameObject(xmlGameObject.getRootNode());
 		}
-
+		{
+			_cameraPosition = XMFLOAT3(200, 20, 0);
+			_cameraUpVector = XMFLOAT4(0, 1, 0, 0);
+			_cameraFocusPosition = XMFLOAT3(0, 0, 0);
+		}
 		::CoUninitialize();
 	}
 }
@@ -105,15 +101,8 @@ void D3DApp::buildShaderResourceViews()
 	}
 }
 
-D3DApp::D3DApp(HINSTANCE hInstance)
-	: _hInstance(hInstance)
-	, _hMainWnd(nullptr)
-	, _clientWidth(800)
-	, _clientHeight(600)
-	, _minimized(false)
-	, _maximized(false)
-	, _resizing(false)
-	, _factory(nullptr)
+D3DApp::D3DApp()
+	: _factory(nullptr)
 	, _swapChain(nullptr)
 	, _deviceD3d12(nullptr)
 	, _fence(nullptr)
@@ -133,25 +122,13 @@ D3DApp::D3DApp(HINSTANCE hInstance)
 	, _rootSignature(nullptr)
 	, _vertexShader(nullptr)
 	, _pixelShader(nullptr)
-	, _cameraTheta(5.f)
-	, _cameraPhi(XM_PIDIV4)
-	, _cameraRadius(500.f)
-	, _cameraCenterPos(0.f, 0.f, 0.f)
-	, _cameraPos(0.f, 0.f, 0.f)
-	, _sunTheta(0)
-	, _sunPhi(XM_PIDIV2)
 	, _viewMatrix(MathHelper::Identity4x4)
 	, _projectionMatrix(MathHelper::Identity4x4)
 	, _psoType(PSOType::Normal)
 	, _viewPort()
 	, _scissorRect()
-	, _timer()
 {
-	check(_app == nullptr, "D3DApp class는 한번만 생성되어야 합니다.");
-	_app = this;
-
-	_mousePos.x = 0;
-	_mousePos.y = 0;
+	Initialize();
 }
 D3DApp::~D3DApp()
 {
@@ -248,53 +225,6 @@ void D3DApp::checkFeatureSupport(void) noexcept
 	 
 }
 
-D3DApp* D3DApp::getApp(void) noexcept
-{
-	check(_app != nullptr, "d3d app이 초기화되지 않았습니다.");
-	return _app;
-}
-
-UIManager* D3DApp::getUIManager(void) noexcept
-{
-	check(_app->_uiManager != nullptr, "ui manager가 초기화되지 않았습니다.");
-	return _app->_uiManager.get();
-}
-
-void D3DApp::initMainWindow()
-{
-	WNDCLASS wc;
-	wc.style			= CS_HREDRAW | CS_VREDRAW;
-	wc.lpfnWndProc		= MainWndProc;
-	wc.cbClsExtra		= 0;
-	wc.cbWndExtra		= 0;
-	wc.hInstance		= _hInstance;
-	wc.hIcon			= LoadIcon(0, IDI_APPLICATION);
-	wc.hCursor			= LoadCursor(0, IDC_ARROW);
-	wc.hbrBackground	= (HBRUSH)GetStockObject(NULL_BRUSH);
-	wc.lpszMenuName		= 0;
-	wc.lpszClassName	= L"MainWnd";
-
-	if (!RegisterClass(&wc))
-	{
-		ThrowErrCode(ErrCode::InitFail, "RegisterClass Failed.");
-	}
-
-	RECT R = { 0, 0, _clientWidth, _clientHeight };
-	AdjustWindowRect(&R, WS_OVERLAPPEDWINDOW, false);
-	int width = R.right - R.left;
-	int height = R.bottom - R.top;
-
-	_hMainWnd = CreateWindow(L"MainWnd", WINDOW_CAPTION.c_str(),
-		WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, nullptr, nullptr, _hInstance, nullptr);
-	if (nullptr == _hMainWnd)
-	{
-		ThrowErrCode(ErrCode::InitFail, "CreateWindow Failed.");
-	}
-
-	ShowWindow(_hMainWnd, SW_SHOW);
-	UpdateWindow(_hMainWnd);
-}
-
 void D3DApp::initDirect3D()
 {
 #if defined(DEBUG) || defined(_DEBUG)
@@ -337,6 +267,56 @@ void D3DApp::initDirect3D()
 	createCommandObjects();
 	createSwapChain();
 	createDescriptorHeaps();
+}
+
+void D3DApp::initDirect2D(void)
+{
+	D2D1_FACTORY_OPTIONS options;
+	options.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+	D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, options, _d2dFactory.GetAddressOf());
+
+	WComPtr<IDXGIDevice> deviceDxgi;
+	WComPtr<ID3D11Device> deviceD3d11;
+	WComPtr<ID3D11Device4> deviceD3d114;
+	IUnknown* commandQueue = nullptr;
+
+	ThrowIfFailed(_commandQueue->QueryInterface(&commandQueue));
+	unsigned __int32 DeviceFlags = ::D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+	D3D11On12CreateDevice(_deviceD3d12.Get(),
+		DeviceFlags, nullptr, 0, &commandQueue, 1, 0x00000001, &deviceD3d11, nullptr, nullptr);
+
+	ThrowIfFailed(deviceD3d11->QueryInterface(deviceD3d114.GetAddressOf()));
+
+	ThrowIfFailed(deviceD3d114->QueryInterface(_deviceD3d11On12.GetAddressOf()));
+	ThrowIfFailed(_deviceD3d11On12->QueryInterface(deviceDxgi.GetAddressOf()));
+	_d2dFactory->CreateDevice(deviceDxgi.Get(), _deviceD2d.GetAddressOf());
+
+	ThrowIfFailed(_deviceD2d->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, &_d2dContext));
+
+	deviceD3d114->GetImmediateContext3(_immediateContext.GetAddressOf());
+
+	ThrowIfFailed(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), (IUnknown**)&_writeFactory));
+
+	{
+		ThrowIfFailed(_writeFactory->CreateTextFormat(L"굴림체", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			13.f,
+			L"ko-KR",
+			&_textFormats[0]));
+		ThrowIfFailed(_textFormats[0]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
+		ThrowIfFailed(_textFormats[0]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
+	}
+	static_assert(1 == static_cast<int>(TextFormatType::Count), "타입 추가시 작성해야함.");
+
+	WComPtr<ID2D1SolidColorBrush> black;
+	WComPtr<ID2D1SolidColorBrush> white;
+	ThrowIfFailed(_d2dContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &black));
+	ThrowIfFailed(_d2dContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &white));
+
+	_textBrushes[static_cast<int>(TextBrushType::Black)] = black;
+	_textBrushes[static_cast<int>(TextBrushType::White)] = white;
+	static_assert(2 == static_cast<int>(TextBrushType::Count), "타입 추가시 작성해야함.");
 }
 
 void D3DApp::flushCommandQueue()
@@ -383,13 +363,13 @@ void D3DApp::createCommandObjects(void)
 	_commandList->Close();
 }
 
-void D3DApp::createSwapChain(void)
+void D3DApp::createSwapChain()
 {
 	_swapChain.Reset();
 
 	DXGI_SWAP_CHAIN_DESC sd{};
-	sd.BufferDesc.Width = _clientWidth;
-	sd.BufferDesc.Height = _clientHeight;
+	sd.BufferDesc.Width = SMGFramework::Get().getClientWidth();
+	sd.BufferDesc.Height = SMGFramework::Get().getClientHeight();
 	sd.BufferDesc.RefreshRate.Numerator = 60;
 	sd.BufferDesc.RefreshRate.Denominator = 1;
 	sd.BufferDesc.Format = BACK_BUFFER_FORMAT;
@@ -401,7 +381,7 @@ void D3DApp::createSwapChain(void)
 	
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	sd.BufferCount = SWAP_CHAIN_BUFFER_COUNT;
-	sd.OutputWindow = _hMainWnd;
+	sd.OutputWindow = SMGFramework::Get().getHWnd();
 	sd.Windowed = true;
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
@@ -440,7 +420,15 @@ void D3DApp::OnResize(void)
 	check(_commandAlloc != nullptr, "commandAlloc이 null입니다. 초기화를 확인하세요.");
 
 	flushCommandQueue();
-	_uiManager->beforeResize();
+
+	// reset ui before resize
+	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
+	{
+		_backBufferWrapped[i].Reset();
+		_backBufferBitmap[i].Reset();
+	}
+	_immediateContext->Flush();
+
 	ThrowIfFailed(_commandList->Reset(_commandAlloc.Get(), nullptr), "error!");
 	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
 	{
@@ -448,9 +436,12 @@ void D3DApp::OnResize(void)
 	}
 	_depthStencilBuffer.Reset();
 
+	const uint32_t width = SMGFramework::Get().getClientWidth();
+	const uint32_t height = SMGFramework::Get().getClientHeight();
+
 	ThrowIfFailed(_swapChain->ResizeBuffers(
 		SWAP_CHAIN_BUFFER_COUNT,
-		_clientWidth, _clientHeight,
+		width, height,
 		BACK_BUFFER_FORMAT,
 		DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
 	
@@ -462,15 +453,25 @@ void D3DApp::OnResize(void)
 		_deviceD3d12->CreateRenderTargetView(_swapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		rtvHeapHandle.Offset(1, _rtvDescriptorSize);
 
-		_uiManager->onResize(_swapChainBuffer[i].Get(), i);
-		
+		constexpr D3D11_RESOURCE_FLAGS resourceFlags = { ::D3D11_BIND_RENDER_TARGET | ::D3D11_BIND_SHADER_RESOURCE };
+		ThrowIfFailed(_deviceD3d11On12->CreateWrappedResource(_swapChainBuffer[i].Get(),
+			&resourceFlags,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT,
+			IID_PPV_ARGS(_backBufferWrapped[i].GetAddressOf())
+		));
+
+		WComPtr<IDXGISurface> surface;
+		ThrowIfFailed(_backBufferWrapped[i]->QueryInterface(surface.GetAddressOf()));
+
+		ThrowIfFailed(_d2dContext->CreateBitmapFromDxgiSurface(surface.Get(), &bitmapProperty, &_backBufferBitmap[i]));
 	}
 
 	D3D12_RESOURCE_DESC depthStencilDesc;
 	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	depthStencilDesc.Alignment = 0;
-	depthStencilDesc.Width = _clientWidth;
-	depthStencilDesc.Height = _clientHeight;
+	depthStencilDesc.Width = width;
+	depthStencilDesc.Height = height;
 	depthStencilDesc.DepthOrArraySize = 1;
 	depthStencilDesc.MipLevels = 1;
 
@@ -513,12 +514,12 @@ void D3DApp::OnResize(void)
 
 	_viewPort.TopLeftX = 0;
 	_viewPort.TopLeftY = 0;
-	_viewPort.Width = static_cast<float>(_clientWidth);
-	_viewPort.Height = static_cast<float>(_clientHeight);
+	_viewPort.Width = static_cast<float>(width);
+	_viewPort.Height = static_cast<float>(height);
 	_viewPort.MinDepth = 0.f;
 	_viewPort.MaxDepth = 1.f;
 
-	_scissorRect = { 0, 0, _clientWidth, _clientHeight };
+	_scissorRect = { 0, 0, static_cast<int>(width), static_cast<int>(height) };
 
 	ThrowIfFailed(_commandList->Close());
 	ID3D12CommandList* cmdLists[] = { _commandList.Get() };
@@ -526,13 +527,13 @@ void D3DApp::OnResize(void)
 
 	flushCommandQueue();
 
-	XMMATRIX&& proj = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, aspectRatio(), 1.f, 1000.f);
+	double aspectRatio = static_cast<double>(width) / height;
+	XMMATRIX&& proj = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, aspectRatio, 1.f, 1000.f);
 	XMStoreFloat4x4(&_projectionMatrix, proj);
 }
 
 void D3DApp::Update(void)
 {
-	onKeyboardInput();
 	updateCamera();
 
 	_frameIndex = (_frameIndex + 1) % FRAME_RESOURCE_COUNT;
@@ -601,47 +602,13 @@ void D3DApp::Draw(void)
 	_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
 	//UI
-	_uiManager->drawUI(_currentBackBuffer);
+	drawUI();
 	
 	ThrowIfFailed(_swapChain->Present(0, 0));
 	_currentBackBuffer = (_currentBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	_frameResources[_frameIndex]->setFence(++_currentFence);
 	_commandQueue->Signal(_fence.Get(), _currentFence);
-}
-
-bool D3DApp::isAppPaused(void) const noexcept
-{
-	return _timer.isTimerStopped();
-}
-
-void D3DApp::calculateFrameStats(void) noexcept
-{
-	check(_hMainWnd != nullptr, "_hMainWnd가 초기화되지 않음");
-	static int frameCnt = 0;
-	static double timeElapsed = _timer.getTotalTime();
-
-	++frameCnt;
-	if (_timer.getTotalTime() - timeElapsed > 1.f)
-	{
-		std::wstring fpsStr = std::to_wstring(frameCnt);
-		std::wstring mspfStr = std::to_wstring(1000.f / frameCnt);
-
-		std::wstring timePosStr = L"";
-		std::wstring animString = L"";
-		if (!_skinnedInstance.empty())
-		{
-			timePosStr = std::to_wstring(_skinnedInstance[0]->getTimePosDev());
-			USES_CONVERSION;
-			animString = A2W(_animationNameListDev[_animationNameIndexDev].c_str());
-		}
-
-		std::wstring windowText = WINDOW_CAPTION + L"animTime: " + timePosStr + L" name: " + animString + L" fps: " + fpsStr + L" mspf: " + mspfStr;
-		SetWindowText(_hMainWnd, windowText.c_str());
-
-		frameCnt = 0;
-		timeElapsed += 1.f;
-	}
 }
 
 ID3D12Resource* D3DApp::getCurrentBackBuffer() const noexcept
@@ -659,110 +626,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3DApp::getCurrentBackBufferView() const noexcept
 D3D12_CPU_DESCRIPTOR_HANDLE D3DApp::getDepthStencilView() const noexcept
 {
 	return _dsvHeap->GetCPUDescriptorHandleForHeapStart();
-}
-
-void D3DApp::onMouseDown(WPARAM buttonState, int x, int y) noexcept
-{
-}
-
-void D3DApp::onMouseUp(WPARAM buttonState, int x, int y) noexcept
-{
-}
-
-void D3DApp::onMouseMove(WPARAM buttonState, int x, int y) noexcept
-{
-	if ((buttonState & MK_LBUTTON) != 0)
-	{
-		float dx = DirectX::XMConvertToRadians(0.25f * static_cast<float>(x - _mousePos.x));
-		float dy = DirectX::XMConvertToRadians(0.25f * static_cast<float>(y - _mousePos.y));
-
-		_cameraTheta = MathHelper::AddRadian(_cameraTheta, dx);
-		_cameraPhi = MathHelper::AddRadian(_cameraPhi, dy);
-
-		_cameraPhi = min(max(_cameraPhi, 0.1f), MathHelper::Pi - 0.1f);
-	}
-	else if ((buttonState & MK_RBUTTON) != 0)
-	{
-		float dx = 0.2f * static_cast<float>(x - _mousePos.x);
-		float dy = 0.2f * static_cast<float>(y - _mousePos.y);
-
-		_cameraRadius += dx - dy;
-		_cameraRadius = min(max(_cameraRadius, 3.f), 2000.f);
-	}
-
-	_mousePos.x = x;
-	_mousePos.y = y;
-}
-
-void D3DApp::onKeyboardInput(void) noexcept
-{
-	const float dt = _timer.getDeltaTime();
-
-	{
-		if (GetAsyncKeyState(VK_LEFT) && 0x8000)
-		{
-			_sunTheta -= 1.f * dt;
-			_animationNameIndexDev = _animationNameIndexDev - 1;
-			if (_animationNameIndexDev < 0)
-			{
-				_animationNameIndexDev = 0;
-			}
-			_skinnedInstance[0]->setAnimation(_animationNameListDev[_animationNameIndexDev], 100);
-		}
-
-		if (GetAsyncKeyState(VK_RIGHT) && 0x8000)
-		{
-			_sunTheta += 1.f * dt;
-			_animationNameIndexDev = _animationNameIndexDev + 1;
-			if (_animationNameIndexDev >= _animationNameListDev.size())
-			{
-				_animationNameIndexDev = _animationNameListDev.size() - 1;
-			}
-			_skinnedInstance[0]->setAnimation(_animationNameListDev[_animationNameIndexDev], 100);
-		}
-
-		if (GetAsyncKeyState(VK_UP) && 0x8000)
-		{
-			_sunPhi += 1.f * dt;
-		}
-
-		if (GetAsyncKeyState(VK_DOWN) && 0x8000)
-		{
-			_sunPhi -= 1.f * dt;
-		}
-	}
-
-	{
-		if (GetAsyncKeyState(0x41/*a*/) && 0x8000)
-		{
-			_cameraCenterPos.x -= 30.f * dt;
-		}
-
-		if (GetAsyncKeyState(0x44/*d*/) && 0x8000)
-		{
-			_cameraCenterPos.x += 30.f * dt;
-		}
-
-		if (GetAsyncKeyState(0x57/*w*/) && 0x8000)
-		{
-			_cameraCenterPos.z += 30.f * dt;
-		}
-
-		if (GetAsyncKeyState(0x53/*s*/) && 0x8000)
-		{
-			_cameraCenterPos.z -= 30.f * dt;
-		}
-
-		if (GetAsyncKeyState(0x5A/*z*/) && 0x8000)
-		{
-			_cameraCenterPos.y += 30.f * dt;
-		}
-
-		if (GetAsyncKeyState(0x58/*x*/) && 0x8000)
-		{
-			_cameraCenterPos.y -= 30.f * dt;
-		}
-	}
 }
 
 void D3DApp::buildFrameResources(void)
@@ -784,14 +647,42 @@ void D3DApp::buildConstantGeometry(void)
 
 void D3DApp::updateCamera(void)
 {
-	XMVECTOR pos = MathHelper::SphericalToCartesian(_cameraRadius, _cameraPhi, _cameraTheta);
-	pos += XMLoadFloat3(&_cameraCenterPos);
-	XMStoreFloat3(&_cameraPos, pos);
+	TickCount64 deltaTickCount = SMGFramework::Get().getTimer().getDeltaTickCount();
+	XMVECTOR position = XMLoadFloat3(&_cameraPosition);
+	XMVECTOR upVector = XMLoadFloat4(&_cameraUpVector);
+	XMVECTOR focusPosition = XMLoadFloat3(&_cameraFocusPosition);
+	if (0 < _cameraInputLeftTickCount)
+	{
+		XMVECTOR inputPosition = XMLoadFloat3(&_cameraInputPosition);
+		XMVECTOR inputUpVector = XMLoadFloat4(&_cameraInputUpVector);
+		XMVECTOR inputFocusPosition = XMLoadFloat3(&_cameraInputFocusPosition);
+		if (_cameraInputLeftTickCount <= deltaTickCount)
+		{
+			position = inputPosition;
+			upVector = inputUpVector;
+			if (_hasCameraFocusInput)
+			{
+				focusPosition = inputFocusPosition;
+			}
+			_cameraInputLeftTickCount = 0;
+		}
+		else
+		{
+			float t = (deltaTickCount - _cameraInputLeftTickCount) / static_cast<float>(_cameraInputLeftTickCount);
+			position = XMVectorLerp(position, inputPosition, t);
+			upVector = XMVectorLerp(upVector, inputUpVector, t);
+			if (_hasCameraFocusInput)
+			{
+				focusPosition = XMVectorLerp(focusPosition, inputFocusPosition, t);
+			}
+			_cameraInputLeftTickCount -= deltaTickCount;
+		}
+	}
+	XMStoreFloat3(&_cameraPosition, position);
+	XMStoreFloat4(&_cameraUpVector, upVector);
+	XMStoreFloat3(&_cameraFocusPosition, focusPosition);
 
-	XMVECTOR target = XMLoadFloat3(&_cameraCenterPos);
-	XMVECTOR up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
-
-	XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
+	XMMATRIX view = XMMatrixLookAtLH(position, focusPosition, upVector);
 	XMStoreFloat4x4(&_viewMatrix, view);
 }
 
@@ -820,7 +711,7 @@ void D3DApp::updateSkinnedConstantBuffer(void)
 {
 	auto& currentFrameResource = _frameResources[_frameIndex];
 
-	TickCount64 deltaTick = _timer.getDeltaTickCount();
+	TickCount64 deltaTick = SMGFramework::Get().getTimer().getDeltaTickCount();
 	for (const auto& e : _skinnedInstance)
 	{
 		e->updateSkinnedAnimation(deltaTick);
@@ -852,13 +743,16 @@ void D3DApp::updatePassConstantBuffer()
 	XMStoreFloat4x4(&_passConstants._invProj, XMMatrixTranspose(invProj));
 	XMStoreFloat4x4(&_passConstants._viewProj, XMMatrixTranspose(viewProj));
 	XMStoreFloat4x4(&_passConstants._invViewProj, XMMatrixTranspose(invViewProj));
-	_passConstants._cameraPos = _cameraPos;
-	_passConstants._renderTargetSize = XMFLOAT2(static_cast<float>(_clientWidth), static_cast<float>(_clientHeight));
-	_passConstants._invRenderTargetSize = XMFLOAT2(1.0f / _clientWidth, 1.0f / _clientHeight);
+	_passConstants._cameraPos = _cameraPosition;
+
+	const float width = SMGFramework::Get().getClientWidth();
+	const float height = SMGFramework::Get().getClientHeight();
+	_passConstants._renderTargetSize = XMFLOAT2(static_cast<float>(width), static_cast<float>(height));
+	_passConstants._invRenderTargetSize = XMFLOAT2(1.0f / width, 1.0f / height);
 	_passConstants._nearZ = 1.0f;
 	_passConstants._farZ = 200.0f;
-	_passConstants._totalTime = _timer.getTotalTime();
-	_passConstants._deltaTime = _timer.getDeltaTime();
+	_passConstants._totalTime = SMGFramework::Get().getTimer().getTotalTime();
+	_passConstants._deltaTime = SMGFramework::Get().getTimer().getDeltaTime();
 
 	_passConstants._fogColor = DirectX::XMFLOAT4(DirectX::Colors::LightSteelBlue);
 	_passConstants._fogStart = 20.f;
@@ -866,22 +760,22 @@ void D3DApp::updatePassConstantBuffer()
 	_passConstants._ambientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
 	
 	// 주광
-	XMVECTOR lightDir = -MathHelper::SphericalToCartesian(1.f, _sunPhi, _sunTheta);
+	XMVECTOR lightDir = XMVectorSet(0.f, -1.f, 0.f, 0.f);
 	XMStoreFloat3(&_passConstants._lights[0]._direction, lightDir);
 	XMStoreFloat3(&_passConstants._lights[0]._position, -lightDir * 30.0f);
 	_passConstants._lights[0]._strength = { 0.8f, 0.8f, 0.6f };
 	_passConstants._lights[0]._falloffEnd = 200.f;
 	//_passConstants._lights[0]._strength = { 0.7f * abs(sinf(3.f * _timer.GetTotalTime())) + 0.3f, 0.f, 0.f };
 	// 보조광
-	lightDir = -MathHelper::SphericalToCartesian(1.f, _sunPhi, _sunTheta + XM_PIDIV2);
-	XMStoreFloat3(&_passConstants._lights[1]._direction, lightDir);
-	XMStoreFloat3(&_passConstants._lights[1]._position, -lightDir * 50.f);
+	XMVECTOR subLightDir = XMVectorSet(1.f, 0.f, 0.f, 0.f);
+	XMStoreFloat3(&_passConstants._lights[1]._direction, subLightDir);
+	XMStoreFloat3(&_passConstants._lights[1]._position, -subLightDir * 50.f);
 	_passConstants._lights[1]._strength = { 1.f, 1.f, 0.9f };
 	_passConstants._lights[1]._falloffEnd = 200.f;
 	// 역광
-	lightDir = -MathHelper::SphericalToCartesian(1.f, _sunPhi, XM_PI + _sunTheta);
-	XMStoreFloat3(&_passConstants._lights[2]._direction, lightDir);
-	XMStoreFloat3(&_passConstants._lights[2]._position, -lightDir * 50.f);
+	XMVECTOR backLightDir = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+	XMStoreFloat3(&_passConstants._lights[2]._direction, backLightDir);
+	XMStoreFloat3(&_passConstants._lights[2]._position, -backLightDir * 50.f);
 	_passConstants._lights[2]._strength = { 1.f, 1.f, 0.9f };
 	_passConstants._lights[2]._falloffEnd = 200.f;
 	
@@ -896,11 +790,6 @@ void D3DApp::updatePassConstantBuffer()
 // 	XMStoreFloat4x4(&_shadowItem->_worldMatrix, shadowWorld * shadowMatrix * shadowOffsetY);
 // 
 // 	_shadowItem->_dirtyFrames = FRAME_RESOURCE_COUNT;
-}
-
-void D3DApp::initializeManagers()
-{
-	_uiManager = make_unique<UIManager>(_commandQueue.Get(), _deviceD3d12.Get());
 }
 
 void D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode)
@@ -1054,6 +943,24 @@ void D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode)
 	{
 		ThrowErrCode(ErrCode::NodeNotFound, "ActionStates 노드가 없습니다.");
 	}
+}
+
+void D3DApp::drawUI(void)
+{
+	_deviceD3d11On12->AcquireWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);
+
+	_d2dContext->SetTarget(_backBufferBitmap[_currentBackBuffer].Get());
+	_d2dContext->BeginDraw();
+	D2D1_POINT_2F position = { 0.f, 0.f };
+
+	SMGFramework::Get().getUIManager()->drawUI();
+
+	_d2dContext->EndDraw();
+	_d2dContext->SetTarget(nullptr);
+
+	_deviceD3d11On12->ReleaseWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);
+
+	_immediateContext->Flush();
 }
 
 void D3DApp::updateMaterialConstantBuffer(void)
@@ -1420,116 +1327,11 @@ void D3DApp::buildPipelineStateObject(void)
 	static_assert(static_cast<int>(PSOType::Count) == 5, "PSO 타입이 추가되었다면 확인해주세요.");
 }
 
-LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-	switch (msg)
-	{
-	case WM_ACTIVATE:
-		if (LOWORD(wParam) == WA_INACTIVE)
-		{
-			_timer.Stop();
-		}
-		else
-		{
-			_timer.Start();
-		}
-		return 0;
-	case WM_SIZE:
-		_clientWidth = LOWORD(lParam);
-		_clientHeight = HIWORD(lParam);
-		
-		if (_deviceD3d12 != nullptr)
-		{
-			if (wParam == SIZE_MINIMIZED)
-			{
-				_timer.Stop();
-				_minimized = true;
-				_maximized = false;
-			}
-			else if (wParam == SIZE_MAXIMIZED)
-			{
-				_timer.Start();
-				_minimized = false;
-				_maximized = true;
-				OnResize();
-			}
-			else if (wParam == SIZE_RESTORED)
-			{
-				if (_minimized)
-				{
-					_timer.Start();
-					_minimized = false;
-					OnResize();
-				}
-				else if (_maximized)
-				{
-					_timer.Start();
-					_maximized = false;
-					OnResize();
-				}
-				else if (_resizing)
-				{
-					__noop;
-				}
-				else
-				{
-					OnResize();
-				}
-			}
-		}
-		return 0;
-	case WM_ENTERSIZEMOVE:
-		_timer.Stop();
-		_resizing = true;
-		return 0;
-	case WM_EXITSIZEMOVE:
-		_timer.Start();
-		_resizing = false;
-		OnResize();
-		return 0;
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		return 0;
-	case WM_MENUCHAR:
-		return MAKELRESULT(0, MNC_CLOSE);
-	case WM_GETMINMAXINFO:
-		((MINMAXINFO*)lParam)->ptMinTrackSize.x = 800;
-		((MINMAXINFO*)lParam)->ptMinTrackSize.y = 600;
-		((MINMAXINFO*)lParam)->ptMaxTrackSize.x = 800;
-		((MINMAXINFO*)lParam)->ptMaxTrackSize.y = 600;
-		return 0;
-	case WM_LBUTTONDOWN:
-	case WM_RBUTTONDOWN:
-	case WM_MBUTTONDOWN:
-		onMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-		return 0;
-	case WM_LBUTTONUP:
-	case WM_RBUTTONUP:
-	case WM_MBUTTONUP:
-		onMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-		return 0;
-	case WM_MOUSEMOVE:
-		onMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-		return 0;
-	case WM_KEYUP:
-		if (wParam == VK_ESCAPE)
-		{
-			PostQuitMessage(0);
-		}
-		else if (wParam == VK_F2)
-		{
-			set4XMsaaState(!_4xMsaaState);
-		}
-		return 0;
-	}
-	return DefWindowProc(hwnd, msg, wParam, lParam);
-}
-
 bool D3DApp::Initialize(void)
 {
-	initMainWindow();
 	initDirect3D();
-	initializeManagers();
+	initDirect2D();
+
 	OnResize();
 
 	ThrowIfFailed(_commandList->Reset(_commandAlloc.Get(), nullptr));
@@ -1540,7 +1342,6 @@ bool D3DApp::Initialize(void)
 
 	// 이 이후로는 맵 전환마다 수행되어야 할듯 [1/21/2021 qwerw]
 
-	_uiManager->loadUI();
 	loadInfoMap();
 	buildShaderResourceViews();
 
@@ -1557,46 +1358,6 @@ bool D3DApp::Initialize(void)
 	flushCommandQueue();
 
 	return true;
-}
-
-int D3DApp::Run(void)
-{
-	MSG msg = { 0 };
-	_timer.Reset();
-	while (msg.message != WM_QUIT)
-	{
-		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-		else
-		{
-			_timer.ProgressTick();
-			if (!isAppPaused())
-			{
-				calculateFrameStats();
-				//UpdateGameObject();
-				Update();
-
-				Draw();
-
-				Sleep(10);
-			}
-			else
-			{
-				Sleep(100);
- 			}
-		}
-	}
-	return (int)msg.wParam;
-}
-
-float D3DApp::aspectRatio(void) const
-{
-	check(_clientHeight != 0, "zero divide");
-	
-	return static_cast<float>(_clientWidth) / _clientHeight;
 }
 
 uint16_t D3DApp::loadTexture(const string& textureName, const wstring& fileName)

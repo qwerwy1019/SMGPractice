@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TypeGeometry.h"
+#include "TypeUI.h"
 
 #include "GameTimer.h"
 #include "UploadBuffer.h"
@@ -103,17 +104,25 @@ public:
 	} D3D12_FEATURE_DATA_FEATURE_LEVELS;
 
 	bool Initialize(void);
-	int Run(void);
-	LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-	static D3DApp* getApp(void) noexcept;
-	static UIManager* getUIManager(void) noexcept;
-
-
-	D3DApp(HINSTANCE hInstance);
+	D3DApp();
 	~D3DApp();
 
 	uint16_t loadTexture(const string& textureName, const wstring& fileName);
+
+	ID3D12Device* getDevice(void) const noexcept { return _deviceD3d12.Get(); }
+	ID3D12CommandQueue* getCommandQueue(void) const noexcept { return _commandQueue.Get(); }
+
+	// 업데이트
+	void OnResize(void);
+	void Update(void);
+	void Draw(void);
+
+	// ui 관련
+	IDWriteFactory3* getWriteFactory(void) const noexcept { return _writeFactory.Get(); }
+	ID2D1DeviceContext2* getD2dContext(void) const noexcept { return _d2dContext.Get(); }
+	IDWriteTextFormat* getTextFormat(TextFormatType type) const noexcept { return _textFormats[static_cast<int>(type)].Get(); }
+	ID2D1Brush* getTextBrush(TextBrushType type)const noexcept { return _textBrushes[static_cast<int>(type)].Get(); }
 
 private:
 	////////////////////////////////////////////////////////////////////////
@@ -124,36 +133,19 @@ private:
 	void checkFeatureSupport(void) noexcept;
 	float aspectRatio(void) const;
 
-	// 창 띄우기(Win32)
-	void initMainWindow(void);
-
 	// Direct3D 초기화
-	void initDirect3D(void);
-	//void initDirect2D(void);
+	void initDirect3D();
+	void initDirect2D(void);
 	void flushCommandQueue();
 	void set4XMsaaState(bool value);
 	void createCommandObjects(void);
-	void createSwapChain(void);
+	void createSwapChain();
 	void createDescriptorHeaps(void);
 
-	// 업데이트
-	void OnResize(void);
-	void Update(void);
-	void Draw(void);
-
-	bool isAppPaused(void) const noexcept;
-	void calculateFrameStats(void) noexcept;
 	ID3D12Resource* getCurrentBackBuffer() const noexcept;
 	D3D12_CPU_DESCRIPTOR_HANDLE getCurrentBackBufferView() const noexcept;
 	D3D12_CPU_DESCRIPTOR_HANDLE getDepthStencilView() const noexcept;
 
-	// 마우스 입력
-	void onMouseDown(WPARAM buttonState, int x, int y) noexcept;
-	void onMouseUp(WPARAM buttonState, int x, int y) noexcept;
-	void onMouseMove(WPARAM buttonState, int x, int y) noexcept;
-
-	// 키보드 입력
-	void onKeyboardInput(void) noexcept;
 
 	// 파이프라인 생성
 	void buildFrameResources(void);
@@ -182,22 +174,13 @@ private:
 	UINT getTotalRenderItemCount(void) const noexcept;
 	void buildShaderResourceViews();
 
-	void animateMaterials(void);
-	void initializeManagers();
-
 	void loadXmlMaterial(const XMLReaderNode& rootNode);
 	void loadXmlGameObject(const XMLReaderNode& rootNode);
+
+	void drawUI(void);
+
 private:
-	HINSTANCE _hInstance;
-	HWND _hMainWnd;
 	
-	int _clientWidth;
-	int _clientHeight;
-
-	bool _minimized;
-	bool _maximized;
-	bool _resizing;
-
 	bool _4xMsaaState = false;
 	UINT _4xMsaaQuality = 0;
 
@@ -240,24 +223,22 @@ private:
 
 	unordered_map<PSOType, WComPtr<ID3D12PipelineState>> _pipelineStateObjectMap;
 
+	// renderItem은 스테이지 입장시 한번에 날리고 로드하는걸로 한다. [2/24/2021 qwerwy]
 	std::vector<RenderItem*> _renderItems[static_cast<int>(RenderLayer::Count)];
 	std::vector<unique_ptr<RenderItem>> _renderItemsUniquePtrXXX;
 
 	std::vector<std::unique_ptr<Texture>> _textures;
 
-	// 마우스 입력
-	POINT _mousePos;
+	// 카메라
+	DirectX::XMFLOAT3 _cameraInputPosition;
+	DirectX::XMFLOAT4 _cameraInputUpVector;
+	DirectX::XMFLOAT3 _cameraInputFocusPosition;
+	TickCount64 _cameraInputLeftTickCount;
+	bool _hasCameraFocusInput;
 
-	// 카메라 구면 좌표
-	float _cameraTheta;
-	float _cameraPhi;
-	float _cameraRadius;
-	XMFLOAT3 _cameraCenterPos;
-	XMFLOAT3 _cameraPos;
-
-	// 태양 구면좌표 (radius = 1)
-	float _sunTheta;
-	float _sunPhi;
+	DirectX::XMFLOAT3 _cameraPosition;
+	DirectX::XMFLOAT4 _cameraUpVector;
+	DirectX::XMFLOAT3 _cameraFocusPosition;
 
 	// 좌표계 변환
 	XMFLOAT4X4 _viewMatrix;
@@ -266,9 +247,21 @@ private:
 	PSOType _psoType;
 	D3D12_VIEWPORT _viewPort;
 	D3D12_RECT _scissorRect;
-	GameTimer _timer;
 
-	static D3DApp* _app;
+	// UI & D2D
+	WComPtr<ID3D11Resource> _backBufferWrapped[SWAP_CHAIN_BUFFER_COUNT];
+	WComPtr<ID2D1Bitmap1> _backBufferBitmap[SWAP_CHAIN_BUFFER_COUNT];
+	WComPtr<ID2D1Factory3> _d2dFactory;
+	WComPtr<ID2D1Device2> _deviceD2d;
+	WComPtr<ID2D1DeviceContext2> _d2dContext;
+
+	WComPtr<ID3D11On12Device> _deviceD3d11On12;
+	WComPtr<IDWriteFactory3> _writeFactory;
+	std::array<WComPtr<IDWriteTextFormat>, static_cast<int>(TextFormatType::Count)> _textFormats;
+	std::array<WComPtr<ID2D1Brush>, static_cast<int>(TextBrushType::Count)> _textBrushes;
+
+	WComPtr<ID3D11DeviceContext3> _immediateContext;
+
 	//_resourceManager : 스테이지매니저가 요청한 자료들을 로드/언로드한다. 멀티스레드 적용이 되었으면 좋겠음.
 	//_stageManager : 스테이지를 불러오고, 오브젝트를 배치한다.
 	//UI는 어떻게 돌아가야 하지?
@@ -290,6 +283,5 @@ public:
 	int _animationNameIndexDev = 0;
 	void loadInfoMap(void);
 
-	unique_ptr<UIManager> _uiManager;
 };
 

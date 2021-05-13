@@ -1,5 +1,5 @@
 #pragma once
-#include "TypeGameData.h"
+#include "TypeCommon.h"
 
 class GameTimer
 {

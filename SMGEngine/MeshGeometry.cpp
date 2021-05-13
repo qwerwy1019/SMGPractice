@@ -77,7 +77,6 @@ MeshGeometry::MeshGeometry() noexcept
 
 void MeshGeometry::loadXml(const XMLReaderNode& rootNode, ID3D12Device* device, ID3D12GraphicsCommandList* commandList)
 {
-	ErrCode rv = ErrCode::Success;
 	rootNode.loadAttribute("Name", _name);
 	bool isSkinned;
 	rootNode.loadAttribute("IsSkinned", isSkinned);

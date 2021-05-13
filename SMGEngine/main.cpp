@@ -1,5 +1,6 @@
 #include "stdafx.h"
-#include "D3DApp.h"
+#include "SMGFramework.h"
+#include "Exception.h"
 #include <crtdbg.h>
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
@@ -10,10 +11,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 #endif
 	try
 	{
-		D3DApp mainApp(hInstance);
-		if (!mainApp.Initialize())
-			return 0;
-		return mainApp.Run();
+		SMGFramework::Create(hInstance);
+
+		return SMGFramework::Get().Run();
 	}
 	catch (DxException& e)
 	{

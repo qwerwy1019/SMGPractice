@@ -114,3 +114,18 @@ enum class ErrCode : uint32_t
 	}																															\
 }
 #endif
+
+class DxException
+{
+public:
+	DxException();
+	DxException(HRESULT hr, ErrCode errorCode, const std::wstring& functionName, const std::wstring& fileName, const int lineNumber);
+
+	std::wstring to_wstring() const noexcept;
+
+	HRESULT			_hr;
+	ErrCode			_errorCode;
+	std::wstring	_functionName;
+	std::wstring	_fileName;
+	int				_lineNumber;
+};
