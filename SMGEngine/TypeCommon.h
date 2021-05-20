@@ -37,3 +37,5 @@ enum class StickInputType
 
 	Count,
 };
+
+using CharacterKey = uint16_t;

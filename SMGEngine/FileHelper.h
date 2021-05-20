@@ -120,6 +120,13 @@ class XMLReaderNode
 {
 public:
 	XMLReaderNode() = default;
+
+	XMLReaderNode(XMLReaderNode&&) = default;
+	XMLReaderNode& operator=(XMLReaderNode&&) = default;
+
+	XMLReaderNode(const XMLReaderNode&) = delete;
+	XMLReaderNode& operator=(const XMLReaderNode&) = delete;
+
 	XMLReaderNode(IXMLDOMElementPtr node) noexcept;
 
 	template<typename T>
@@ -237,7 +244,7 @@ public:
 	std::string getNodeName(void) const;
 
 	std::vector<XMLReaderNode> getChildNodes(void) const;
-
+	std::unordered_map<std::string, XMLReaderNode> getChildNodesWithName(void) const;
 private:
 	IXMLDOMElementPtr _element;
 };
@@ -247,7 +254,7 @@ class XMLReader
 public:
 	XMLReader() = default;
 	void loadXMLFile(const std::string& filePath);
-	XMLReaderNode getRootNode(void) const noexcept { return _node; }
+	const XMLReaderNode& getRootNode(void) const noexcept { return _node; }
 private:
 	XMLReaderNode _node;
 	IXMLDOMDocumentPtr _document;

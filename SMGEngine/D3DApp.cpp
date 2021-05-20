@@ -827,10 +827,10 @@ void D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode)
 
 void D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode)
 {
-	// getChildNode(nodeName)을 구현하면 수정할것 [1/28/2021 qwerw]
-	const auto& childNodes = rootNode.getChildNodes();
-	bool isSkinned = (childNodes.size() == 4);
-	int nodeIndex = 0;
+	const auto& childNodes = rootNode.getChildNodesWithName();
+	bool isSkinned;
+	rootNode.loadAttribute("IsSkinned", isSkinned);
+	auto childIter = childNodes.end();
 	uint16_t skinnedConstantBufferIndex = std::numeric_limits<uint16_t>::max();
 	SkinnedModelInstance* skinnedInstance = nullptr;
 
@@ -839,107 +839,96 @@ void D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode)
 		BoneInfo* boneInfo = nullptr;
 		AnimationInfo* animationInfo = nullptr;
 
-		if (childNodes[nodeIndex].getNodeName() == "Skeleton")
-		{
-			string skeletonName;
-			childNodes[nodeIndex].loadAttribute("FileName", skeletonName);
-			auto boneIt = _boneInfoMap.find(skeletonName);
-			if (boneIt == _boneInfoMap.end())
-			{
-				ThrowErrCode(ErrCode::FileNotFound, "skeleton file : " + skeletonName + "이 _boneInfoMap에 없습니다.");
-			}
-			boneInfo = boneIt->second.get();
-
-			++nodeIndex;
-		}
-		else
+		childIter = childNodes.find("Skeleton");
+		if (childIter == childNodes.end())
 		{
 			ThrowErrCode(ErrCode::NodeNotFound, "Skeleton 노드가 없습니다.");
 		}
-		
-		if (childNodes[nodeIndex].getNodeName() == "Animation")
+
+		string skeletonName;
+		childIter->second.loadAttribute("FileName", skeletonName);
+		auto boneIt = _boneInfoMap.find(skeletonName);
+		if (boneIt == _boneInfoMap.end())
 		{
-			string animationInfoName;
-			childNodes[nodeIndex].loadAttribute("FileName", animationInfoName);
-			auto animIt = _animationInfoMap.find(animationInfoName);
-			if (animIt == _animationInfoMap.end())
-			{
-				ThrowErrCode(ErrCode::FileNotFound, "Animation File : " + animationInfoName + "이 없습니다.");
-			}
-			animationInfo = animIt->second.get();
-			++nodeIndex;
+			ThrowErrCode(ErrCode::FileNotFound, "skeleton file : " + skeletonName + "이 _boneInfoMap에 없습니다.");
 		}
-		else
+		boneInfo = boneIt->second.get();
+		
+		childIter = childNodes.find("Animation");
+		if (childIter == childNodes.end())
 		{
 			ThrowErrCode(ErrCode::NodeNotFound, "Animation 노드가 없습니다.");
 		}
+		string animationInfoName;
+		childIter->second.loadAttribute("FileName", animationInfoName);
+		auto animFileIt = _animationInfoMap.find(animationInfoName);
+		if (animFileIt == _animationInfoMap.end())
+		{
+			ThrowErrCode(ErrCode::FileNotFound, "Animation File : " + animationInfoName + "이 없습니다.");
+		}
+		animationInfo = animFileIt->second.get();
 
 		skinnedConstantBufferIndex = _skinnedInstance.size();
 		unique_ptr<SkinnedModelInstance> newSkinnedInstance(new SkinnedModelInstance(skinnedConstantBufferIndex, boneInfo, animationInfo));
 		skinnedInstance = newSkinnedInstance.get();
 		_skinnedInstance.emplace_back(move(newSkinnedInstance));
 	}
-	if (childNodes[nodeIndex].getNodeName() == "Mesh")
-	{
-		string meshFileName;
-		childNodes[nodeIndex].loadAttribute("FileName", meshFileName);
-		auto meshIt = _geometries.find(meshFileName);
-		if (meshIt == _geometries.end())
-		{
-			ThrowErrCode(ErrCode::FileNotFound, "Mesh File : " + meshFileName + "이 없습니다.");
-		}
-		const auto& subMeshMap = meshIt->second->_subMeshMap;
-		const auto& subMeshNodes = childNodes[nodeIndex].getChildNodes();
-		for (int j = 0; j < subMeshNodes.size(); ++j)
-		{
-			string subMeshName;
-			subMeshNodes[j].loadAttribute("Name", subMeshName);
-			const auto& subMeshIt = subMeshMap.find(subMeshName);
-			if (subMeshIt == subMeshMap.end())
-			{
-				ThrowErrCode(ErrCode::SubMeshNotFound, "SubMeshName : " + subMeshName + "이 " + meshFileName + "에 없습니다.");
-			}
-			string materialFile, materialName;
-			subMeshNodes[j].loadAttribute("MaterialFile", materialFile);
-			subMeshNodes[j].loadAttribute("MaterialName", materialName);
-			auto materialIt = _materials.find(materialFile + '/' + materialName);
-			if (materialIt == _materials.end())
-			{
-				ThrowErrCode(ErrCode::MaterialNotFound, "Material : " + materialFile + '/' + materialName + "이 없습니다.");
-			}
-			Material* material = materialIt->second.get();
-			// material에서 RenderLayer 정할수 있도록 추가해야함 [1/28/2021 qwerw]
 
-			auto renderItem = make_unique<RenderItem>();
-			// spawnInfo 작업이 완료되면 이 데이터도 채워져야함 [1/28/2021 qwerw]
-// 			XMMATRIX S = XMMatrixScaling(scale.x, scale.y, scale.z);
-// 			XMMATRIX R = XMMatrixRotationY(rotation.y);
-// 			XMMATRIX T = XMMatrixTranslation(0.f, 0.f, 0.f);
-			renderItem->_worldMatrix = MathHelper::Identity4x4;
-			renderItem->_objConstantBufferIndex = _renderItemsUniquePtrXXX.size();
-			renderItem->_geometry = meshIt->second.get();
-			renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-			renderItem->_indexCount = subMeshIt->second._indexCount;
-			renderItem->_baseVertexLocation = subMeshIt->second._baseVertexLoaction;
-			renderItem->_startIndexLocation = subMeshIt->second._baseIndexLoacation;
-			renderItem->_material = material;
-			renderItem->_skinnedConstantBufferIndex = skinnedConstantBufferIndex;
-			renderItem->_skinnedModelInstance = skinnedInstance;
-			_renderItems[static_cast<int>(RenderLayer::Opaque)].push_back(renderItem.get());
-			_renderItemsUniquePtrXXX.push_back(move(renderItem));
-		}
-		++nodeIndex;
-	}
-	else
+	childIter = childNodes.find("Mesh");
+	if (childIter == childNodes.end())
 	{
 		ThrowErrCode(ErrCode::NodeNotFound, "Mesh 노드가 없습니다.");
 	}
-
-	if (childNodes[nodeIndex].getNodeName() == "ActionStates")
+	string meshFileName;
+	childIter->second.loadAttribute("FileName", meshFileName);
+	auto meshIt = _geometries.find(meshFileName);
+	if (meshIt == _geometries.end())
 	{
-		++nodeIndex;
+		ThrowErrCode(ErrCode::FileNotFound, "Mesh File : " + meshFileName + "이 없습니다.");
 	}
-	else
+	const auto& subMeshMap = meshIt->second->_subMeshMap;
+	const auto& subMeshNodes = childIter->second.getChildNodes();
+	for (int j = 0; j < subMeshNodes.size(); ++j)
+	{
+		string subMeshName;
+		subMeshNodes[j].loadAttribute("Name", subMeshName);
+		const auto& subMeshIt = subMeshMap.find(subMeshName);
+		if (subMeshIt == subMeshMap.end())
+		{
+			ThrowErrCode(ErrCode::SubMeshNotFound, "SubMeshName : " + subMeshName + "이 " + meshFileName + "에 없습니다.");
+		}
+		string materialFile, materialName;
+		subMeshNodes[j].loadAttribute("MaterialFile", materialFile);
+		subMeshNodes[j].loadAttribute("MaterialName", materialName);
+		auto materialIt = _materials.find(materialFile + '/' + materialName);
+		if (materialIt == _materials.end())
+		{
+			ThrowErrCode(ErrCode::MaterialNotFound, "Material : " + materialFile + '/' + materialName + "이 없습니다.");
+		}
+		Material* material = materialIt->second.get();
+		// material에서 RenderLayer 정할수 있도록 추가해야함 [1/28/2021 qwerw]
+
+		auto renderItem = make_unique<RenderItem>();
+		// spawnInfo 작업이 완료되면 이 데이터도 채워져야함 [1/28/2021 qwerw]
+// 			XMMATRIX S = XMMatrixScaling(scale.x, scale.y, scale.z);
+// 			XMMATRIX R = XMMatrixRotationY(rotation.y);
+// 			XMMATRIX T = XMMatrixTranslation(0.f, 0.f, 0.f);
+		renderItem->_worldMatrix = MathHelper::Identity4x4;
+		renderItem->_objConstantBufferIndex = _renderItemsUniquePtrXXX.size();
+		renderItem->_geometry = meshIt->second.get();
+		renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		renderItem->_indexCount = subMeshIt->second._indexCount;
+		renderItem->_baseVertexLocation = subMeshIt->second._baseVertexLoaction;
+		renderItem->_startIndexLocation = subMeshIt->second._baseIndexLoacation;
+		renderItem->_material = material;
+		renderItem->_skinnedConstantBufferIndex = skinnedConstantBufferIndex;
+		renderItem->_skinnedModelInstance = skinnedInstance;
+		_renderItems[static_cast<int>(RenderLayer::Opaque)].push_back(renderItem.get());
+		_renderItemsUniquePtrXXX.push_back(move(renderItem));
+	}
+
+	childIter = childNodes.find("ActionStates");
+	if (childIter == childNodes.end())
 	{
 		ThrowErrCode(ErrCode::NodeNotFound, "ActionStates 노드가 없습니다.");
 	}

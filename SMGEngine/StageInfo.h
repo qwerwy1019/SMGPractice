@@ -1,12 +1,11 @@
 #pragma once
 #include "TypeD3d.h"
-//#include <string>
+#include "TypeCommon.h"
 
-enum class ErrCode : uint32_t;
-
-using CharacterKey = uint16_t;
-struct StageInfo
+class XMLReaderNode;
+class StageInfo
 {
+public:
 	enum class LandscapeType
 	{
 		Basic,
@@ -14,24 +13,19 @@ struct StageInfo
 
 		Count,
 	};
-	enum class DirectionType
-	{
-		North,
-		South,
-		East,
-		West,
-
-		Count,
-	};
 	struct SpawnInfo
 	{
 		CharacterKey _key;
 		DirectX::XMFLOAT3 _position;
-		DirectionType _direction;
+		DirectX::XMFLOAT3 _direction;
+		DirectX::XMFLOAT3 _upVector;
 	};
-
+	void loadXml(const XMLReaderNode& rootNode);
+	void loadXmlSpawnInfo(const XMLReaderNode& node);
+private:
 	LandscapeType _landscapeType;
 	std::vector<SpawnInfo> _spawnInfo;
 
-	ErrCode loadXml(const std::string& fileName);
+	std::string _name;
+	
 };

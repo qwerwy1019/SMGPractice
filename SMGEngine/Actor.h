@@ -6,39 +6,19 @@ struct RenderItem;
 class CharacterInfo;
 class ActionChart;
 class ActionState;
+struct SpawnInfo;
 
 struct CollisionInfo
 {
 	float _collisionTime; // 0 ~ 1
 	DirectX::XMFLOAT3 _collisionPoint; // {-1 ~ 1, -1 ~ 1, -1 ~ 1}
 };
-class CharacterInfo
-{
-public:
-	CollisionShape getCollisionShape(void) const noexcept { return _collisionShape; }
-	CollisionType getCollisionType(void) const noexcept { return _collisionType; }
-	float getRadius(void) const noexcept { return _radius; }
-	float getSizeX(void) const noexcept { return _radius; }
-	float getSizeY(void) const noexcept { return _radius; }
-	float getSizeZ(void) const noexcept { return _radius; }
-private:
-	CollisionType _collisionType;
-	std::string _actionChartName;
-	CollisionShape _collisionShape;
-
-	float _radius;
-
-	// box type일때만 사용되는 값 [3/10/2021 qwerwy]
-	float _sizeX;
-	float _sizeY;
-	float _sizeZ;
-
-};
 
 class Actor
 {
 public:
 	Actor();
+	Actor(const SpawnInfo& spawnInfo);
 	~Actor();
 	void rotateOnPlane(const float rotateAngle) noexcept;
 	float getRotateAngleDelta(const TickCount64& deltaTick) const noexcept;
@@ -48,10 +28,10 @@ public:
 	// 위치, 회전 정보를 따로 관리하고 계산하면 renderItem의 _worldMatrix랑 차이가 생길수도 있다. [3/1/2021 qwerwy]
 	// 한쪽을 전체 계산해서 덮어씌우는쪽으로 생각해봐야겠다.
 	bool XM_CALLCONV checkCollision(const Actor* otherActor, DirectX::FXMVECTOR moveVector, CollisionInfo& outCollisionInfo) const noexcept;
-	float getRadius(void) const noexcept { return _size * _characterInfo->getRadius(); }
-	float getSizeX(void) const noexcept { return _size * _characterInfo->getSizeX(); }
-	float getSizeY(void) const noexcept { return _size * _characterInfo->getSizeY(); }
-	float getSizeZ(void) const noexcept { return _size * _characterInfo->getSizeZ(); }
+	float getRadius(void) const noexcept;
+	float getSizeX(void) const noexcept;
+	float getSizeY(void) const noexcept;
+	float getSizeZ(void) const noexcept;
 	static bool XM_CALLCONV checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept;
 	static bool XM_CALLCONV checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept;
 	
@@ -103,7 +83,7 @@ private:
 
 	RenderItem* _renderItem;
 
-	CharacterInfo* _characterInfo;
+	const CharacterInfo* _characterInfo;
 
 	ActionChart* _actionChart;
 	ActionState* _currentActionState;

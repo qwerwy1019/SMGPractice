@@ -5,6 +5,7 @@
 #include "D3DApp.h"
 #include "ActionChart.h"
 #include "MathHelper.h"
+#include "CharacterInfoManager.h"
 
 Actor::Actor()
 	: _position(0.f, 0.f, 0.f)
@@ -20,6 +21,21 @@ Actor::Actor()
 	, _localTickCount(0)
 {
 
+}
+
+Actor::Actor(const SpawnInfo& spawnInfo)
+	: _speed(0.f)
+	, _verticalSpeed(0.f)
+	, _moveDirectionOffset(0.f)
+	, _acceleration(0.f)
+	, _maxSpeed(0.f)
+	, _minSpeed(0.f)
+	, _rotateType(RotateType::Count)
+	, _rotateAngleLeft(0.f)
+	, _rotateSpeed(0.f)
+	, _gravityPointIndex(-1)
+{
+	
 }
 
 Actor::~Actor()
@@ -288,6 +304,26 @@ bool Actor::checkCollision(const Actor* otherActor, DirectX::FXMVECTOR moveVecto
 		}
 		// obb check
 	}
+}
+
+float Actor::getRadius(void) const noexcept
+{
+	return _size * _characterInfo->getRadius();
+}
+
+float Actor::getSizeX(void) const noexcept
+{
+	return _size * _characterInfo->getSizeX();
+}
+
+float Actor::getSizeY(void) const noexcept
+{
+	return _size * _characterInfo->getSizeY();
+}
+
+float Actor::getSizeZ(void) const noexcept
+{
+	return _size * _characterInfo->getSizeZ();
 }
 
 bool XM_CALLCONV Actor::checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept

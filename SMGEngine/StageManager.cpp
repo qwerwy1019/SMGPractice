@@ -5,6 +5,7 @@
 #include "SMGFramework.h"
 #include "Actor.h"
 #include "MathHelper.h"
+#include "FileHelper.h"
 
 StageManager::StageManager()
 	: _sectorSize(0, 0, 0)
@@ -21,9 +22,20 @@ StageManager::~StageManager()
 	_actors.clear();
 }
 
-void StageManager::loadStage(const std::string& stageName)
+void StageManager::loadStage(void)
 {
+	_stageInfo = std::make_unique<StageInfo>();
+
+	const std::string stageInfoFilePath = 
+		"../Resources/XmlFiles/StageInfo/" + _nextStageName + ".xml";
+	XMLReader xmlStageInfo;
+
+	xmlStageInfo.loadXMLFile(stageInfoFilePath);
+
+	_stageInfo->loadXml(xmlStageInfo.getRootNode());
 	
+	spawnActors();
+	_isLoading = false;
 }
 
 void StageManager::update()
@@ -65,6 +77,12 @@ bool StageManager::applyGravity(Actor* actor, const TickCount64& deltaTick) cons
 {
 
 	return true;
+}
+
+void StageManager::setNextStage(std::string stageName) noexcept
+{
+	_nextStageName = stageName;
+	_isLoading = true;
 }
 
 bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcept
@@ -133,4 +151,9 @@ DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position) 
 						   static_cast<int>(position.y + baseCoord.y) % _sectorSize.y,
 						   static_cast<int>(position.z + baseCoord.z) % _sectorSize.z };
 	return rv;
+}
+
+void StageManager::spawnActors()
+{
+	
 }

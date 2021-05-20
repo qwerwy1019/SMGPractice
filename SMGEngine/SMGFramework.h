@@ -5,6 +5,7 @@
 class D3DApp;
 class UIManager;
 class StageManager;
+class CharacterInfoManager;
 
 class SMGFramework
 {
@@ -48,6 +49,7 @@ private:
 	//std::unique_ptr<GameManager> _gameManager;
 	//std::unique_ptr<SoundManager> _soundManager;
 	std::unique_ptr<StageManager> _stageManager;
+	std::unique_ptr<CharacterInfoManager> _characterInfoManager;
 
 	// À©µµ¿ì
 	uint32_t _clientWidth;

@@ -5,6 +5,7 @@
 #include "UIManager.h"
 #include "StageManager.h"
 #include <windowsx.h>
+#include "CharacterInfoManager.h"
 
 SMGFramework::SMGFramework(HINSTANCE hInstance)
 	: _hInstance(hInstance)
@@ -33,6 +34,7 @@ void SMGFramework::Create(HINSTANCE hInstance)
 	_instance->_d3dApp = std::make_unique<D3DApp>();
 	_instance->_uiManager = std::make_unique<UIManager>();
 	_instance->_stageManager = std::make_unique<StageManager>();
+	_instance->_characterInfoManager = std::make_unique<CharacterInfoManager>();
 }
 
 
@@ -123,6 +125,11 @@ int SMGFramework::Run(void)
 		}
 		else
 		{
+			if (_stageManager->isLoading())
+			{
+				_stageManager->loadStage();
+			}
+
 			_timer.ProgressTick();
 			if (!isAppPaused())
 			{

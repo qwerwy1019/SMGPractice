@@ -192,3 +192,31 @@ std::vector<XMLReaderNode> XMLReaderNode::getChildNodes(void) const
 	}
 	return childNodes;
 }
+
+std::unordered_map<std::string, XMLReaderNode> XMLReaderNode::getChildNodesWithName(void) const
+{
+	IXMLDOMNodeListPtr nodeList;
+	ThrowIfFailed(_element->get_childNodes(&nodeList));
+
+	long listSize;
+	ThrowIfFailed(nodeList->get_length(&listSize));
+
+	std::unordered_map<std::string, XMLReaderNode> childNodes(listSize);
+	for (long i = 0; i < listSize; ++i)
+	{
+		IXMLDOMNodePtr node;
+		ThrowIfFailed(nodeList->get_item(i, &node));
+
+		DOMNodeType nodeType;
+		ThrowIfFailed(node->get_nodeType(&nodeType));
+		if (nodeType != DOMNodeType::NODE_ELEMENT)
+		{
+			ThrowErrCode(ErrCode::TypeIsDifferent, "node type error!");
+		}
+
+		IXMLDOMElementPtr element = static_cast<IXMLDOMElementPtr>(node);
+		auto elementReaderNode = XMLReaderNode(element);
+		childNodes[elementReaderNode.getNodeName()] = std::move(elementReaderNode);
+	}
+	return childNodes;
+}
