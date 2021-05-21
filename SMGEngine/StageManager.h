@@ -6,6 +6,7 @@
 class StageInfo;
 enum class ErrCode : uint32_t;
 class Actor;
+class ActionChart;
 
 class StageManager
 {
@@ -20,6 +21,7 @@ public:
 	bool applyGravity(Actor* actor, const TickCount64& deltaTick) const noexcept;
 	bool isLoading(void) const noexcept { return _isLoading; };
 	void setNextStage(std::string stageName) noexcept;
+	ActionChart* loadActionChartFromXML(const std::string& actionChartName);
 private:
 	int sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept;
 	std::string _terrainMeshName;
@@ -33,6 +35,8 @@ private:
 	
 	std::string _nextStageName;
 	bool _isLoading;
+	std::unordered_map<std::string, std::unique_ptr<ActionChart>> _actionchartMap;
 	void spawnActors();
+	void loadStageInfo();
 };
 

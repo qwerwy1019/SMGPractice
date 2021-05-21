@@ -35,7 +35,7 @@ private:
 class ActionChart
 {
 public:
-	void loadXML(const XMLReaderNode& node);
+	ActionChart(const XMLReaderNode& node);
 	//void updateActionState(Actor& actor, uint32_t deltaFrame) const noexcept;
 	ActionState* getActionState(const std::string& name) const noexcept;
 private:

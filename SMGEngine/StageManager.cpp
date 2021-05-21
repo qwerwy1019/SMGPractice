@@ -6,11 +6,16 @@
 #include "Actor.h"
 #include "MathHelper.h"
 #include "FileHelper.h"
+#include "CharacterInfoManager.h"
+#include "ActionChart.h"
+#include "FrameEvent.h"
+#include "ActionCondition.h"
 
 StageManager::StageManager()
 	: _sectorSize(0, 0, 0)
 	, _sectorUnitNumber(0, 0, 0)
 	, _stageInfo(nullptr)
+	, _isLoading(false)
 {
 
 }
@@ -23,17 +28,9 @@ StageManager::~StageManager()
 }
 
 void StageManager::loadStage(void)
-{
-	_stageInfo = std::make_unique<StageInfo>();
-
-	const std::string stageInfoFilePath = 
-		"../Resources/XmlFiles/StageInfo/" + _nextStageName + ".xml";
-	XMLReader xmlStageInfo;
-
-	xmlStageInfo.loadXMLFile(stageInfoFilePath);
-
-	_stageInfo->loadXml(xmlStageInfo.getRootNode());
-	
+{	
+	loadStageInfo();
+	//createMap();
 	spawnActors();
 	_isLoading = false;
 }
@@ -55,7 +52,7 @@ void StageManager::update()
 
 		if (isChanged)
 		{
-			actor->updateRenderWorldMatrix();
+			actor->updateObjectWorldMatrix();
 		}
 	}
 }
@@ -83,6 +80,21 @@ void StageManager::setNextStage(std::string stageName) noexcept
 {
 	_nextStageName = stageName;
 	_isLoading = true;
+}
+
+ActionChart* StageManager::loadActionChartFromXML(const std::string& actionChartName)
+{
+	auto findIt = _actionchartMap.find(actionChartName);
+	if (findIt == _actionchartMap.end())
+	{
+		return findIt->second.get();
+	}
+
+	const std::string filePath = "../Resources/XmlFiles/ActionChart/" + actionChartName + ".xml";
+	XMLReader xmlActionChart;
+	xmlActionChart.loadXMLFile(filePath);
+
+	return nullptr;
 }
 
 bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcept
@@ -155,5 +167,28 @@ DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position) 
 
 void StageManager::spawnActors()
 {
-	
+	check(_stageInfo != nullptr);
+	const auto& spawnInfos = _stageInfo->getSpawnInfos();
+	for (const auto& spawnInfo : spawnInfos)
+	{
+		
+		std::unique_ptr<Actor> actor(new Actor(spawnInfo));
+		
+		int sectorIndex = sectorCoordToIndex(getSectorCoord(spawnInfo._position));
+		_actorsBySector[sectorIndex].emplace(actor.get());
+		_actors.emplace_back(std::move(actor));
+	}
+}
+
+void StageManager::loadStageInfo()
+{
+	_stageInfo = std::make_unique<StageInfo>();
+
+	const std::string stageInfoFilePath =
+		"../Resources/XmlFiles/StageInfo/" + _nextStageName + ".xml";
+	XMLReader xmlStageInfo;
+
+	xmlStageInfo.loadXMLFile(stageInfoFilePath);
+
+	_stageInfo->loadXml(xmlStageInfo.getRootNode());
 }

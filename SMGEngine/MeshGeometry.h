@@ -16,8 +16,7 @@ class MeshGeometry
 {
 public:
 	MeshGeometry(const MeshGeometry& mesh) = delete;
-	MeshGeometry() noexcept;
-	void loadXml(const XMLReaderNode& rootElement, ID3D12Device* device, ID3D12GraphicsCommandList* commandList);
+	MeshGeometry(const XMLReaderNode& rootElement, ID3D12Device* device, ID3D12GraphicsCommandList* commandList);
 
 	// vertex buffer만 동적으로 쓰기 위해서 만든거지만 삭제 or 대체할 수 있으면 좋겠음 [1/18/2021 qwerw]
 	void setVertexByteSizeOnlyXXXXX(UINT vertexBufferSize) noexcept;

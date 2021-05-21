@@ -67,15 +67,7 @@ void MeshGeometry::loadXmlIndices(const XMLReaderNode& node, std::vector<GeoInde
 	}
 }
 
-MeshGeometry::MeshGeometry() noexcept
-	: _vertexByteStride(0)
-	, _vertexBufferByteSize(0)
-	, _indexBufferByteSize(0)
-{
-
-}
-
-void MeshGeometry::loadXml(const XMLReaderNode& rootNode, ID3D12Device* device, ID3D12GraphicsCommandList* commandList)
+MeshGeometry::MeshGeometry(const XMLReaderNode& rootNode, ID3D12Device* device, ID3D12GraphicsCommandList* commandList)
 {
 	rootNode.loadAttribute("Name", _name);
 	bool isSkinned;

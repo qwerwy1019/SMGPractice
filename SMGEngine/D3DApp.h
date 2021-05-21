@@ -2,6 +2,7 @@
 
 #include "TypeGeometry.h"
 #include "TypeUI.h"
+#include "TypeD3d.h"
 
 #include "GameTimer.h"
 #include "UploadBuffer.h"
@@ -51,14 +52,11 @@ enum class PSOType : uint8_t
 struct RenderItem
 {
 	RenderItem() noexcept;
-	DirectX::XMFLOAT4X4 _worldMatrix;
-	DirectX::XMFLOAT4X4 _textureTransform;
 
 	MeshGeometry* _geometry;
 	Material* _material;
 
-	int _dirtyFrames;
-	UINT _objConstantBufferIndex;
+	uint16_t _objConstantBufferIndex;
 
 	// submesh pointer로 바꾸는것도 괜찮을지도? [1/17/2021 qwerw]
 	UINT _indexCount;
@@ -67,33 +65,23 @@ struct RenderItem
 
 	D3D12_PRIMITIVE_TOPOLOGY _primitive;
 
+ 	uint16_t _skinnedConstantBufferIndex;
+	RenderLayer _renderLayer;
+};
+
+struct GameObject
+{
+	GameObject() noexcept;
+	DirectX::XMFLOAT4X4 _worldMatrix;
+	DirectX::XMFLOAT4X4 _textureTransform;
+	uint16_t _objConstantBufferIndex;
+	int _dirtyFrames;
+
 	uint16_t _skinnedConstantBufferIndex;
 	SkinnedModelInstance* _skinnedModelInstance;
-};
 
-enum class RenderLayer : uint8_t
-{
-	Opaque,
-	AlphaTested,
-	Shadow,
-	//MirrorStencil,
-	//ReflectedOpaque,
-	//ReflectedTransparent,
-	Transparent,
-	Count,
+	std::vector<RenderItem*> _renderItems;
 };
-constexpr RenderLayer RenderLayers[] =
-{
-	RenderLayer::Opaque,
-	RenderLayer::AlphaTested,
-	RenderLayer::Shadow,
-	//RenderLayer::MirrorStencil,
-	//RenderLayer::ReflectedOpaque,
-	//RenderLayer::ReflectedTransparent,
-	RenderLayer::Transparent,
-};
-static_assert(sizeof(RenderLayers) == static_cast<int>(RenderLayer::Count), "RenderLayer 추가 시 수정해주세요.");
-
 class D3DApp
 {
 public:
@@ -108,6 +96,7 @@ public:
 	D3DApp();
 	~D3DApp();
 
+	GameObject* createObjectFromXML(const std::string& fileName);
 	uint16_t loadTexture(const string& textureName, const wstring& fileName);
 
 	ID3D12Device* getDevice(void) const noexcept { return _deviceD3d12.Get(); }
@@ -155,10 +144,6 @@ private:
 
 	// 정점 버퍼 초기화
 	void buildConstantGeometry(void);
-	void buildGameObject(const std::string& meshName,
-		const DirectX::XMFLOAT3& scaling,
-		const DirectX::XMFLOAT3& rotation, 
-		const DirectX::XMFLOAT3& transition);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> getStaticSampler(void) const;
 	void updateCamera(void);
@@ -171,11 +156,14 @@ private:
 	void drawRenderItems(const RenderLayer renderLayer);
 	void buildConstantBufferViews();
 	
-	UINT getTotalRenderItemCount(void) const noexcept;
+	UINT getGameObjectCount(void) const noexcept;
 	void buildShaderResourceViews();
 
-	void loadXmlMaterial(const XMLReaderNode& rootNode);
-	void loadXmlGameObject(const XMLReaderNode& rootNode);
+	Material* loadXmlMaterial(const std::string& fileName, const std::string& materialName);
+	BoneInfo* loadXMLBoneInfo(const std::string& fileName);
+	MeshGeometry* loadXMLMeshGeometry(const std::string& fileName);
+	AnimationInfo* loadXMLAnimationInfo(const std::string& fileName);
+	GameObject* createGameObject(SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept;
 
 	void drawUI(void);
 
@@ -223,9 +211,9 @@ private:
 
 	unordered_map<PSOType, WComPtr<ID3D12PipelineState>> _pipelineStateObjectMap;
 
-	// renderItem은 스테이지 입장시 한번에 날리고 로드하는걸로 한다. [2/24/2021 qwerwy]
-	std::vector<RenderItem*> _renderItems[static_cast<int>(RenderLayer::Count)];
-	std::vector<unique_ptr<RenderItem>> _renderItemsUniquePtrXXX;
+	std::vector<std::unique_ptr<RenderItem>> _renderItems[static_cast<int>(RenderLayer::Count)];
+	//std::vector<unique_ptr<RenderItem>> _renderItemsUniquePtrXXX;
+	std::vector<std::unique_ptr<GameObject>> _gameObjects;
 
 	std::vector<std::unique_ptr<Texture>> _textures;
 

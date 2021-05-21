@@ -13,8 +13,11 @@ public:
 	~SMGFramework();
 	static void Create(HINSTANCE hInstance);
 	static SMGFramework& Get(void);
-	UIManager* getUIManager(void) const noexcept { return _uiManager.get(); }
-	D3DApp* getD3DApp(void) const noexcept { return _d3dApp.get(); }
+	static UIManager* getUIManager(void) noexcept; 
+	static D3DApp* getD3DApp(void) noexcept; 
+	static CharacterInfoManager* getCharacterInfoManager(void) noexcept;
+	static StageManager* getStageManager(void) noexcept;
+
 	int Run(void);
 	// 꼭 이렇게 호출해야하나? 확인필요 [2/24/2021 qwerwy]
 	LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);

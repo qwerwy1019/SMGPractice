@@ -20,57 +20,12 @@
 #include "UiManager.h"
 #include "TypeCommon.h"
 #include "SMGFramework.h"
+#include "SkinnedData.h"
 
 void D3DApp::loadInfoMap(void)
 {
 	if (SUCCEEDED(::CoInitialize(nullptr)))
 	{
-		{
-			const string filePath = "../Resources/XmlFiles/Asset/Mesh/marioMesh.xml";
-			XMLReader xmlMeshGeometry;
-
-			xmlMeshGeometry.loadXMLFile(filePath);
-
-			unique_ptr<MeshGeometry> mesh(new MeshGeometry);
-			mesh->loadXml(xmlMeshGeometry.getRootNode(), _deviceD3d12.Get(), _commandList.Get());
-
-			_geometries["marioMesh"] = move(mesh);
-		}
-		{
-			const string filePath = "../Resources/XmlFiles/Asset/Material/marioMat.xml";
-			XMLReader xmlMaterial;
-			xmlMaterial.loadXMLFile(filePath);
-
-			loadXmlMaterial(xmlMaterial.getRootNode());
-		}
-		{
-			const string filePath = "../Resources/XmlFiles/Asset/Skeleton/marioSkeleton.xml";
-			XMLReader xmlSkeleton;
-			xmlSkeleton.loadXMLFile(filePath);
-
-			unique_ptr<BoneInfo> boneInfo(new BoneInfo);
-			boneInfo->loadXML(xmlSkeleton.getRootNode());
-			_boneInfoMap["marioSkeleton"] = move(boneInfo);
-		}
-		{
-			const string filePath = "../Resources/XmlFiles/Asset/Animation/marioAnim.xml";
-			XMLReader xmlAnimation;
-			xmlAnimation.loadXMLFile(filePath);
-
-			unique_ptr<AnimationInfo> animationInfo(new AnimationInfo);
-			animationInfo->loadXML(xmlAnimation.getRootNode());
-
-			_animationNameListDev = animationInfo->getAnimationNameListDev();
-
-			_animationInfoMap["marioAnim"] = move(animationInfo);
-		}
-		{
-			const string filePath = "../Resources/XmlFiles/Object/marioObj.xml";
-			XMLReader xmlGameObject;
-			xmlGameObject.loadXMLFile(filePath);
-
-			loadXmlGameObject(xmlGameObject.getRootNode());
-		}
 		{
 			_cameraPosition = XMFLOAT3(200, 20, 0);
 			_cameraUpVector = XMFLOAT4(0, 1, 0, 0);
@@ -630,7 +585,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3DApp::getDepthStencilView() const noexcept
 
 void D3DApp::buildFrameResources(void)
 {
-	UINT objectCount = getTotalRenderItemCount();
+	UINT objectCount = getGameObjectCount();
 	UINT materialCount = _materials.size();
 	UINT skinnedCount = _skinnedInstance.size();
 	for (int i = 0; i < FRAME_RESOURCE_COUNT; ++i)
@@ -689,7 +644,7 @@ void D3DApp::updateCamera(void)
 void D3DApp::updateObjectConstantBuffer()
 {
 	auto& currentFrameResource = _frameResources[_frameIndex];
-	for (const auto& e : _renderItemsUniquePtrXXX)
+	for (const auto& e : _gameObjects)
 	{
 		if (e->_dirtyFrames > 0)
 		{
@@ -792,53 +747,120 @@ void D3DApp::updatePassConstantBuffer()
 // 	_shadowItem->_dirtyFrames = FRAME_RESOURCE_COUNT;
 }
 
-void D3DApp::loadXmlMaterial(const XMLReaderNode& rootNode)
+Material* D3DApp::loadXmlMaterial(const std::string& fileName, const std::string& materialName)
 {
-	const auto& nodes = rootNode.getChildNodes();
+	std::string materialKey = fileName + "/" + materialName;
+	auto findIt = _materials.find(materialKey);
+	if (findIt != _materials.end())
+	{
+		return findIt->second.get();
+	}
+
+	const std::string filePath = "../Resources/XmlFiles/Asset/Material/" + fileName + ".xml";
+	XMLReader xmlMaterial;
+	xmlMaterial.loadXMLFile(filePath);
+
+	const auto& nodes = xmlMaterial.getRootNode().getChildNodes();
 	for (int i = 0; i < nodes.size(); ++i)
 	{
-		string materialName;
-		nodes[i].loadAttribute("Name", materialName);
-		materialName = "marioMat/" + materialName;
-		if (_materials.find(materialName) != _materials.end())
+		std::string name;
+		nodes[i].loadAttribute("Name", name);
+		name = fileName + "/" + name;
+		if (_materials.find(name) != _materials.end())
 		{
-			// 어떻게 처리할까? [1/27/2021 qwerw]
-			continue;
+			ThrowErrCode(ErrCode::KeyDuplicated, "material 중복 : " + name);
 		}
-		DirectX::XMFLOAT4 diffuseAlbedo;
-		DirectX::XMFLOAT3 fresnelR0;
-		float roughness;
-		nodes[i].loadAttribute("DiffuseAlbedo", diffuseAlbedo);
-		nodes[i].loadAttribute("FresnelR0", fresnelR0);
-		nodes[i].loadAttribute("Roughness", roughness);
+		_materials.emplace(name, new Material(_materials.size(), nodes[i]));
+	}
 
-		string textureName;
-		nodes[i].loadAttribute("DiffuseTexture", textureName);
-		wstring textureNameWstring;
-		textureNameWstring.assign(textureName.begin(), textureName.end());
-		textureNameWstring = L"../Resources/XmlFiles/Asset/Texture/" + textureNameWstring + L".dds";
-
-		uint16_t diffuseSRVIndex = loadTexture(textureName, textureNameWstring);
-		unique_ptr<Material> material(new Material(_materials.size(), diffuseSRVIndex, 0, diffuseAlbedo, fresnelR0, roughness));
-		
-		_materials.emplace(materialName, move(material));
+	findIt = _materials.find(materialKey);
+	if (findIt != _materials.end())
+	{
+		return findIt->second.get();
+	}
+	else
+	{
+		ThrowErrCode(ErrCode::MaterialNotFound, materialKey);
 	}
 }
 
-void D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode)
+BoneInfo* D3DApp::loadXMLBoneInfo(const std::string& fileName)
 {
-	const auto& childNodes = rootNode.getChildNodesWithName();
+	auto findIt = _boneInfoMap.find(fileName);
+	if (findIt != _boneInfoMap.end())
+	{
+		return findIt->second.get();
+	}
+
+	const string filePath = "../Resources/XmlFiles/Asset/Skeleton/" + fileName + ".xml";
+	XMLReader xmlSkeleton;
+	xmlSkeleton.loadXMLFile(filePath);
+
+	auto it = _boneInfoMap.emplace(fileName, new BoneInfo(xmlSkeleton.getRootNode()));
+	return it.first->second.get();
+}
+
+MeshGeometry* D3DApp::loadXMLMeshGeometry(const std::string& fileName)
+{
+	auto findIt = _geometries.find(fileName);
+	if (findIt != _geometries.end())
+	{
+		return findIt->second.get();
+	}
+
+	const string filePath = "../Resources/XmlFiles/Asset/Mesh/" + fileName + ".xml";
+	XMLReader xmlMeshGeometry;
+
+	xmlMeshGeometry.loadXMLFile(filePath);
+
+	auto it = _geometries.emplace(fileName, 
+		new MeshGeometry(xmlMeshGeometry.getRootNode(), _deviceD3d12.Get(), _commandList.Get()));
+
+	return it.first->second.get();
+}
+
+AnimationInfo* D3DApp::loadXMLAnimationInfo(const std::string& fileName)
+{
+	auto findIt = _animationInfoMap.find(fileName);
+	if (findIt != _animationInfoMap.end())
+	{
+		return findIt->second.get();
+	}
+	const string filePath = "../Resources/XmlFiles/Asset/Animation/" + fileName + ".xml";
+	XMLReader xmlAnimation;
+	xmlAnimation.loadXMLFile(filePath);
+
+	auto it = _animationInfoMap.emplace(fileName, new AnimationInfo(xmlAnimation.getRootNode()));
+	return it.first->second.get();
+}
+
+GameObject* D3DApp::createGameObject(SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept
+{
+	const uint16_t objCBIndex = _gameObjects.size();
+	std::unique_ptr<GameObject> gameObject(new GameObject);
+	gameObject->_skinnedModelInstance = skinnedInstance;
+	gameObject->_skinnedConstantBufferIndex = skinnedBufferIndex;
+	gameObject->_objConstantBufferIndex = objCBIndex;
+
+	_gameObjects.push_back(std::move(gameObject));
+	return _gameObjects.back().get();
+}
+
+GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
+{
+	const string filePath = "../Resources/XmlFiles/Object/" + fileName + ".xml";
+	XMLReader xmlObject;
+	xmlObject.loadXMLFile(filePath);
+
+	const auto& childNodes = xmlObject.getRootNode().getChildNodesWithName();
 	bool isSkinned;
-	rootNode.loadAttribute("IsSkinned", isSkinned);
+	xmlObject.getRootNode().loadAttribute("IsSkinned", isSkinned);
 	auto childIter = childNodes.end();
 	uint16_t skinnedConstantBufferIndex = std::numeric_limits<uint16_t>::max();
 	SkinnedModelInstance* skinnedInstance = nullptr;
 
 	if (isSkinned)
 	{
-		BoneInfo* boneInfo = nullptr;
-		AnimationInfo* animationInfo = nullptr;
-
 		childIter = childNodes.find("Skeleton");
 		if (childIter == childNodes.end())
 		{
@@ -847,12 +869,7 @@ void D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode)
 
 		string skeletonName;
 		childIter->second.loadAttribute("FileName", skeletonName);
-		auto boneIt = _boneInfoMap.find(skeletonName);
-		if (boneIt == _boneInfoMap.end())
-		{
-			ThrowErrCode(ErrCode::FileNotFound, "skeleton file : " + skeletonName + "이 _boneInfoMap에 없습니다.");
-		}
-		boneInfo = boneIt->second.get();
+		BoneInfo* boneInfo = loadXMLBoneInfo(skeletonName);
 		
 		childIter = childNodes.find("Animation");
 		if (childIter == childNodes.end())
@@ -861,12 +878,8 @@ void D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode)
 		}
 		string animationInfoName;
 		childIter->second.loadAttribute("FileName", animationInfoName);
-		auto animFileIt = _animationInfoMap.find(animationInfoName);
-		if (animFileIt == _animationInfoMap.end())
-		{
-			ThrowErrCode(ErrCode::FileNotFound, "Animation File : " + animationInfoName + "이 없습니다.");
-		}
-		animationInfo = animFileIt->second.get();
+		AnimationInfo* animationInfo = loadXMLAnimationInfo(animationInfoName);
+		_animationNameListDev = animationInfo->getAnimationNameListDev();
 
 		skinnedConstantBufferIndex = _skinnedInstance.size();
 		unique_ptr<SkinnedModelInstance> newSkinnedInstance(new SkinnedModelInstance(skinnedConstantBufferIndex, boneInfo, animationInfo));
@@ -881,13 +894,12 @@ void D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode)
 	}
 	string meshFileName;
 	childIter->second.loadAttribute("FileName", meshFileName);
-	auto meshIt = _geometries.find(meshFileName);
-	if (meshIt == _geometries.end())
-	{
-		ThrowErrCode(ErrCode::FileNotFound, "Mesh File : " + meshFileName + "이 없습니다.");
-	}
-	const auto& subMeshMap = meshIt->second->_subMeshMap;
+	MeshGeometry* mesh = loadXMLMeshGeometry(meshFileName);
+
+	GameObject* gameObject = createGameObject(skinnedInstance, skinnedConstantBufferIndex);
+	const auto& subMeshMap = mesh->_subMeshMap;
 	const auto& subMeshNodes = childIter->second.getChildNodes();
+	gameObject->_renderItems.reserve(subMeshNodes.size());
 	for (int j = 0; j < subMeshNodes.size(); ++j)
 	{
 		string subMeshName;
@@ -900,38 +912,24 @@ void D3DApp::loadXmlGameObject(const XMLReaderNode& rootNode)
 		string materialFile, materialName;
 		subMeshNodes[j].loadAttribute("MaterialFile", materialFile);
 		subMeshNodes[j].loadAttribute("MaterialName", materialName);
-		auto materialIt = _materials.find(materialFile + '/' + materialName);
-		if (materialIt == _materials.end())
-		{
-			ThrowErrCode(ErrCode::MaterialNotFound, "Material : " + materialFile + '/' + materialName + "이 없습니다.");
-		}
-		Material* material = materialIt->second.get();
-		// material에서 RenderLayer 정할수 있도록 추가해야함 [1/28/2021 qwerw]
-
+		Material* material = loadXmlMaterial(materialFile, materialName);
+		
 		auto renderItem = make_unique<RenderItem>();
-		// spawnInfo 작업이 완료되면 이 데이터도 채워져야함 [1/28/2021 qwerw]
-// 			XMMATRIX S = XMMatrixScaling(scale.x, scale.y, scale.z);
-// 			XMMATRIX R = XMMatrixRotationY(rotation.y);
-// 			XMMATRIX T = XMMatrixTranslation(0.f, 0.f, 0.f);
-		renderItem->_worldMatrix = MathHelper::Identity4x4;
-		renderItem->_objConstantBufferIndex = _renderItemsUniquePtrXXX.size();
-		renderItem->_geometry = meshIt->second.get();
+		renderItem->_objConstantBufferIndex = gameObject->_objConstantBufferIndex;
+		renderItem->_geometry = mesh;
 		renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		renderItem->_indexCount = subMeshIt->second._indexCount;
 		renderItem->_baseVertexLocation = subMeshIt->second._baseVertexLoaction;
 		renderItem->_startIndexLocation = subMeshIt->second._baseIndexLoacation;
 		renderItem->_material = material;
 		renderItem->_skinnedConstantBufferIndex = skinnedConstantBufferIndex;
-		renderItem->_skinnedModelInstance = skinnedInstance;
-		_renderItems[static_cast<int>(RenderLayer::Opaque)].push_back(renderItem.get());
-		_renderItemsUniquePtrXXX.push_back(move(renderItem));
+		renderItem->_renderLayer = material->getRenderLayer();
+		
+		gameObject->_renderItems.push_back(renderItem.get());
+		_renderItems[static_cast<int>(material->getRenderLayer())].emplace_back(std::move(renderItem));
 	}
 
-	childIter = childNodes.find("ActionStates");
-	if (childIter == childNodes.end())
-	{
-		ThrowErrCode(ErrCode::NodeNotFound, "ActionStates 노드가 없습니다.");
-	}
+	return gameObject;
 }
 
 void D3DApp::drawUI(void)
@@ -1020,7 +1018,7 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 	
 	for (int rIdx = 0; rIdx < _renderItems[renderLayerIdx].size(); ++rIdx)
 	{
-		auto renderItem = _renderItems[renderLayerIdx][rIdx];
+		auto renderItem = _renderItems[renderLayerIdx][rIdx].get();
 		check(renderItem != nullptr, "비정상입니다.");
 
 		D3D12_VERTEX_BUFFER_VIEW vbv = renderItem->_geometry->getVertexBufferView();
@@ -1055,39 +1053,9 @@ void D3DApp::buildConstantBufferViews()
 {
 }
 
-UINT D3DApp::getTotalRenderItemCount(void) const noexcept
+UINT D3DApp::getGameObjectCount(void) const noexcept
 {
-	return _renderItemsUniquePtrXXX.size();
-}
-
-void D3DApp::buildGameObject(const std::string& meshName, 
-	const DirectX::XMFLOAT3& scaling,
-	const DirectX::XMFLOAT3& rotation,
-	const DirectX::XMFLOAT3& translation)
-{
-	auto geometry = _geometries.find(meshName);
-	if (geometry == _geometries.end())
-	{
-		ThrowErrCode(ErrCode::MeshNotFound, "mesh " + meshName +"을 찾을 수 없습니다.");\
-	}
-	const auto& subMeshMap = geometry->second->_subMeshMap;
-	for (auto it = subMeshMap.begin(); it != subMeshMap.end(); ++it)
-	{
-		auto renderItem = make_unique<RenderItem>();
-		XMMATRIX S = XMMatrixScaling(scaling.x, scaling.y, scaling.z);
-		XMMATRIX R = XMMatrixRotationY(rotation.y);
-		XMMATRIX T = XMMatrixTranslation(0.f, 0.f, 0.f);
-		XMStoreFloat4x4(&renderItem->_worldMatrix, S * R * T);
-		renderItem->_objConstantBufferIndex = _renderItemsUniquePtrXXX.size();
-		renderItem->_geometry = geometry->second.get();
-		renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		renderItem->_indexCount = it->second._indexCount;
-		renderItem->_baseVertexLocation = it->second._baseVertexLoaction;
-		renderItem->_startIndexLocation = it->second._baseIndexLoacation;
-		renderItem->_material = _materials[meshName + '/' +it->first].get();
-		_renderItems[static_cast<int>(RenderLayer::Opaque)].emplace_back(renderItem.get());
-		_renderItemsUniquePtrXXX.emplace_back(move(renderItem));
-	}
+	return _gameObjects.size();
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> D3DApp::getStaticSampler(void) const
@@ -1404,16 +1372,23 @@ uint16_t D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 }
 
 RenderItem::RenderItem() noexcept
-	: _worldMatrix(MathHelper::Identity4x4)
-	, _textureTransform(MathHelper::Identity4x4)
-	, _dirtyFrames(FRAME_RESOURCE_COUNT)
-	, _objConstantBufferIndex(-1)
+	: _objConstantBufferIndex(std::numeric_limits<uint16_t>::max())
 	, _geometry(nullptr)
 	, _primitive(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST)
 	, _indexCount(0)
 	, _startIndexLocation(0)
 	, _baseVertexLocation(0)
 	, _material(nullptr)
+	, _skinnedConstantBufferIndex(std::numeric_limits<uint16_t>::max())
+{
+
+}
+
+GameObject::GameObject() noexcept
+	: _worldMatrix(MathHelper::Identity4x4)
+	, _textureTransform(MathHelper::Identity4x4)
+	, _objConstantBufferIndex(std::numeric_limits<uint16_t>::max())
+	, _dirtyFrames(FRAME_RESOURCE_COUNT)
 	, _skinnedConstantBufferIndex(std::numeric_limits<uint16_t>::max())
 	, _skinnedModelInstance(nullptr)
 {

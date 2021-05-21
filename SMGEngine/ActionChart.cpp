@@ -78,6 +78,15 @@ bool ActionBranch::checkBranchCondition(const Actor& actor) const noexcept
 	return true;
 }
 
+ActionChart::ActionChart(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	for (const auto& childNode : childNodes)
+	{
+		
+	}
+}
+
 ActionState* ActionChart::getActionState(const std::string& name) const noexcept
 {
 	auto it = _actionStates.find(name);
