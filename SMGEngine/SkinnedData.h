@@ -83,9 +83,9 @@ private:
 class AnimationInfo
 {
 public:
+	AnimationInfo(const XMLReaderNode& rootNode);
 	AnimationClip* getAnimationClip(const std::string& clipName) noexcept;
 
-	void loadXML(const XMLReaderNode& rootNode);
 	std::vector<std::string> getAnimationNameListDev(void) const noexcept
 	{
 		std::vector<std::string> nameVector;
@@ -103,9 +103,9 @@ private:
 class BoneInfo
 {
 public:
+	BoneInfo(const XMLReaderNode& rootNode);
 	void getFinalTransforms(const std::vector<DirectX::XMMATRIX>& toParentTransforms,
 		std::vector<DirectX::XMFLOAT4X4>& finalTransforms) const noexcept;
-	void loadXML(const XMLReaderNode& rootNode);
 	BoneIndex getBoneCount(void) const noexcept;
 private:
 	std::vector<BoneIndex> _boneHierarchy;

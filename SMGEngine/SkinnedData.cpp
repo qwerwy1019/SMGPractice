@@ -137,7 +137,7 @@ void BoneInfo::getFinalTransforms(const std::vector<DirectX::XMMATRIX>& toParent
 	}
 }
 
-void BoneInfo::loadXML(const XMLReaderNode& rootNode)
+BoneInfo::BoneInfo(const XMLReaderNode& rootNode)
 {
 	rootNode.loadAttribute("Hierarchy", _boneHierarchy);
 	if (BONE_INDEX_MAX < _boneHierarchy.size())
@@ -313,7 +313,7 @@ AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) noex
 	return &(it->second);
 }
 
-void AnimationInfo::loadXML(const XMLReaderNode& rootNode)
+AnimationInfo::AnimationInfo(const XMLReaderNode& rootNode)
 {
 	const auto& childNodes = rootNode.getChildNodes();
 	_animations.reserve(childNodes.size());

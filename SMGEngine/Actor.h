@@ -2,11 +2,11 @@
 #include "TypeCommon.h"
 #include "TypeAction.h"
 
-struct RenderItem;
 class CharacterInfo;
 class ActionChart;
 class ActionState;
 struct SpawnInfo;
+struct GameObject;
 
 struct CollisionInfo
 {
@@ -17,7 +17,6 @@ struct CollisionInfo
 class Actor
 {
 public:
-	Actor();
 	Actor(const SpawnInfo& spawnInfo);
 	~Actor();
 	void rotateOnPlane(const float rotateAngle) noexcept;
@@ -49,7 +48,7 @@ public:
 	ActionState* getCurrentActionState(void) const noexcept { return _currentActionState; }
 
 	void setActionState(const ActionState* nextState) noexcept;
-	void updateRenderWorldMatrix() noexcept;
+	void updateObjectWorldMatrix() noexcept;
 
 	void setRotateType(const RotateType rotateType, const float rotateAngle, const float speed) noexcept;
 	void setAcceleration(const float acceleration, const float maxSpeed) noexcept;
@@ -81,7 +80,7 @@ private:
 	// ม฿ทย
 	int _gravityPointIndex;
 
-	RenderItem* _renderItem;
+	GameObject* _gameObject;
 
 	const CharacterInfo* _characterInfo;
 

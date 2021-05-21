@@ -2,6 +2,8 @@
 #include "StageInfo.h"
 #include "Exception.h"
 #include "FileHelper.h"
+#include "SMGFramework.h"
+#include "CharacterInfoManager.h"
 
 void StageInfo::loadXml(const XMLReaderNode& rootNode)
 {
@@ -42,4 +44,9 @@ void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
 		childNodes[i].loadAttribute("Direction", _spawnInfo[i]._direction);
 		childNodes[i].loadAttribute("UpVector", _spawnInfo[i]._upVector);
 	}
+}
+
+const std::vector<SpawnInfo>& StageInfo::getSpawnInfos(void) const noexcept
+{
+	return _spawnInfo;
 }

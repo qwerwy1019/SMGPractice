@@ -33,3 +33,26 @@ const D3D_SHADER_MACRO definesForShader[] =
 
 constexpr int FPS = 60;
 constexpr float FPS_f = static_cast<float>(FPS);
+
+enum class RenderLayer : uint8_t
+{
+	Opaque,
+	AlphaTested,
+	Shadow,
+	//MirrorStencil,
+	//ReflectedOpaque,
+	//ReflectedTransparent,
+	Transparent,
+	Count,
+};
+constexpr RenderLayer RenderLayers[] =
+{
+	RenderLayer::Opaque,
+	RenderLayer::AlphaTested,
+	RenderLayer::Shadow,
+	//RenderLayer::MirrorStencil,
+	//RenderLayer::ReflectedOpaque,
+	//RenderLayer::ReflectedTransparent,
+	RenderLayer::Transparent,
+};
+static_assert(sizeof(RenderLayers) == static_cast<int>(RenderLayer::Count), "RenderLayer 추가 시 수정해주세요.");

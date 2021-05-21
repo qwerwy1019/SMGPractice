@@ -14,7 +14,7 @@ const CharacterInfo* CharacterInfoManager::getInfo(const CharacterKey key) const
 	auto it = _infos.find(key);
 	if (it != _infos.end())
 	{
-		return it->second.get();
+		return &it->second;
 	}
 	else
 	{
@@ -36,17 +36,16 @@ void CharacterInfoManager::loadXML()
 	{
 		CharacterKey key;
 		node.loadAttribute("Key", key);
-		std::unique_ptr<CharacterInfo> characterInfo(new CharacterInfo(node));
-		_infos.emplace(key, std::move(characterInfo));
+		_infos.emplace(key, node);
 	}
-
 }
 
 CharacterInfo::CharacterInfo(const XMLReaderNode& node)
 {
 	node.loadAttribute("Name", _name);
 	node.loadAttribute("ObjectFile", _objectFileName);
-	
+	node.loadAttribute("ActionChart", _actionChartFileName);
+
 	std::string typeString;
 	node.loadAttribute("CollisionType", typeString);
 	if (typeString == "SolidObject")
@@ -66,14 +65,14 @@ CharacterInfo::CharacterInfo(const XMLReaderNode& node)
 		static_assert(static_cast<int>(CollisionType::Count) == 3, "타입 추가시 확인");
 		ThrowErrCode(ErrCode::UndefinedType, "collisionType Error : " + typeString);
 	}
-	
+
 	std::string shapeString;
 	node.loadAttribute("CollisionShape", _name);
 	if (shapeString == "Sphere")
 	{
 		_collisionShape = CollisionShape::Sphere;
 	}
-	else if(shapeString == "Box")
+	else if (shapeString == "Box")
 	{
 		_collisionShape = CollisionShape::Box;
 	}
@@ -85,5 +84,21 @@ CharacterInfo::CharacterInfo(const XMLReaderNode& node)
 	{
 		static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
 		ThrowErrCode(ErrCode::UndefinedType, "collisionShape Error : " + shapeString);
+	}
+
+	node.loadAttribute("Radius", _radius);
+	if (_collisionShape == CollisionShape::Box)
+	{
+		node.loadAttribute("BoxSize", _boxSize);
+	}
+	else
+	{
+		_boxSize = { 0.f, 0.f, 0.f };
+	}
+
+	float boxRadiusSq = _boxSize.x * _boxSize.x + _boxSize.y * _boxSize.y + _boxSize.z * _boxSize.z;
+	if (_radius * _radius < boxRadiusSq)
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData, "radius는 boxSize보다 커야합니다.");
 	}
 }

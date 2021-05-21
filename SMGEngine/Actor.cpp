@@ -6,25 +6,16 @@
 #include "ActionChart.h"
 #include "MathHelper.h"
 #include "CharacterInfoManager.h"
-
-Actor::Actor()
-	: _position(0.f, 0.f, 0.f)
-	, _direction(0.f, 0.f, 0.f)
-	, _upVector(0.f, 0.f, 0.f)
-	, _size(0.f)
-	, _speed(0.f)
-	, _renderItem(nullptr)
-	, _characterInfo(nullptr)
-	, _actionChart(nullptr)
-	, _currentActionState(nullptr)
-	, _gravityPointIndex(-1)
-	, _localTickCount(0)
-{
-
-}
+#include "StageInfo.h"
+#include "SMGFramework.h"
+#include "StageManager.h"
 
 Actor::Actor(const SpawnInfo& spawnInfo)
-	: _speed(0.f)
+	: _position(spawnInfo._position)
+	, _direction(spawnInfo._direction)
+	, _upVector(spawnInfo._upVector)
+	, _size(1.f)
+	, _speed(0.f)
 	, _verticalSpeed(0.f)
 	, _moveDirectionOffset(0.f)
 	, _acceleration(0.f)
@@ -34,8 +25,16 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _rotateAngleLeft(0.f)
 	, _rotateSpeed(0.f)
 	, _gravityPointIndex(-1)
+	, _localTickCount(0)
 {
-	
+	_characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo._key);
+	// 시작할때 한번 검증하는 부분 만들면 옮겨야함. [5/20/2021 qwerw]
+	if (nullptr == _characterInfo)
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData, "캐릭터키가 비정상입니다. " + spawnInfo._key);
+	}
+	_gameObject = SMGFramework::getD3DApp()->createObjectFromXML(_characterInfo->getObjectFileName());
+	_actionChart = SMGFramework::getStageManager()->loadActionChartFromXML(_characterInfo->getActionChartFileName());
 }
 
 Actor::~Actor()
@@ -460,16 +459,16 @@ void Actor::updateActionChart(const TickCount64& deltaTick) noexcept
 void Actor::setActionState(const ActionState* nextState) noexcept
 {
 	_localTickCount = 0;
-	if (_renderItem->_skinnedModelInstance != nullptr)
+	if (_gameObject->_skinnedModelInstance != nullptr)
 	{
-		_renderItem->_skinnedModelInstance->setAnimation(nextState->getAnimationName(), nextState->getBlendTick());
+		_gameObject->_skinnedModelInstance->setAnimation(nextState->getAnimationName(), nextState->getBlendTick());
 	}
 
 	//0tick의 frameevent 진행
 	//updateRenderWorldMatrix();
 }
 
-void Actor::updateRenderWorldMatrix() noexcept
+void Actor::updateObjectWorldMatrix() noexcept
 {
 	using namespace DirectX;
 
@@ -483,8 +482,8 @@ void Actor::updateRenderWorldMatrix() noexcept
 									0, 0, 0, 1);
 	XMMATRIX scaling = XMMatrixScaling(_characterInfo->getSizeX(), _characterInfo->getSizeY(), _characterInfo->getSizeZ()) * _size;
 	
-	XMStoreFloat4x4(&_renderItem->_worldMatrix, scaling * rotation * position);
-	_renderItem->_dirtyFrames = FRAME_RESOURCE_COUNT;
+	XMStoreFloat4x4(&_gameObject->_worldMatrix, scaling * rotation * position);
+	_gameObject->_dirtyFrames = FRAME_RESOURCE_COUNT;
 }
 
 void Actor::setRotateType(const RotateType rotateType, const float rotateAngle, const float speed) noexcept

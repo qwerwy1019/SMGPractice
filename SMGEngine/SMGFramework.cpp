@@ -43,6 +43,30 @@ SMGFramework& SMGFramework::Get(void)
 	return *_instance;
 }
 
+UIManager* SMGFramework::getUIManager(void) noexcept
+{
+	check(_instance != nullptr);
+	return _instance->_uiManager.get();
+}
+
+D3DApp* SMGFramework::getD3DApp(void) noexcept
+{
+	check(_instance != nullptr);
+	return _instance->_d3dApp.get();
+}
+
+CharacterInfoManager* SMGFramework::getCharacterInfoManager(void) noexcept
+{
+	check(_instance != nullptr);
+	return _instance->_characterInfoManager.get();
+}
+
+StageManager* SMGFramework::getStageManager(void) noexcept
+{
+	check(_instance != nullptr);
+	return _instance->_stageManager.get();
+}
+
 ButtonState SMGFramework::getButtonInput(const ButtonInputType type) const noexcept
 {
 	return _buttonInput[static_cast<int>(type)];
