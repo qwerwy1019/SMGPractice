@@ -15,8 +15,8 @@ enum class ButtonInputType
 	L,
 	R,
 
-	LMouseButton,
-	RMouseButton,
+	LStickButton,
+	RStickButton,
 	Count,
 };
 

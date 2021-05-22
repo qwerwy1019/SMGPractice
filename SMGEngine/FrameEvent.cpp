@@ -4,6 +4,7 @@
 #include "ActionCondition.h"
 #include "Exception.h"
 #include "MathHelper.h"
+#include "FileHelper.h"
 
 FrameEvent::FrameEvent()
 	: _processTick(0)
@@ -23,7 +24,7 @@ bool FrameEvent::checkConditions(Actor& actor) const noexcept
 	return true;
 }
 
-FrameEvent_RotateType::FrameEvent_RotateType()
+FrameEvent_RotateType::FrameEvent_RotateType(const XMLReaderNode& node)
 	: _rotateType(RotateType::Count)
 	, _offset(0)
 	, _rotateSpeed(0)
@@ -37,7 +38,7 @@ void FrameEvent_RotateType::process(Actor& actor) const noexcept
 	actor.setRotateType(_rotateType, _offset, _rotateSpeed);
 }
 
-FrameEvent_SpeedUp::FrameEvent_SpeedUp()
+FrameEvent_SpeedUp::FrameEvent_SpeedUp(const XMLReaderNode& node)
 	: _maxSpeed(0)
 	, _acceleration(0)
 	, _moveType(MoveType::Count)
@@ -52,7 +53,7 @@ void FrameEvent_SpeedUp::process(Actor& actor) const noexcept
 	actor.setAcceleration(_acceleration, _maxSpeed);
 }
 
-FrameEvent_SpeedDown::FrameEvent_SpeedDown()
+FrameEvent_SpeedDown::FrameEvent_SpeedDown(const XMLReaderNode& node)
 	: _minSpeed(0)
 	, _deceleration(0)
 {
@@ -66,7 +67,7 @@ void FrameEvent_SpeedDown::process(Actor& actor) const noexcept
 	actor.setDeceleration(_deceleration, _minSpeed);
 }
 
-FrameEvent_Jump::FrameEvent_Jump()
+FrameEvent_Jump::FrameEvent_Jump(const XMLReaderNode& node)
 	: _speed(0)
 {
 

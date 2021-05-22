@@ -35,6 +35,12 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	}
 	_gameObject = SMGFramework::getD3DApp()->createObjectFromXML(_characterInfo->getObjectFileName());
 	_actionChart = SMGFramework::getStageManager()->loadActionChartFromXML(_characterInfo->getActionChartFileName());
+
+	_currentActionState = _actionChart->getActionState("IDLE");
+	if (_currentActionState == nullptr)
+	{
+		ThrowErrCode(ErrCode::ActionChartLoadFail, "기본액션 IDLE이 없습니다. " + _characterInfo->getActionChartFileName());
+	}
 }
 
 Actor::~Actor()
@@ -439,7 +445,11 @@ void Actor::setPosition(const DirectX::XMFLOAT3& toPosition) noexcept
 
 bool Actor::isActionEnd() const noexcept
 {
-	return false;
+	if (nullptr == _gameObject->_skinnedModelInstance)
+	{
+		return false;
+	}
+	return _gameObject->_skinnedModelInstance->isAnimationEnd();
 }
 
 void Actor::updateActionChart(const TickCount64& deltaTick) noexcept

@@ -72,6 +72,7 @@ struct RenderItem
 struct GameObject
 {
 	GameObject() noexcept;
+
 	DirectX::XMFLOAT4X4 _worldMatrix;
 	DirectX::XMFLOAT4X4 _textureTransform;
 	uint16_t _objConstantBufferIndex;

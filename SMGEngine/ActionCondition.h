@@ -7,29 +7,30 @@ class Actor;
 class ActionCondition
 {
 public:
+	ActionCondition();
 	virtual ActionConditionType getType(void) const noexcept = 0;
-	virtual void loadXML(const std::string& condition) = 0;
 	virtual bool checkCondition(const Actor& actor) const noexcept = 0;
 	void setNotCondition(void) noexcept { _not = true; }
+	static std::unique_ptr<ActionCondition> parseConditionString(const std::string& input);
 public:
 	bool _not;
 };
 class ActionCondition_Tick : public ActionCondition
 {
 public:
+	ActionCondition_Tick(const std::string& args);
 	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::Tick; }
-	virtual void loadXML(const std::string& condition) override;
 	virtual bool checkCondition(const Actor& actor) const noexcept override;
 private:
-	uint32_t _frameStart;
-	uint32_t _frameEnd;
+	uint32_t _tickStart;
+	uint32_t _tickEnd;
 };
 
-class ActionCondition_Button : public ActionCondition
+class ActionCondition_Key : public ActionCondition
 {
 public:
-	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::Button; }
-	virtual void loadXML(const std::string& condition) override;
+	ActionCondition_Key(const std::string& args);
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::Key; }
 	virtual bool checkCondition(const Actor& actor) const noexcept override;
 private:
 	ButtonInputType _buttonType;
@@ -39,7 +40,7 @@ private:
 class ActionCondition_End : public ActionCondition
 {
 public:
+	ActionCondition_End() = default;
 	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::End; }
-	virtual void loadXML(const std::string& condition) override { }
 	virtual bool checkCondition(const Actor& actor) const noexcept override;
 };

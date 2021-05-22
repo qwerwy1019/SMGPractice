@@ -3,7 +3,7 @@
 enum class ActionConditionType
 {
 	Tick,
-	Button,
+	Key,
 	End,
 
 	Count,

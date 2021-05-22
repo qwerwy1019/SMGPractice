@@ -3,6 +3,7 @@
 #include "TypeAction.h"
 class Actor;
 class ActionCondition;
+class XMLReaderNode;
 
 class FrameEvent
 {
@@ -19,7 +20,7 @@ private:
 class FrameEvent_RotateType : public FrameEvent
 {
 public:
-	FrameEvent_RotateType();
+	FrameEvent_RotateType(const XMLReaderNode& node);
 	virtual void process(Actor& actor) const noexcept override;
 private:
 	RotateType _rotateType;
@@ -30,7 +31,7 @@ private:
 class FrameEvent_SpeedUp : public FrameEvent
 {
 public:
-	FrameEvent_SpeedUp();
+	FrameEvent_SpeedUp(const XMLReaderNode& node);
 	virtual void process(Actor& actor) const noexcept override;
 private:
 	float _maxSpeed;
@@ -41,7 +42,7 @@ private:
 class FrameEvent_SpeedDown : public FrameEvent
 {
 public:
-	FrameEvent_SpeedDown();
+	FrameEvent_SpeedDown(const XMLReaderNode& node);
 	virtual void process(Actor& actor) const noexcept override;
 private:
 	float _minSpeed;
@@ -51,7 +52,7 @@ private:
 class FrameEvent_Jump : public FrameEvent
 {
 public:
-	FrameEvent_Jump();
+	FrameEvent_Jump(const XMLReaderNode& node);
 	virtual void process(Actor& actor) const noexcept override;
 private:
 	float _speed;

@@ -201,7 +201,7 @@ void AnimationClip::interpolateWithBlend(const TickCount64& currentTick,
 	}
 }
 
-void AnimationClip::loadXML(const XMLReaderNode& node)
+AnimationClip::AnimationClip(const XMLReaderNode& node)
 {
 	uint32_t start, end;
 	node.loadAttribute("Start", start);
@@ -302,6 +302,15 @@ void SkinnedModelInstance::setAnimation(const std::string& animationClipName, co
 
 }
 
+bool SkinnedModelInstance::isAnimationEnd(void) const noexcept
+{
+	if (_currentAnimationClip->getClipEndFrame() * FRAME_TO_TICKCOUNT < _currentTick)
+	{
+		return true;
+	}
+	return false;
+}
+
 AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) noexcept
 {
 	auto it = _animations.find(clipName);
@@ -321,10 +330,8 @@ AnimationInfo::AnimationInfo(const XMLReaderNode& rootNode)
 	{
 		std::string clipName;
 		childNodes[i].loadAttribute("Name", clipName);
-		AnimationClip clip;
-		clip.loadXML(childNodes[i]);
 
-		auto it = _animations.emplace(clipName, std::move(clip));
+		auto it = _animations.emplace(clipName, childNodes[i]);
 		if (it.second == false)
 		{
 			ThrowErrCode(ErrCode::KeyDuplicated, "clipName : " + clipName + " ม฿บน");
