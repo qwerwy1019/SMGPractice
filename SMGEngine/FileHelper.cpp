@@ -174,7 +174,8 @@ std::vector<XMLReaderNode> XMLReaderNode::getChildNodes(void) const
 	long listSize;
 	ThrowIfFailed(nodeList->get_length(&listSize));
 
-	std::vector<XMLReaderNode> childNodes(listSize);
+	std::vector<XMLReaderNode> childNodes;
+	childNodes.reserve(listSize);
 	for (long i = 0; i < listSize; ++i)
 	{
 		IXMLDOMNodePtr node;
@@ -182,13 +183,18 @@ std::vector<XMLReaderNode> XMLReaderNode::getChildNodes(void) const
 
 		DOMNodeType nodeType;
 		ThrowIfFailed(node->get_nodeType(&nodeType));
+		
 		if (nodeType != DOMNodeType::NODE_ELEMENT)
 		{
+			if (nodeType == DOMNodeType::NODE_COMMENT)
+			{
+				continue;
+			}
 			ThrowErrCode(ErrCode::TypeIsDifferent, "node type error!");
 		}
 
 		IXMLDOMElementPtr element = static_cast<IXMLDOMElementPtr>(node);
-		childNodes[i] = XMLReaderNode(element);
+		childNodes.emplace_back(element);
 	}
 	return childNodes;
 }
@@ -201,7 +207,8 @@ std::unordered_map<std::string, XMLReaderNode> XMLReaderNode::getChildNodesWithN
 	long listSize;
 	ThrowIfFailed(nodeList->get_length(&listSize));
 
-	std::unordered_map<std::string, XMLReaderNode> childNodes(listSize);
+	std::unordered_map<std::string, XMLReaderNode> childNodes;
+	childNodes.reserve(listSize);
 	for (long i = 0; i < listSize; ++i)
 	{
 		IXMLDOMNodePtr node;
@@ -211,6 +218,10 @@ std::unordered_map<std::string, XMLReaderNode> XMLReaderNode::getChildNodesWithN
 		ThrowIfFailed(node->get_nodeType(&nodeType));
 		if (nodeType != DOMNodeType::NODE_ELEMENT)
 		{
+			if (nodeType == DOMNodeType::NODE_COMMENT)
+			{
+				continue;
+			}
 			ThrowErrCode(ErrCode::TypeIsDifferent, "node type error!");
 		}
 

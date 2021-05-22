@@ -138,20 +138,36 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 
 	size_t cursor = std::min(conditionString.find('_'), conditionString.length());
 	std::string conditionTypeString = conditionString.substr(0, cursor);
-	std::string conditionArgs = conditionString.substr(cursor + 1);
+	std::string conditionArgs = (cursor < conditionString.length()) ? conditionString.substr(cursor + 1) : "";
 
 	// 길어지면 switch case로.. [3/25/2021 qwerwy]
-	if (conditionString == "Tick")
+	if (conditionTypeString == "Tick")
 	{
 		condition = std::make_unique<ActionCondition_Tick>(conditionArgs);
 	}
-	else if (conditionString == "End")
+	else if (conditionTypeString == "End")
 	{
 		condition = std::make_unique<ActionCondition_End>();
 	}
-	else if (conditionString == "Key")
+	else if (conditionTypeString == "Key")
 	{
 		condition = std::make_unique<ActionCondition_Key>(conditionArgs);
+	}
+	else if (conditionTypeString == "LStickMove")
+	{
+		return nullptr;
+	}
+	else if (conditionTypeString == "RStickMove")
+	{
+		return nullptr;
+	}
+	else if (conditionTypeString == "OnGround")
+	{
+		return nullptr;
+	}
+	else if (conditionTypeString == "GroundEdge")
+	{
+		return nullptr;
 	}
 	else
 	{

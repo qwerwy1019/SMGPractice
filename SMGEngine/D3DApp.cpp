@@ -21,6 +21,7 @@
 #include "TypeCommon.h"
 #include "SMGFramework.h"
 #include "SkinnedData.h"
+#include "StageManager.h"
 
 void D3DApp::loadInfoMap(void)
 {
@@ -37,7 +38,7 @@ void D3DApp::loadInfoMap(void)
 
 void D3DApp::buildShaderResourceViews()
 {
-	check(!_textures.empty(), "texture info가 먼저 로드되어야 합니다.");
+	//check(!_textures.empty(), "texture info가 먼저 로드되어야 합니다.");
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE handle(_srvHeap->GetCPUDescriptorHandleForHeapStart());
 
@@ -77,6 +78,14 @@ D3DApp::D3DApp()
 	, _rootSignature(nullptr)
 	, _vertexShader(nullptr)
 	, _pixelShader(nullptr)
+	, _cameraInputPosition(100, 0, 0)
+	, _cameraInputUpVector(0, 1, 0, 0)
+	, _cameraInputFocusPosition(0, 0, 0)
+	, _cameraInputLeftTickCount(0)
+	, _hasCameraFocusInput(false)
+	, _cameraPosition(100, 0, 0)
+	, _cameraUpVector(0, 1, 0, 0)
+	, _cameraFocusPosition(0, 0, 0)
 	, _viewMatrix(MathHelper::Identity4x4)
 	, _projectionMatrix(MathHelper::Identity4x4)
 	, _psoType(PSOType::Normal)
@@ -590,7 +599,7 @@ void D3DApp::buildFrameResources(void)
 	UINT skinnedCount = _skinnedInstance.size();
 	for (int i = 0; i < FRAME_RESOURCE_COUNT; ++i)
 	{
-		auto frameResource = std::make_unique<FrameResource>(_deviceD3d12.Get(), 1, objectCount, materialCount, skinnedCount);
+		auto frameResource = std::make_unique<FrameResource>(_deviceD3d12.Get(), 1, 100, 300, 100);
 		_frameResources.push_back(std::move(frameResource));
 	}
 }
@@ -848,6 +857,8 @@ GameObject* D3DApp::createGameObject(SkinnedModelInstance* skinnedInstance, uint
 
 GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 {
+	ThrowIfFailed(_commandList->Reset(_commandAlloc.Get(), nullptr));
+
 	const string filePath = "../Resources/XmlFiles/Object/" + fileName + ".xml";
 	XMLReader xmlObject;
 	xmlObject.loadXMLFile(filePath);
@@ -928,6 +939,12 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		gameObject->_renderItems.push_back(renderItem.get());
 		_renderItems[static_cast<int>(material->getRenderLayer())].emplace_back(std::move(renderItem));
 	}
+
+	ThrowIfFailed(_commandList->Close());
+	ID3D12CommandList* cmdLists[] = { _commandList.Get() };
+	_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+
+	flushCommandQueue();
 
 	return gameObject;
 }
@@ -1299,7 +1316,7 @@ bool D3DApp::Initialize(void)
 
 	// 이 이후로는 맵 전환마다 수행되어야 할듯 [1/21/2021 qwerw]
 
-	loadInfoMap();
+	//loadInfoMap();
 	buildShaderResourceViews();
 
 	//buildConstantGeometry();

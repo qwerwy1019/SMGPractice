@@ -12,12 +12,14 @@
 #include "ActionCondition.h"
 
 StageManager::StageManager()
-	: _sectorSize(0, 0, 0)
-	, _sectorUnitNumber(0, 0, 0)
+	: _sectorSize(100, 100, 100)
+	, _sectorUnitNumber(9, 9, 9)
 	, _stageInfo(nullptr)
 	, _isLoading(false)
+	, _nextStageName("stage00")
+	, _actorsBySector(9 * 9 * 9)
 {
-
+	//loadStage();
 }
 
 StageManager::~StageManager()
@@ -85,7 +87,7 @@ void StageManager::setNextStage(std::string stageName) noexcept
 ActionChart* StageManager::loadActionChartFromXML(const std::string& actionChartName)
 {
 	auto findIt = _actionchartMap.find(actionChartName);
-	if (findIt == _actionchartMap.end())
+	if (findIt != _actionchartMap.end())
 	{
 		return findIt->second.get();
 	}
@@ -157,6 +159,10 @@ int StageManager::sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const n
 
 DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position) const noexcept
 {
+	check(_sectorSize.x != 0);
+	check(_sectorSize.y != 0);
+	check(_sectorSize.z != 0);
+
 	DirectX::XMFLOAT3 baseCoord = { static_cast<float>((_sectorUnitNumber.x / 2) * _sectorSize.x),
 									static_cast<float>((_sectorUnitNumber.y / 2) * _sectorSize.y),
 									static_cast<float>((_sectorUnitNumber.z / 2) * _sectorSize.z) };
@@ -164,6 +170,11 @@ DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position) 
 	DirectX::XMINT3 rv = { static_cast<int>(position.x + baseCoord.x) % _sectorSize.x,
 						   static_cast<int>(position.y + baseCoord.y) % _sectorSize.y,
 						   static_cast<int>(position.z + baseCoord.z) % _sectorSize.z };
+	// todo [5/22/2021 qwerwy]
+	check(0 <= rv.x && rv.x < _sectorUnitNumber.x);
+	check(0 <= rv.y && rv.y < _sectorUnitNumber.y);
+	check(0 <= rv.z && rv.z < _sectorUnitNumber.z);
+
 	return rv;
 }
 
@@ -176,6 +187,7 @@ void StageManager::spawnActors()
 		std::unique_ptr<Actor> actor(new Actor(spawnInfo));
 		
 		int sectorIndex = sectorCoordToIndex(getSectorCoord(spawnInfo._position));
+		check(sectorIndex < _actorsBySector.size());
 		_actorsBySector[sectorIndex].emplace(actor.get());
 		_actors.emplace_back(std::move(actor));
 	}

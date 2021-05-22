@@ -10,7 +10,7 @@
 
 ActionBranch::ActionBranch(const XMLReaderNode& node)
 {
-	node.loadAttribute("Name", _actionState);
+	node.loadAttribute("State", _actionState);
 	std::string conditionStrings;
 	node.loadAttribute("Condition", conditionStrings);
 	
@@ -19,7 +19,10 @@ ActionBranch::ActionBranch(const XMLReaderNode& node)
 	{
 		std::unique_ptr<ActionCondition> condition = ActionCondition::parseConditionString(c);
 		
-		_actionConditions.push_back(std::move(condition));
+		if (nullptr != condition) // 개발 편의를 위해..
+		{
+			_actionConditions.push_back(std::move(condition));
+		}
 	}
 }
 
@@ -66,7 +69,7 @@ ActionState::ActionState(const XMLReaderNode& node)
 		const std::string& nodeName = childNode.getNodeName();
 		if (nodeName == "Branch")
 		{
-			_branches.emplace_back(childNode);
+			_branches.emplace_back(new ActionBranch(childNode));
 		}
 		else if(nodeName == "FrameEvent")
 		{
@@ -83,9 +86,9 @@ bool ActionState::checkBranch(Actor& actor, std::string& nextState) const noexce
 {
 	for (const auto& branch : _branches)
 	{
-		if (branch.checkBranchCondition(actor))
+		if (branch->checkBranchCondition(actor))
 		{
-			nextState = branch.getActionState();
+			nextState = branch->getActionState();
 			return true;
 		}
 	}

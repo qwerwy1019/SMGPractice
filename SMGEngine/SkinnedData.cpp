@@ -319,7 +319,7 @@ AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) noex
 		return nullptr;
 	}
 	
-	return &(it->second);
+	return it->second.get();
 }
 
 AnimationInfo::AnimationInfo(const XMLReaderNode& rootNode)
@@ -331,7 +331,7 @@ AnimationInfo::AnimationInfo(const XMLReaderNode& rootNode)
 		std::string clipName;
 		childNodes[i].loadAttribute("Name", clipName);
 
-		auto it = _animations.emplace(clipName, childNodes[i]);
+		auto it = _animations.emplace(clipName, new AnimationClip(childNodes[i]));
 		if (it.second == false)
 		{
 			ThrowErrCode(ErrCode::KeyDuplicated, "clipName : " + clipName + " ม฿บน");

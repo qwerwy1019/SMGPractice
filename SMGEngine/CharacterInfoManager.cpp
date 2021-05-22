@@ -67,7 +67,7 @@ CharacterInfo::CharacterInfo(const XMLReaderNode& node)
 	}
 
 	std::string shapeString;
-	node.loadAttribute("CollisionShape", _name);
+	node.loadAttribute("CollisionShape", shapeString);
 	if (shapeString == "Sphere")
 	{
 		_collisionShape = CollisionShape::Sphere;

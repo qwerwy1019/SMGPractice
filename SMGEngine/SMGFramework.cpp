@@ -32,9 +32,11 @@ void SMGFramework::Create(HINSTANCE hInstance)
 	_instance->initMainWindow();
 
 	_instance->_d3dApp = std::make_unique<D3DApp>();
-	_instance->_uiManager = std::make_unique<UIManager>();
-	_instance->_stageManager = std::make_unique<StageManager>();
 	_instance->_characterInfoManager = std::make_unique<CharacterInfoManager>();
+	_instance->_stageManager = std::make_unique<StageManager>();
+	_instance->_uiManager = std::make_unique<UIManager>();
+
+	_instance->_stageManager->loadStage();
 }
 
 
@@ -46,24 +48,28 @@ SMGFramework& SMGFramework::Get(void)
 UIManager* SMGFramework::getUIManager(void) noexcept
 {
 	check(_instance != nullptr);
+	check(_instance->_uiManager != nullptr);
 	return _instance->_uiManager.get();
 }
 
 D3DApp* SMGFramework::getD3DApp(void) noexcept
 {
 	check(_instance != nullptr);
+	check(_instance->_d3dApp != nullptr);
 	return _instance->_d3dApp.get();
 }
 
 CharacterInfoManager* SMGFramework::getCharacterInfoManager(void) noexcept
 {
 	check(_instance != nullptr);
+	check(_instance->_characterInfoManager != nullptr);
 	return _instance->_characterInfoManager.get();
 }
 
 StageManager* SMGFramework::getStageManager(void) noexcept
 {
 	check(_instance != nullptr);
+	check(_instance->_stageManager != nullptr);
 	return _instance->_stageManager.get();
 }
 

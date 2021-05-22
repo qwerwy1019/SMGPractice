@@ -97,7 +97,7 @@ public:
 		return nameVector;
 	}
 private:
-	std::unordered_map<std::string, AnimationClip> _animations;
+	std::unordered_map<std::string, std::unique_ptr<AnimationClip>> _animations;
 };
 
 class BoneInfo
