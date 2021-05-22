@@ -94,7 +94,9 @@ ActionChart* StageManager::loadActionChartFromXML(const std::string& actionChart
 	XMLReader xmlActionChart;
 	xmlActionChart.loadXMLFile(filePath);
 
-	return nullptr;
+	auto it = _actionchartMap.emplace(actionChartName, new ActionChart(xmlActionChart.getRootNode()));
+	check(it.second == true);
+	return it.first->second.get();
 }
 
 bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcept
@@ -171,7 +173,6 @@ void StageManager::spawnActors()
 	const auto& spawnInfos = _stageInfo->getSpawnInfos();
 	for (const auto& spawnInfo : spawnInfos)
 	{
-		
 		std::unique_ptr<Actor> actor(new Actor(spawnInfo));
 		
 		int sectorIndex = sectorCoordToIndex(getSectorCoord(spawnInfo._position));

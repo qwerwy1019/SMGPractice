@@ -52,7 +52,8 @@ private:
 class AnimationClip
 {
 public:
-	AnimationClip() = default;
+	//AnimationClip() = default;
+	AnimationClip(const XMLReaderNode& rootNode);
 	AnimationClip(AnimationClip&&) = default;
 	AnimationClip& operator=(AnimationClip&&) = default;
 
@@ -69,7 +70,6 @@ public:
 
 	uint32_t getClipEndFrame(void) const noexcept { return _clipEndFrame; }
 
-	void loadXML(const XMLReaderNode& rootNode);
 
 	// fbxLoader때문에 만들긴 했는데 다른 방법을 찾으면 좋겠다. [1/26/2021 qwerw]
 	const std::vector<BoneAnimation>& getBoneAnimationXXX(void) const noexcept;
@@ -122,7 +122,7 @@ public:
 	uint32_t getLocalTickCount(void) const noexcept { return _currentTick; }
 	//uint32_t getCurrentFrame(void) const noexcept { return _currentFrame; }
 	void setAnimation(const std::string& animationClipName, const TickCount64& blendTick) noexcept;
-
+	bool isAnimationEnd(void) const noexcept;
 private:
 	TickCount64 _currentTick;
 	//uint32_t _currentFrame;

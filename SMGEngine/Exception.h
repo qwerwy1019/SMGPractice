@@ -41,6 +41,7 @@ enum class ErrCode : uint32_t
 	TokenizeError,
 	InvalidXmlData,
 	AnimationNotFound,
+	ActionChartLoadFail,
 };
 
 #define ErrCodeSuccess(_val) (_val == ErrCode::Success)
@@ -114,6 +115,13 @@ enum class ErrCode : uint32_t
 	}																															\
 }
 #endif
+
+inline std::wstring AnsiToWString(const std::string& str)
+{
+	WCHAR buffer[512];
+	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512);
+	return std::wstring(buffer);
+}
 
 class DxException
 {

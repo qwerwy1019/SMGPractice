@@ -5,13 +5,6 @@
 #include "TypeGeometry.h"
 #include "Exception.h"
 
-inline std::wstring AnsiToWString(const std::string& str)
-{
-	WCHAR buffer[512];
-	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512);
-	return std::wstring(buffer);
-}
-
 class D3DUtil
 {
 public:

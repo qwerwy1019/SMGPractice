@@ -257,16 +257,16 @@ LRESULT SMGFramework::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			((MINMAXINFO*)lParam)->ptMaxTrackSize.y = 600;
 			return 0;
 		case WM_LBUTTONDOWN:
-			onMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), ButtonInputType::LMouseButton);
+			onMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), ButtonInputType::LStickButton);
 			return 0;
 		case WM_RBUTTONDOWN:
-			onMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), ButtonInputType::RMouseButton);
+			onMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), ButtonInputType::RStickButton);
 			return 0;
 		case WM_LBUTTONUP:
-			onMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), ButtonInputType::LMouseButton);
+			onMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), ButtonInputType::LStickButton);
 			return 0;
 		case WM_RBUTTONUP:
-			onMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), ButtonInputType::RMouseButton);
+			onMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), ButtonInputType::RStickButton);
 			return 0;
 		case WM_MOUSEMOVE:
 			onMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));

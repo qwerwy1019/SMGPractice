@@ -9,7 +9,7 @@ class FrameEvent;
 class ActionBranch
 {
 public:
-	void loadXML(const XMLReaderNode& node);
+	ActionBranch(const XMLReaderNode& node);
 	std::string getActionState() const noexcept { return _actionState; }
 	bool checkBranchCondition(const Actor& actor) const noexcept;
 private:
@@ -20,7 +20,7 @@ private:
 class ActionState
 {
 public:
-	void loadXML(const XMLReaderNode& node);
+	ActionState(const XMLReaderNode& node);
 	bool checkBranch(Actor& actor, std::string& nextState) const noexcept;
 	void processFrameEvents(Actor& actor, const TickCount64& lastProcessedTick, const TickCount64& progressedTick) const noexcept;
 	std::string getAnimationName(void) const noexcept;

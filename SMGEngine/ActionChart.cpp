@@ -8,7 +8,7 @@
 #include "ActionCondition.h"
 #include "FrameEvent.h"
 
-void ActionBranch::loadXML(const XMLReaderNode& node)
+ActionBranch::ActionBranch(const XMLReaderNode& node)
 {
 	node.loadAttribute("Name", _actionState);
 	std::string conditionStrings;
@@ -17,51 +17,8 @@ void ActionBranch::loadXML(const XMLReaderNode& node)
 	std::vector<std::string> conditionTokenized = D3DUtil::tokenizeString(conditionStrings, ' ');
 	for (const auto& c : conditionTokenized)
 	{
-		bool notCondition;
-		std::string conditionString;
-		if (c.at(0) == '!')
-		{
-			conditionString = c.substr(1);
-			notCondition = true;
-		}
-		else
-		{
-			conditionString = c;
-			notCondition = false;
-		}
-		std::unique_ptr<ActionCondition> condition = nullptr;
-
-		size_t cursor = std::min(conditionString.find('_'), conditionString.length());
-		std::string conditionTypeString = conditionString.substr(0, cursor);
-		std::string conditionParameterString = conditionString.substr(cursor + 1);
-
-		// 길어지면 switch case로.. [3/25/2021 qwerwy]
-		if (conditionString == "Tick")
-		{
-			condition = std::make_unique<ActionCondition_Tick>();
-			condition->loadXML(conditionParameterString);
-		}
-		else if (conditionString == "End")
-		{
-			condition = std::make_unique<ActionCondition_End>();
-			condition->loadXML(conditionParameterString);
-		}
-		else if (conditionString == "Button")
-		{
-			condition = std::make_unique<ActionCondition_Button>();
-			condition->loadXML(conditionParameterString);
-		}
-		else
-		{
-			static_assert(static_cast<int>(ActionConditionType::Count) == 3, "타입이 추가되면 작업되어야 합니다.");
-			ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
-		}
-
-		if (notCondition)
-		{
-			condition->setNotCondition();
-		}
-
+		std::unique_ptr<ActionCondition> condition = ActionCondition::parseConditionString(c);
+		
 		_actionConditions.push_back(std::move(condition));
 	}
 }
@@ -83,7 +40,7 @@ ActionChart::ActionChart(const XMLReaderNode& node)
 	const auto& childNodes = node.getChildNodes();
 	for (const auto& childNode : childNodes)
 	{
-		
+		_actionStates.emplace(childNode.getNodeName(), new ActionState(childNode));
 	}
 }
 
@@ -98,15 +55,29 @@ ActionState* ActionChart::getActionState(const std::string& name) const noexcept
 	return it->second.get();
 }
 
-// void ActionChart::updateActionState(Actor& actor, uint32_t deltaFrame) const noexcept
-// {
-// 	std::string nextStateName;
-// 	if (actor.getCurrentActionState()->checkBranch(actor, nextStateName))
-// 	{
-// 		ActionState* nextState = getActionState(nextStateName);
-// 		actor.setActionState(nextState);
-// 	}
-// }
+ActionState::ActionState(const XMLReaderNode& node)
+{
+	node.loadAttribute("Animation", _animationName);
+	node.loadAttribute("BlendTick", _blendTick);
+
+	const auto& childNodes = node.getChildNodes();
+	for (const auto& childNode : childNodes)
+	{
+		const std::string& nodeName = childNode.getNodeName();
+		if (nodeName == "Branch")
+		{
+			_branches.emplace_back(childNode);
+		}
+		else if(nodeName == "FrameEvent")
+		{
+			//_frameEvents.emplace_back(childNode);
+		}
+		else
+		{
+			ThrowErrCode(ErrCode::InvalidXmlData, nodeName);
+		}
+	}
+}
 
 bool ActionState::checkBranch(Actor& actor, std::string& nextState) const noexcept
 {
