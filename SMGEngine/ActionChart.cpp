@@ -69,7 +69,7 @@ ActionState::ActionState(const XMLReaderNode& node)
 		const std::string& nodeName = childNode.getNodeName();
 		if (nodeName == "Branch")
 		{
-			_branches.emplace_back(new ActionBranch(childNode));
+			_branches.emplace_back(childNode);
 		}
 		else if(nodeName == "FrameEvent")
 		{
@@ -86,9 +86,9 @@ bool ActionState::checkBranch(Actor& actor, std::string& nextState) const noexce
 {
 	for (const auto& branch : _branches)
 	{
-		if (branch->checkBranchCondition(actor))
+		if (branch.checkBranchCondition(actor))
 		{
-			nextState = branch->getActionState();
+			nextState = branch.getActionState();
 			return true;
 		}
 	}

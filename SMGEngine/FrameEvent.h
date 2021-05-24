@@ -9,6 +9,7 @@ class FrameEvent
 {
 public:
 	FrameEvent();
+	virtual ~FrameEvent() = default;
 	virtual void process(Actor& actor) const noexcept = 0;
 	TickCount64 getProcessTick(void) const noexcept { return _processTick; }
 	bool checkConditions(Actor& actor) const noexcept;
@@ -21,6 +22,7 @@ class FrameEvent_RotateType : public FrameEvent
 {
 public:
 	FrameEvent_RotateType(const XMLReaderNode& node);
+	virtual ~FrameEvent_RotateType() = default;
 	virtual void process(Actor& actor) const noexcept override;
 private:
 	RotateType _rotateType;
@@ -32,6 +34,7 @@ class FrameEvent_SpeedUp : public FrameEvent
 {
 public:
 	FrameEvent_SpeedUp(const XMLReaderNode& node);
+	virtual ~FrameEvent_SpeedUp() = default;
 	virtual void process(Actor& actor) const noexcept override;
 private:
 	float _maxSpeed;
@@ -43,6 +46,7 @@ class FrameEvent_SpeedDown : public FrameEvent
 {
 public:
 	FrameEvent_SpeedDown(const XMLReaderNode& node);
+	virtual ~FrameEvent_SpeedDown() = default;
 	virtual void process(Actor& actor) const noexcept override;
 private:
 	float _minSpeed;
@@ -53,6 +57,7 @@ class FrameEvent_Jump : public FrameEvent
 {
 public:
 	FrameEvent_Jump(const XMLReaderNode& node);
+	virtual ~FrameEvent_Jump() = default;
 	virtual void process(Actor& actor) const noexcept override;
 private:
 	float _speed;

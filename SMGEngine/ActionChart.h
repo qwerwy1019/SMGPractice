@@ -27,7 +27,7 @@ public:
 	TickCount64 getBlendTick(void) const noexcept;
 private:
 	std::vector<std::unique_ptr<FrameEvent>> _frameEvents;
-	std::vector<std::unique_ptr<ActionBranch>> _branches;
+	std::vector<ActionBranch> _branches;
 
 	std::string _animationName;
 	TickCount64 _blendTick;

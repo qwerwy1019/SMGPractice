@@ -18,7 +18,7 @@ class Actor
 {
 public:
 	Actor(const SpawnInfo& spawnInfo);
-	~Actor();
+	virtual ~Actor();
 	void rotateOnPlane(const float rotateAngle) noexcept;
 	float getRotateAngleDelta(const TickCount64& deltaTick) const noexcept;
 public:

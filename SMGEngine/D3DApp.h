@@ -83,6 +83,7 @@ struct GameObject
 
 	std::vector<RenderItem*> _renderItems;
 };
+
 class D3DApp
 {
 public:
