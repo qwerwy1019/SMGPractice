@@ -101,9 +101,6 @@ public:
 	GameObject* createObjectFromXML(const std::string& fileName);
 	uint16_t loadTexture(const string& textureName, const wstring& fileName);
 
-	ID3D12Device* getDevice(void) const noexcept { return _deviceD3d12.Get(); }
-	ID3D12CommandQueue* getCommandQueue(void) const noexcept { return _commandQueue.Get(); }
-
 	// 업데이트
 	void OnResize(void);
 	void Update(void);
@@ -115,6 +112,13 @@ public:
 	IDWriteTextFormat* getTextFormat(TextFormatType type) const noexcept { return _textFormats[static_cast<int>(type)].Get(); }
 	ID2D1Brush* getTextBrush(TextBrushType type)const noexcept { return _textBrushes[static_cast<int>(type)].Get(); }
 
+	void prepareCommandQueue(void);
+	void executeCommandQueue(void);
+
+	void setCameraInput(const DirectX::XMFLOAT3& cameraPosition,
+						const DirectX::XMFLOAT3& focusPosition,
+						const DirectX::XMFLOAT3& upVector,
+						const TickCount64& blendTick) noexcept;
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보
@@ -218,13 +222,13 @@ private:
 	std::vector<std::unique_ptr<GameObject>> _gameObjects;
 
 	std::vector<std::unique_ptr<Texture>> _textures;
+	int _textureLoadedCount;
 
 	// 카메라
 	DirectX::XMFLOAT3 _cameraInputPosition;
 	DirectX::XMFLOAT4 _cameraInputUpVector;
 	DirectX::XMFLOAT3 _cameraInputFocusPosition;
 	TickCount64 _cameraInputLeftTickCount;
-	bool _hasCameraFocusInput;
 
 	DirectX::XMFLOAT3 _cameraPosition;
 	DirectX::XMFLOAT4 _cameraUpVector;

@@ -12,6 +12,7 @@ class SMGFramework
 public:
 	~SMGFramework();
 	static void Create(HINSTANCE hInstance);
+	static void Destroy(void);
 	static SMGFramework& Get(void);
 	static UIManager* getUIManager(void) noexcept; 
 	static D3DApp* getD3DApp(void) noexcept; 

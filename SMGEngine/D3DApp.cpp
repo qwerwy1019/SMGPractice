@@ -40,21 +40,25 @@ void D3DApp::buildShaderResourceViews()
 {
 	//check(!_textures.empty(), "texture info가 먼저 로드되어야 합니다.");
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE handle(_srvHeap->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE handle(
+		_srvHeap->GetCPUDescriptorHandleForHeapStart(),
+		_textureLoadedCount,
+		_cbvSrcUavDescriptorSize);
 
-	for (auto it = _textures.begin(); it != _textures.end(); ++it)
+	for (int i = _textureLoadedCount; i < _textures.size(); ++i)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
 		desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		desc.Format = (*it)->_resource->GetDesc().Format;
+		desc.Format = _textures[i]->_resource->GetDesc().Format;
 		desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		desc.Texture2D.MostDetailedMip = 0;
-		desc.Texture2D.MipLevels = (*it)->_resource->GetDesc().MipLevels;
+		desc.Texture2D.MipLevels = _textures[i]->_resource->GetDesc().MipLevels;
 		desc.Texture2D.PlaneSlice = 0;
 		desc.Texture2D.ResourceMinLODClamp = 0.f;
-		_deviceD3d12->CreateShaderResourceView((*it)->_resource.Get(), &desc, handle);
+		_deviceD3d12->CreateShaderResourceView(_textures[i]->_resource.Get(), &desc, handle);
 		handle.Offset(1, _cbvSrcUavDescriptorSize);
 	}
+	_textureLoadedCount = _textures.size();
 }
 
 D3DApp::D3DApp()
@@ -78,11 +82,11 @@ D3DApp::D3DApp()
 	, _rootSignature(nullptr)
 	, _vertexShader(nullptr)
 	, _pixelShader(nullptr)
+	, _textureLoadedCount(0)
 	, _cameraInputPosition(100, 0, 0)
 	, _cameraInputUpVector(0, 1, 0, 0)
 	, _cameraInputFocusPosition(0, 0, 0)
 	, _cameraInputLeftTickCount(0)
-	, _hasCameraFocusInput(false)
 	, _cameraPosition(100, 0, 0)
 	, _cameraUpVector(0, 1, 0, 0)
 	, _cameraFocusPosition(0, 0, 0)
@@ -383,7 +387,8 @@ void D3DApp::OnResize(void)
 	check(_swapChain != nullptr, "swapChain이 null입니다. 초기화를 확인하세요.");
 	check(_commandAlloc != nullptr, "commandAlloc이 null입니다. 초기화를 확인하세요.");
 
-	flushCommandQueue();
+	// 이거 왜 있어야 하지? [5/24/2021 qwerw]
+	//flushCommandQueue();
 
 	// reset ui before resize
 	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
@@ -575,6 +580,30 @@ void D3DApp::Draw(void)
 	_commandQueue->Signal(_fence.Get(), _currentFence);
 }
 
+void D3DApp::prepareCommandQueue(void)
+{
+	ThrowIfFailed(_commandList->Reset(_commandAlloc.Get(), nullptr));
+}
+
+void D3DApp::executeCommandQueue(void)
+{
+	buildShaderResourceViews();
+
+	ThrowIfFailed(_commandList->Close());
+	ID3D12CommandList* cmdLists[] = { _commandList.Get() };
+	_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+
+	flushCommandQueue();
+}
+
+void D3DApp::setCameraInput(const DirectX::XMFLOAT3& cameraPosition, const DirectX::XMFLOAT3& focusPosition, const DirectX::XMFLOAT3& upVector, const TickCount64& blendTick) noexcept
+{
+	_cameraInputPosition = cameraPosition;
+	_cameraInputFocusPosition = focusPosition;
+	_cameraInputUpVector = DirectX::XMFLOAT4(upVector.x, upVector.y, upVector.z, 0);
+	_cameraInputLeftTickCount = blendTick;
+}
+
 ID3D12Resource* D3DApp::getCurrentBackBuffer() const noexcept
 {
 	return _swapChainBuffer[_currentBackBuffer].Get();
@@ -624,10 +653,7 @@ void D3DApp::updateCamera(void)
 		{
 			position = inputPosition;
 			upVector = inputUpVector;
-			if (_hasCameraFocusInput)
-			{
-				focusPosition = inputFocusPosition;
-			}
+			focusPosition = inputFocusPosition;
 			_cameraInputLeftTickCount = 0;
 		}
 		else
@@ -635,10 +661,7 @@ void D3DApp::updateCamera(void)
 			float t = (deltaTickCount - _cameraInputLeftTickCount) / static_cast<float>(_cameraInputLeftTickCount);
 			position = XMVectorLerp(position, inputPosition, t);
 			upVector = XMVectorLerp(upVector, inputUpVector, t);
-			if (_hasCameraFocusInput)
-			{
-				focusPosition = XMVectorLerp(focusPosition, inputFocusPosition, t);
-			}
+			focusPosition = XMVectorLerp(focusPosition, inputFocusPosition, t);
 			_cameraInputLeftTickCount -= deltaTickCount;
 		}
 	}
@@ -857,8 +880,6 @@ GameObject* D3DApp::createGameObject(SkinnedModelInstance* skinnedInstance, uint
 
 GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 {
-	ThrowIfFailed(_commandList->Reset(_commandAlloc.Get(), nullptr));
-
 	const string filePath = "../Resources/XmlFiles/Object/" + fileName + ".xml";
 	XMLReader xmlObject;
 	xmlObject.loadXMLFile(filePath);
@@ -939,12 +960,6 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		gameObject->_renderItems.push_back(renderItem.get());
 		_renderItems[static_cast<int>(material->getRenderLayer())].emplace_back(std::move(renderItem));
 	}
-
-	ThrowIfFailed(_commandList->Close());
-	ID3D12CommandList* cmdLists[] = { _commandList.Get() };
-	_commandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
-
-	flushCommandQueue();
 
 	return gameObject;
 }

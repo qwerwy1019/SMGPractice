@@ -79,6 +79,7 @@ private:
 
 	// ม฿ทย
 	int _gravityPointIndex;
+	uint32_t _terrainIndex;
 
 	GameObject* _gameObject;
 

@@ -40,6 +40,11 @@ void SMGFramework::Create(HINSTANCE hInstance)
 }
 
 
+void SMGFramework::Destroy(void)
+{
+	delete _instance;
+}
+
 SMGFramework& SMGFramework::Get(void)
 {
 	return *_instance;

@@ -33,6 +33,7 @@ public:
 
 	std::string getName(void) const noexcept { return _name; }
 	std::unordered_map<std::string, SubMeshGeometry> _subMeshMap;// todo private¿∏∑Œ [1/14/2021 qwerw]
+	
 private:
 	void createMeshGeometryXXX(ID3D12Device* device,
 		ID3D12GraphicsCommandList* commandList,

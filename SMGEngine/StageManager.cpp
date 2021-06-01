@@ -25,22 +25,25 @@ StageManager::StageManager()
 StageManager::~StageManager()
 {
 	_actorsBySector.clear();
-	_terrain.clear();
+	_terrainObjects.clear();
 	_actors.clear();
 }
 
 void StageManager::loadStage(void)
 {	
+	SMGFramework::getD3DApp()->prepareCommandQueue();
 	loadStageInfo();
 	//createMap();
 	spawnActors();
+	SMGFramework::getD3DApp()->executeCommandQueue();
 	_isLoading = false;
 }
 
 void StageManager::update()
 {
 	TickCount64 deltaTick = SMGFramework::Get().getTimer().getDeltaTickCount();
-
+	
+	updateCamera();
 	//updateStageScript();
 
 	for (const auto& actor : _actors)
@@ -74,7 +77,6 @@ bool StageManager::rotateActor(Actor* actor, const TickCount64& deltaTick) const
 
 bool StageManager::applyGravity(Actor* actor, const TickCount64& deltaTick) const noexcept
 {
-
 	return true;
 }
 
@@ -204,4 +206,10 @@ void StageManager::loadStageInfo()
 	xmlStageInfo.loadXMLFile(stageInfoFilePath);
 
 	_stageInfo->loadXml(xmlStageInfo.getRootNode());
+}
+
+void StageManager::updateCamera() const noexcept
+{
+
+	SMGFramework::getD3DApp()->setCameraInput()
 }
