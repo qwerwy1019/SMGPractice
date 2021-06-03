@@ -596,12 +596,11 @@ void D3DApp::executeCommandQueue(void)
 	flushCommandQueue();
 }
 
-void D3DApp::setCameraInput(const DirectX::XMFLOAT3& cameraPosition, const DirectX::XMFLOAT3& focusPosition, const DirectX::XMFLOAT3& upVector, const TickCount64& blendTick) noexcept
+void D3DApp::setCameraInput(const DirectX::XMFLOAT3& cameraPosition, const DirectX::XMFLOAT3& focusPosition, const DirectX::XMFLOAT3& upVector) noexcept
 {
 	_cameraInputPosition = cameraPosition;
 	_cameraInputFocusPosition = focusPosition;
 	_cameraInputUpVector = DirectX::XMFLOAT4(upVector.x, upVector.y, upVector.z, 0);
-	_cameraInputLeftTickCount = blendTick;
 }
 
 ID3D12Resource* D3DApp::getCurrentBackBuffer() const noexcept

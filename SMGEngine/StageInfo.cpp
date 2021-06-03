@@ -4,6 +4,7 @@
 #include "FileHelper.h"
 #include "SMGFramework.h"
 #include "CharacterInfoManager.h"
+#include "MathHelper.h"
 
 void StageInfo::loadXml(const XMLReaderNode& rootNode)
 {
@@ -45,6 +46,29 @@ void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
 		childNodes[i].loadAttribute("UpVector", _spawnInfo[i]._upVector);
 		childNodes[i].loadAttribute("IsTerrain", _spawnInfo[i]._isTerrain);
 	}
+}
+
+std::vector<CameraPoint*> StageInfo::getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept
+{
+	std::vector<CameraPoint*> rv;
+	
+	for (const auto& camera : _cameraPoints)
+	{
+		float distanceSq = MathHelper::lengthSq(MathHelper::sub(position, camera->_position));
+		if (distanceSq < camera->_radius * camera->_radius)
+		{
+			rv.push_back(camera.get());
+		}
+	}
+	return rv;
+}
+
+const FixedCameraPoint& StageInfo::getFixedCameraPoint(const std::string& name) const noexcept
+{
+	auto it = _fixedCameraPoints.find(name);
+	check(it != _fixedCameraPoints.end(), name);
+
+	return *it->second.get();
 }
 
 const std::vector<SpawnInfo>& StageInfo::getSpawnInfos(void) const noexcept

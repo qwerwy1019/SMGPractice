@@ -3,9 +3,8 @@
 #include <DirectXMath.h>
 #include "Exception.h"
 
-class MathHelper
+namespace MathHelper
 {
-public:
 	static constexpr float Pi = 3.1415926535f;
 	static constexpr DirectX::XMFLOAT4X4 Identity4x4{ 1.f, 0.f, 0.f, 0.f,
 													  0.f, 1.f, 0.f, 0.f,
@@ -59,6 +58,10 @@ public:
 		return true;
 	}
 
+	static bool equal(float lhs, float rhs, float epsilon = FLT_EPSILON)
+	{
+		return abs(lhs - rhs) < epsilon;
+	}
 	static bool equal(const DirectX::XMFLOAT4& lhs, const DirectX::XMFLOAT4& rhs, float epsilon = FLT_EPSILON)
 	{
 		return equal(lhs.x, rhs.x, epsilon) && equal(lhs.y, rhs.y, epsilon)
@@ -67,10 +70,6 @@ public:
 	static bool equal(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs, float epsilon = FLT_EPSILON)
 	{
 		return equal(lhs.x, rhs.x, epsilon) && equal(lhs.y, rhs.y, epsilon) && equal(lhs.z, rhs.z, epsilon);
-	}
-	static bool equal(float lhs, float rhs, float epsilon = FLT_EPSILON)
-	{
-		return abs(lhs - rhs) < epsilon;
 	}
 
 	static DirectX::XMFLOAT3 add(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs)
@@ -93,11 +92,23 @@ public:
 		return DirectX::XMFLOAT4(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w);
 	}
 
-	static float distanceSq(const DirectX::XMFLOAT3& lhs)
+	static DirectX::XMFLOAT3 mul(const DirectX::XMFLOAT3& lhs, const float rhs)
+	{
+		return DirectX::XMFLOAT3(lhs.x * rhs, lhs.y * rhs, lhs.z * rhs);
+	}
+	static DirectX::XMFLOAT3 div(const DirectX::XMFLOAT3& lhs, const float rhs)
+	{
+		return DirectX::XMFLOAT3(lhs.x / rhs, lhs.y / rhs, lhs.z / rhs);
+	}
+	static float lengthSq(const DirectX::XMFLOAT3& lhs)
 	{
 		return lhs.x * lhs.x + lhs.y * lhs.y + lhs.z * lhs.z;
 	}
 
+	static float length(const DirectX::XMFLOAT3& lhs)
+	{
+		return std::sqrt(lengthSq(lhs));
+	}
 	static void interpolateMatrix(const DirectX::XMFLOAT4X4& mat0, const DirectX::XMFLOAT4X4& mat1, float lerpPercent, DirectX::XMFLOAT4X4& matrix)
 	{
 		for (int i = 0; i < 4; ++i)

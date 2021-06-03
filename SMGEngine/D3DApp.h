@@ -117,8 +117,7 @@ public:
 
 	void setCameraInput(const DirectX::XMFLOAT3& cameraPosition,
 						const DirectX::XMFLOAT3& focusPosition,
-						const DirectX::XMFLOAT3& upVector,
-						const TickCount64& blendTick) noexcept;
+						const DirectX::XMFLOAT3& upVector) noexcept;
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보

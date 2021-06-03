@@ -24,7 +24,6 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _rotateType(RotateType::Count)
 	, _rotateAngleLeft(0.f)
 	, _rotateSpeed(0.f)
-	, _gravityPointIndex(-1)
 	, _localTickCount(0)
 {
 	_characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo._key);
@@ -94,6 +93,16 @@ TickCount64 Actor::getLocalTickCount(void) const noexcept
 DirectX::XMFLOAT3 Actor::getPosition(void) const noexcept
 {
 	return _position;
+}
+
+DirectX::XMFLOAT3 Actor::getDirection(void) const noexcept
+{
+	return _direction;
+}
+
+DirectX::XMFLOAT3 Actor::getUpVector(void) const noexcept
+{
+	return _upVector;
 }
 
 bool Actor::checkCollision(const Actor* otherActor, DirectX::FXMVECTOR moveVector, CollisionInfo& outCollisionInfo) const noexcept
@@ -212,7 +221,7 @@ bool Actor::checkCollision(const Actor* otherActor, DirectX::FXMVECTOR moveVecto
 		XMFLOAT3 distanceVector = MathHelper::sub(otherActor->getPosition(), getPosition());
 		
 		float radiusSum = getRadius() + otherActor->getRadius();
-		if(radiusSum * radiusSum < MathHelper::distanceSq(distanceVector))
+		if(radiusSum * radiusSum < MathHelper::lengthSq(distanceVector))
 		{
 			return false;
 		}

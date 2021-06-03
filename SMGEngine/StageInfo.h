@@ -23,14 +23,15 @@ struct SpawnInfo
 
 struct CameraPoint
 {
-	int _index;
+	DirectX::XMFLOAT3 _position;
+	DirectX::XMFLOAT3 _upVector;
+	float _radius;
+};
+struct FixedCameraPoint
+{
 	DirectX::XMFLOAT3 _position;
 	DirectX::XMFLOAT3 _upVector;
 	DirectX::XMFLOAT3 _focusPosition;
-	bool _hasFocusPosition;
-	
-	float _radius;
-	bool _isAuto;
 };
 
 class StageInfo
@@ -38,12 +39,13 @@ class StageInfo
 public:
 	void loadXml(const XMLReaderNode& rootNode);
 	void loadXmlSpawnInfo(const XMLReaderNode& node);
-	std::vector<CameraPoint*> getNearCameraPoints
-
+	std::vector<CameraPoint*> getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept;
+	const FixedCameraPoint& getFixedCameraPoint(const std::string& name) const noexcept;
 	const std::vector<SpawnInfo>& getSpawnInfos(void) const noexcept;
 private:
 	LandscapeType _landscapeType;
 	std::vector<std::unique_ptr<CameraPoint>> _cameraPoints;
+	std::unordered_map<std::string, std::unique_ptr<FixedCameraPoint>> _fixedCameraPoints;
 	std::vector<SpawnInfo> _spawnInfo;
 
 	std::string _name;

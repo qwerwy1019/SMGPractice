@@ -208,8 +208,81 @@ void StageManager::loadStageInfo()
 	_stageInfo->loadXml(xmlStageInfo.getRootNode());
 }
 
-void StageManager::updateCamera() const noexcept
+void StageManager::updateCamera() noexcept
 {
+	check(_stageInfo != nullptr);
 
-	SMGFramework::getD3DApp()->setCameraInput()
+	if (!_fixedCameraName.empty())
+	{
+		setCameraCount(0);
+		const auto& camera = _stageInfo->getFixedCameraPoint(_fixedCameraName);
+		SMGFramework::getD3DApp()->setCameraInput(camera._position, camera._focusPosition, camera._upVector);
+	}
+	else
+	{
+		const auto& nearCameraList = _stageInfo->getNearCameraPoints(_playerActor->getPosition());
+		setCameraCount(nearCameraList.size());
+
+		if (nearCameraList.empty())
+		{
+			using namespace MathHelper;
+			auto playerPosition = _playerActor->getPosition();
+			auto playerDirection = _playerActor->getDirection();
+			auto playerUpVector = _playerActor->getUpVector();
+
+			auto cameraPosition = add(playerPosition, mul(sub(playerUpVector, playerDirection), CAM_DISTANCE_DEFAULT));
+			
+			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, playerPosition, playerUpVector);
+		}
+		else
+		{
+			int cameraIndex = getCameraIndex();
+			check(cameraIndex < nearCameraList.size());
+			if (cameraIndex != -1)
+			{
+				using namespace MathHelper;
+				float distanceSum = 0.f;
+				DirectX::XMFLOAT3 positionSum(0, 0, 0);
+				DirectX::XMFLOAT3 upVectorSum(0, 0, 0);
+				for (const auto& cam : nearCameraList)
+				{
+					float distance = length(sub(cam->_position, _playerActor->getPosition()));
+					distanceSum += distance;
+
+					positionSum = add(positionSum, mul(cam->_position, distance));
+					upVectorSum = add(upVectorSum, mul(cam->_upVector, distance));
+				}
+				SMGFramework::getD3DApp()->setCameraInput(
+					div(positionSum, distanceSum),
+					_playerActor->getPosition(),
+					div(upVectorSum, distanceSum));
+			}
+			else
+			{
+				SMGFramework::getD3DApp()->setCameraInput(
+					nearCameraList[cameraIndex]->_position,
+					_playerActor->getPosition(),
+					nearCameraList[cameraIndex]->_upVector);
+			}
+		}
+	}
+}
+
+void StageManager::setCameraCount(const int count) noexcept
+{
+	_cameraCount = count;
+	if (_cameraCount <= _cameraIndex)
+	{
+		_cameraIndex = -1;
+	}
+}
+
+int StageManager::getCameraCount() const noexcept
+{
+	return _cameraCount;
+}
+
+int StageManager::getCameraIndex() const noexcept
+{
+	return _cameraIndex;
 }

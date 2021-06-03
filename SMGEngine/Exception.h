@@ -42,6 +42,7 @@ enum class ErrCode : uint32_t
 	InvalidXmlData,
 	AnimationNotFound,
 	ActionChartLoadFail,
+	CameraNotFound,
 };
 
 #define ErrCodeSuccess(_val) (_val == ErrCode::Success)
