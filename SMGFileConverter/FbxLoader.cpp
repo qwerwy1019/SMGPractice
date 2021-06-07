@@ -483,7 +483,7 @@ void FbxLoader::loadFbxAnimation(FbxAnimLayer* animLayer)
 			for (const auto& key : clip)
 			{
 				KeyFrame keyFrame;
-				keyFrame._frame = key - (*clip.begin());
+				keyFrame._tick = key - (*clip.begin()); // todo frame이름을 가진 변수 만들기 [6/4/2021 qwerw]
 
 				// animation이 하나일때만 돌아가는 코드. 각 애니메이션에서의 global transform이 필요하다... [2/6/2021 qwerwy]
 				FbxTime frameTime;
@@ -674,7 +674,7 @@ void FbxLoader::writeXmlAnimation(XMLWriter& xmlAnimation) const
 					for (int j = 0; j < keyFrames.size(); ++j)
 					{
 						xmlAnimation.addNode("KeyFrame");
-						xmlAnimation.addAttribute("Frame", keyFrames[j]._frame);
+						xmlAnimation.addAttribute("Frame", keyFrames[j]._tick); // todo [6/4/2021 qwerw]
 
 						xmlAnimation.addAttribute("Translation", keyFrames[j]._translation);
 						xmlAnimation.addAttribute("Scaling", keyFrames[j]._scaling);

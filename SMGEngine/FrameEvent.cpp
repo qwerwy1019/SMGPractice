@@ -16,7 +16,7 @@ bool FrameEvent::checkConditions(Actor& actor) const noexcept
 {
 	for (const auto& condition : _conditions)
 	{
-		if (!condition->checkCondition(actor))
+		if (condition->isNotCondition() == condition->checkCondition(actor))
 		{
 			return false;
 		}

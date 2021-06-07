@@ -7,7 +7,7 @@
 
 using namespace DirectX;
 
-GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(
+GeneratedMeshData GeometryGenerator::CreateCylinder(
 	float bottomRadius,
 	float topRadius,
 	float height,
@@ -20,7 +20,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(
 	check(((uint64_t)sliceCount * stackCount + sliceCount) * 6 < std::numeric_limits<uint32_t>::max()
 		, "오버플로우가 납니다.");
 	
-	MeshData result;
+	GeneratedMeshData result;
 	result._vertices.reserve((stackCount + 1) * (sliceCount + 1) + (sliceCount * 3));
 	result._indices.reserve((sliceCount * stackCount + sliceCount) * 6);
 
@@ -37,15 +37,15 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(
 		float r = bottomRadius - deltaR * i;
 		for (uint32_t j = 0; j <= sliceCount; ++j)
 		{
-			VertexData vertex;
+			Vertex vertex;
 			float c = cosf(deltaTheta * j);
 			float s = sinf(deltaTheta * j);
 			vertex._position = { r * c, y, r * s };
-			vertex._tangentU = { -s, 0, c };
-			vertex._textureUV = { static_cast<float>(j) / sliceCount, 1.f - static_cast<float>(i) / stackCount };
+			XMFLOAT3 tangentU = { -s, 0, c };
+			vertex._textureCoord = { static_cast<float>(j) / sliceCount, 1.f - static_cast<float>(i) / stackCount };
 
 			XMFLOAT3 biTangent = { c * rDiff, -height, s * rDiff };
-			XMVECTOR T = XMLoadFloat3(&vertex._tangentU);
+			XMVECTOR T = XMLoadFloat3(&tangentU);
 			XMVECTOR B = XMLoadFloat3(&biTangent);
 			XMVECTOR N = XMVector3Normalize(XMVector3Cross(T, B));
 			XMStoreFloat3(&vertex._normal, N);
@@ -76,15 +76,15 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(
 	const uint16_t topBaseIndex = result._vertices.size();
 	for (uint32_t i = 0; i <= sliceCount; ++i)
 	{
-		VertexData vertex;
+		Vertex vertex;
 		float x = topRadius * cosf(deltaTheta * i);
 		float z = topRadius * sinf(deltaTheta * i);
 
 		float u = x / height + 0.5f;
 		float v = z / height + 0.5f;
-		result._vertices.push_back(VertexData(x, -zeroHeight, z, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f, u, v));
+		result._vertices.push_back(Vertex(XMFLOAT3(x, -zeroHeight, z), XMFLOAT3(0.f, 1.f, 0.f), XMFLOAT2(u, v)));
 	}
-	result._vertices.push_back(VertexData(0.f, -zeroHeight, 0.f, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f, 0.5f, 0.5f));
+	result._vertices.push_back(Vertex(XMFLOAT3(0.f, -zeroHeight, 0.f), XMFLOAT3(0.f, 1.f, 0.f), XMFLOAT2(0.5f, 0.5f)));
 
 	const uint16_t topCenterIndex = result._vertices.size() - 1;
 	for (uint32_t i = 0; i < sliceCount; ++i)
@@ -98,15 +98,15 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(
 	const uint16_t bottomBaseIndex = result._vertices.size();
 	for (uint32_t i = 0; i <= sliceCount; ++i)
 	{
-		VertexData vertex;
+		Vertex vertex;
 		float x = bottomRadius * cosf(deltaTheta * i);
 		float z = bottomRadius * sinf(deltaTheta * i);
 
 		float u = x / height + 0.5f;
 		float v = z / height + 0.5f;
-		result._vertices.push_back(VertexData(x, zeroHeight, z, 0.f, -1.f, 0.f, 1.f, 0.f, 0.f, u, v));
+		result._vertices.push_back(Vertex(XMFLOAT3(x, zeroHeight, z), XMFLOAT3(0.f, -1.f, 0.f), XMFLOAT2(u, v)));
 	}
-	result._vertices.push_back(VertexData(0.f, zeroHeight, 0.f, 0.f, -1.f, 0.f, 1.f, 0.f, 0.f, 0.5f, 0.5f));
+	result._vertices.push_back(Vertex(XMFLOAT3(0.f, zeroHeight, 0.f), XMFLOAT3(0.f, -1.f, 0.f), XMFLOAT2(0.5f, 0.5f)));
 
 	const uint16_t bottomCenterIndex = result._vertices.size() - 1;
 	for (uint32_t i = 0; i < sliceCount; ++i)
@@ -118,7 +118,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(
 	return result;
 }
 
-GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32_t sliceCount, uint32_t stackCount)
+GeneratedMeshData GeometryGenerator::CreateSphere(float radius, uint32_t sliceCount, uint32_t stackCount)
 {
 	check(radius > 0, "비정상입니다.");
 	check(((uint64_t)stackCount - 1) * ((uint64_t)sliceCount + 1) + ((uint64_t)sliceCount * 3) < std::numeric_limits<uint16_t>::max()
@@ -126,7 +126,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
 	check(((uint64_t)sliceCount * stackCount - sliceCount) * 6 < std::numeric_limits<uint32_t>::max()
 		, "오버플로우가 납니다.");
 
-	MeshData result;
+	GeneratedMeshData result;
 	result._vertices.reserve((stackCount - 1) * (sliceCount + 1) + (sliceCount * 3));
 	result._indices.reserve((sliceCount * stackCount - sliceCount) * 6);
 
@@ -134,27 +134,26 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
 	float deltaTheta = XM_2PI / sliceCount;
 
 	// 점
-	result._vertices.emplace_back(0.f, radius, 0.f, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f);
+	result._vertices.emplace_back(XMFLOAT3(0.f, radius, 0.f), XMFLOAT3(0.f, 1.f, 0.f), XMFLOAT2(0.f, 0.f));
 	for (uint32_t i = 1; i < stackCount; ++i)
 	{
 		float phi = deltaPhi * i;
 		for (uint32_t j = 0; j <= sliceCount; ++j)
 		{
-			VertexData vertex;
+			Vertex vertex;
 			float theta = deltaTheta * j;
 			float y = radius * cosf(phi);
 			float x = radius * sinf(phi) * cosf(theta);
 			float z = radius * sinf(phi) * sinf(theta);
 			vertex._position = { x, y, z };
 			vertex._normal = { sinf(phi) * cosf(theta), cosf(phi), sinf(phi) * sinf(theta) };
-			vertex._tangentU = { -sinf(theta), 0.f, cosf(theta) };
 
-			vertex._textureUV = { theta / XM_2PI, phi / XM_PI };
+			vertex._textureCoord = { theta / XM_2PI, phi / XM_PI };
 
 			result._vertices.push_back(vertex);
 		}
 	}
-	result._vertices.emplace_back(0.f, -radius, 0.f, 0.f, -1.f, 0.f, 1.f, 0.f, 0.f, 0.f, 1.f);
+	result._vertices.emplace_back(XMFLOAT3(0.f, -radius, 0.f), XMFLOAT3(0.f, -1.f, 0.f), XMFLOAT2(0.f, 1.f));
 
 	// 인덱스
 	for (uint32_t i = 0; i < sliceCount; ++i)
@@ -196,9 +195,9 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
 	return result;
 }
 
-GeometryGenerator::MeshData GeometryGenerator::CreateGeosphere(float radius, uint32_t subDivisions)
+GeneratedMeshData GeometryGenerator::CreateGeosphere(float radius, uint32_t subDivisions)
 {
-	MeshData result;
+	GeneratedMeshData result;
 
 	check(subDivisions < 7, "division level이 너무 큽니다. 6으로 조정됩니다.");
 	subDivisions = std::min<uint32_t>(subDivisions, 6);
@@ -250,20 +249,16 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGeosphere(float radius, uin
 			theta += XM_2PI;
 		}
 
-		result._vertices[i]._tangentU.x = -sinf(theta);
-		result._vertices[i]._tangentU.y = 0.f;
-		result._vertices[i]._tangentU.z = cos(theta);
-
-		result._vertices[i]._textureUV.x = theta / XM_2PI;
-		result._vertices[i]._textureUV.y = phi / XM_PI;
+		result._vertices[i]._textureCoord.x = theta / XM_2PI;
+		result._vertices[i]._textureCoord.y = phi / XM_PI;
 
 	}
 	return result;
 }
 
-GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float depth, uint32_t m, uint32_t n)
+GeneratedMeshData GeometryGenerator::CreateGrid(float width, float depth, uint32_t m, uint32_t n)
 {
-	MeshData result;
+	GeneratedMeshData result;
 
 	check(m * n <= std::numeric_limits<uint16_t>::max(), "인덱스가 범위를 넘어갑니다.");
 	
@@ -282,8 +277,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 			float x = -(width / 2.0f) + (j * dx);
 			result._vertices[i * n + j]._position = XMFLOAT3(x, 0.f, z);
 			result._vertices[i * n + j]._normal = XMFLOAT3(0.f, 1.f, 0.f);
-			result._vertices[i * n + j]._tangentU = XMFLOAT3(1.f, 0.f, 0.f);
-			result._vertices[i * n + j]._textureUV = XMFLOAT2(j * du, i * dv);
+			result._vertices[i * n + j]._textureCoord = XMFLOAT2(j * du, i * dv);
 		}
 	}
 	result._indices.resize((n - 1) * (m - 1) * 6);
@@ -304,45 +298,45 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 	return result;
 }
 
-GeometryGenerator::MeshData GeometryGenerator::CreateBox(float width, float height, float depth, uint32_t subDivisions)
+GeneratedMeshData GeometryGenerator::CreateBox(float width, float height, float depth, uint32_t subDivisions)
 {
-	MeshData result;
+	GeneratedMeshData result;
 
-	VertexData v[24];
+	Vertex v[24];
 
 	float halfWidth = 0.5f * width;
 	float halfHeight = 0.5f * height;
 	float halfDepth = 0.5f * depth;
 
-	v[0] = VertexData(-halfWidth, -halfHeight, -halfDepth, 0.f, 0.f, -1.f, 1.f, 0.f, 0.f, 0.f, 1.f);
-	v[1] = VertexData(-halfWidth, +halfHeight, -halfDepth, 0.f, 0.f, -1.f, 1.f, 0.f, 0.f, 0.f, 0.f);
-	v[2] = VertexData(+halfWidth, +halfHeight, -halfDepth, 0.f, 0.f, -1.f, 1.f, 0.f, 0.f, 1.f, 0.f);
-	v[3] = VertexData(+halfWidth, -halfHeight, -halfDepth, 0.f, 0.f, -1.f, 1.f, 0.f, 0.f, 1.f, 1.f);
+	v[0] = Vertex(XMFLOAT3(-halfWidth, -halfHeight, -halfDepth), XMFLOAT3(0.f, 0.f, -1.f), XMFLOAT2(0.f, 1.f));
+	v[1] = Vertex(XMFLOAT3(-halfWidth, +halfHeight, -halfDepth), XMFLOAT3(0.f, 0.f, -1.f), XMFLOAT2(0.f, 0.f));
+	v[2] = Vertex(XMFLOAT3(+halfWidth, +halfHeight, -halfDepth), XMFLOAT3(0.f, 0.f, -1.f), XMFLOAT2(1.f, 0.f));
+	v[3] = Vertex(XMFLOAT3(+halfWidth, -halfHeight, -halfDepth), XMFLOAT3(0.f, 0.f, -1.f), XMFLOAT2(1.f, 1.f));
 
-	v[4] = VertexData(+halfWidth, -halfHeight, +halfDepth, 0.f, 0.f, 1.f, -1.f, 0.f, 0.f, 0.f, 1.f);
-	v[5] = VertexData(+halfWidth, +halfHeight, +halfDepth, 0.f, 0.f, 1.f, -1.f, 0.f, 0.f, 0.f, 0.f);
-	v[6] = VertexData(-halfWidth, +halfHeight, +halfDepth, 0.f, 0.f, 1.f, -1.f, 0.f, 0.f, 1.f, 0.f);
-	v[7] = VertexData(-halfWidth, -halfHeight, +halfDepth, 0.f, 0.f, 1.f, -1.f, 0.f, 0.f, 1.f, 1.f);
+	v[4] = Vertex(XMFLOAT3(+halfWidth, -halfHeight, +halfDepth), XMFLOAT3(0.f, 0.f, 1.f), XMFLOAT2(0.f, 1.f));
+	v[5] = Vertex(XMFLOAT3(+halfWidth, +halfHeight, +halfDepth), XMFLOAT3(0.f, 0.f, 1.f), XMFLOAT2(0.f, 0.f));
+	v[6] = Vertex(XMFLOAT3(-halfWidth, +halfHeight, +halfDepth), XMFLOAT3(0.f, 0.f, 1.f), XMFLOAT2(1.f, 0.f));
+	v[7] = Vertex(XMFLOAT3(-halfWidth, -halfHeight, +halfDepth), XMFLOAT3(0.f, 0.f, 1.f), XMFLOAT2(1.f, 1.f));
 
-	v[8] = VertexData(-halfWidth, -halfHeight, +halfDepth, -1.f, 0.f, 0.f, 0.f, 0.f, -1.f, 0.f, 1.f);
-	v[9] = VertexData(-halfWidth, +halfHeight, +halfDepth, -1.f, 0.f, 0.f, 0.f, 0.f, -1.f, 0.f, 0.f);
-	v[10] = VertexData(-halfWidth, +halfHeight, -halfDepth, -1.f, 0.f, 0.f, 0.f, 0.f, -1.f, 1.f, 0.f);
-	v[11] = VertexData(-halfWidth, -halfHeight, -halfDepth, -1.f, 0.f, 0.f, 0.f, 0.f, -1.f, 1.f, 1.f);
+	v[8] = Vertex(XMFLOAT3(-halfWidth, -halfHeight, +halfDepth), XMFLOAT3(-1.f, 0.f, 0.f), XMFLOAT2(0.f, 1.f));
+	v[9] = Vertex(XMFLOAT3(-halfWidth, +halfHeight, +halfDepth), XMFLOAT3(-1.f, 0.f, 0.f), XMFLOAT2(0.f, 0.f));
+	v[10] = Vertex(XMFLOAT3(-halfWidth, +halfHeight, -halfDepth), XMFLOAT3(-1.f, 0.f, 0.f), XMFLOAT2(1.f, 0.f));
+	v[11] = Vertex(XMFLOAT3(-halfWidth, -halfHeight, -halfDepth), XMFLOAT3(-1.f, 0.f, 0.f), XMFLOAT2(1.f, 1.f));
 
-	v[12] = VertexData(+halfWidth, -halfHeight, -halfDepth, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f);
-	v[13] = VertexData(+halfWidth, +halfHeight, -halfDepth, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f);
-	v[14] = VertexData(+halfWidth, +halfHeight, +halfDepth, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f, 0.f);
-	v[15] = VertexData(+halfWidth, -halfHeight, +halfDepth, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f, 1.f);
+	v[12] = Vertex(XMFLOAT3(+halfWidth, -halfHeight, -halfDepth), XMFLOAT3(1.f, 0.f, 0.f), XMFLOAT2(0.f, 1.f));
+	v[13] = Vertex(XMFLOAT3(+halfWidth, +halfHeight, -halfDepth), XMFLOAT3(1.f, 0.f, 0.f), XMFLOAT2(0.f, 0.f));
+	v[14] = Vertex(XMFLOAT3(+halfWidth, +halfHeight, +halfDepth), XMFLOAT3(1.f, 0.f, 0.f), XMFLOAT2(1.f, 0.f));
+	v[15] = Vertex(XMFLOAT3(+halfWidth, -halfHeight, +halfDepth), XMFLOAT3(1.f, 0.f, 0.f), XMFLOAT2(1.f, 1.f));
 
-	v[16] = VertexData(-halfWidth, +halfHeight, -halfDepth, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f, 0.f, 1.f);
-	v[17] = VertexData(-halfWidth, +halfHeight, +halfDepth, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f);
-	v[18] = VertexData(+halfWidth, +halfHeight, +halfDepth, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f);
-	v[19] = VertexData(+halfWidth, +halfHeight, -halfDepth, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f, 1.f, 1.f);
+	v[16] = Vertex(XMFLOAT3(-halfWidth, +halfHeight, -halfDepth), XMFLOAT3(0.f, 1.f, 0.f), XMFLOAT2(0.f, 1.f));
+	v[17] = Vertex(XMFLOAT3(-halfWidth, +halfHeight, +halfDepth), XMFLOAT3(0.f, 1.f, 0.f), XMFLOAT2(0.f, 0.f));
+	v[18] = Vertex(XMFLOAT3(+halfWidth, +halfHeight, +halfDepth), XMFLOAT3(0.f, 1.f, 0.f), XMFLOAT2(1.f, 0.f));
+	v[19] = Vertex(XMFLOAT3(+halfWidth, +halfHeight, -halfDepth), XMFLOAT3(0.f, 1.f, 0.f), XMFLOAT2(1.f, 1.f));
 
-	v[20] = VertexData(-halfWidth, -halfHeight, -halfDepth, 0.f, -1.f, 0.f, -1.f, 0.f, 0.f, 1.f, 1.f);
-	v[21] = VertexData(+halfWidth, -halfHeight, -halfDepth, 0.f, -1.f, 0.f, -1.f, 0.f, 0.f, 0.f, 1.f);
-	v[22] = VertexData(+halfWidth, -halfHeight, +halfDepth, 0.f, -1.f, 0.f, -1.f, 0.f, 0.f, 0.f, 0.f);
-	v[23] = VertexData(-halfWidth, -halfHeight, +halfDepth, 0.f, -1.f, 0.f, -1.f, 0.f, 0.f, 1.f, 0.f);
+	v[20] = Vertex(XMFLOAT3(-halfWidth, -halfHeight, -halfDepth), XMFLOAT3(0.f, -1.f, 0.f), XMFLOAT2(1.f, 1.f));
+	v[21] = Vertex(XMFLOAT3(+halfWidth, -halfHeight, -halfDepth), XMFLOAT3(0.f, -1.f, 0.f), XMFLOAT2(0.f, 1.f));
+	v[22] = Vertex(XMFLOAT3(+halfWidth, -halfHeight, +halfDepth), XMFLOAT3(0.f, -1.f, 0.f), XMFLOAT2(0.f, 0.f));
+	v[23] = Vertex(XMFLOAT3(-halfWidth, -halfHeight, +halfDepth), XMFLOAT3(0.f, -1.f, 0.f), XMFLOAT2(1.f, 0.f));
 
 	result._vertices.assign(&v[0], &v[24]);
 	uint32_t i[36] =
@@ -364,9 +358,9 @@ GeometryGenerator::MeshData GeometryGenerator::CreateBox(float width, float heig
 	return result;
 }
 
-GeometryGenerator::MeshData GeometryGenerator::CreateFromTextFile(const std::string& fileName)
+GeneratedMeshData GeometryGenerator::CreateFromTextFile(const std::string& fileName)
 {
-	MeshData result;
+	GeneratedMeshData result;
 	const std::string fileNameFull = "Models/" + fileName;
 	std::ifstream file(fileNameFull.c_str());
 	if (!file.is_open())
@@ -402,7 +396,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateFromTextFile(const std::str
 		std::getline(file, line, '\n');
 		const float nz = std::stod(line);
 
-		result._vertices[i] = VertexData(px, py, pz, nx, ny, nz, 0.f, 0.f, 0.f, 0.f, 0.f);
+		result._vertices[i] = Vertex(XMFLOAT3(px, py, pz), XMFLOAT3(nx, ny, nz), XMFLOAT2(0.f, 0.f));
 	}
 	// 세줄 무시
 	std::getline(file, line);
@@ -423,12 +417,12 @@ GeometryGenerator::MeshData GeometryGenerator::CreateFromTextFile(const std::str
 	return result;
 }
 
-void GeometryGenerator::SubDivide(MeshData& result)
+void GeometryGenerator::SubDivide(GeneratedMeshData& result)
 {
 	check(result._indices.size() % 3 == 0, "index가 비정상입니다.");
 	check(result._vertices.size() * 2 < std::numeric_limits<uint16_t>::max(), "index가 너무 커집니다.");
 
-	const MeshData inputCopy = result;
+	const GeneratedMeshData inputCopy = result;
 	result._vertices.clear();
 	result._indices.clear();
 	result._vertices.reserve(result._vertices.size() * 2);
@@ -437,13 +431,13 @@ void GeometryGenerator::SubDivide(MeshData& result)
 	const uint32_t baseVertexIndex = result._vertices.size();
 	for (int i = 0; i < inputCopy._indices.size(); i += 3)
 	{
-		const VertexData& v1 = inputCopy._vertices[inputCopy._indices[i]];
-		const VertexData& v2 = inputCopy._vertices[inputCopy._indices[i + 1]];
-		const VertexData& v3 = inputCopy._vertices[inputCopy._indices[i + 2]];
+		const Vertex& v1 = inputCopy._vertices[inputCopy._indices[i]];
+		const Vertex& v2 = inputCopy._vertices[inputCopy._indices[i + 1]];
+		const Vertex& v3 = inputCopy._vertices[inputCopy._indices[i + 2]];
 
-		VertexData v12 = MidPoint(v1, v2);
-		VertexData v23 = MidPoint(v2, v3);
-		VertexData v31 = MidPoint(v3, v1);
+		Vertex v12 = MidPoint(v1, v2);
+		Vertex v23 = MidPoint(v2, v3);
+		Vertex v31 = MidPoint(v3, v1);
 
 		result._vertices.push_back(v1);
 		result._vertices.push_back(v2);
@@ -470,7 +464,7 @@ void GeometryGenerator::SubDivide(MeshData& result)
 	}
 }
 
-VertexData GeometryGenerator::MidPoint(const VertexData& lhs, const VertexData& rhs)
+Vertex GeometryGenerator::MidPoint(const Vertex& lhs, const Vertex& rhs)
 {
 	XMVECTOR p0 = XMLoadFloat3(&lhs._position);
 	XMVECTOR p1 = XMLoadFloat3(&rhs._position);
@@ -478,22 +472,17 @@ VertexData GeometryGenerator::MidPoint(const VertexData& lhs, const VertexData& 
 	XMVECTOR n0 = XMLoadFloat3(&lhs._normal);
 	XMVECTOR n1 = XMLoadFloat3(&rhs._normal);
 
-	XMVECTOR t0 = XMLoadFloat3(&lhs._tangentU);
-	XMVECTOR t1 = XMLoadFloat3(&rhs._tangentU);
-
-	XMVECTOR tex0 = XMLoadFloat2(&lhs._textureUV);
-	XMVECTOR tex1 = XMLoadFloat2(&rhs._textureUV);
+	XMVECTOR tex0 = XMLoadFloat2(&lhs._textureCoord);
+	XMVECTOR tex1 = XMLoadFloat2(&rhs._textureCoord);
 
 	XMVECTOR pos = 0.5f * (p0 + p1);
 	XMVECTOR normal = XMVector3Normalize(0.5f * (n0 + n1));
-	XMVECTOR tangent = XMVector3Normalize(0.5f * (t0 + t1));
 	XMVECTOR textureUV = 0.5f * (tex0 + tex1);
 
-	VertexData rv;
+	Vertex rv;
 	XMStoreFloat3(&rv._position, pos);
 	XMStoreFloat3(&rv._normal, normal);
-	XMStoreFloat3(&rv._tangentU, tangent);
-	XMStoreFloat2(&rv._textureUV, textureUV);
+	XMStoreFloat2(&rv._textureCoord, textureUV);
 
 	return rv;
 }

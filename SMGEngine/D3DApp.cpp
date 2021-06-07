@@ -22,6 +22,8 @@
 #include "SMGFramework.h"
 #include "SkinnedData.h"
 #include "StageManager.h"
+#include "Actor.h"
+#include "CharacterInfoManager.h"
 
 void D3DApp::loadInfoMap(void)
 {
@@ -81,6 +83,7 @@ D3DApp::D3DApp()
 	, _currentBackBuffer(0)
 	, _rootSignature(nullptr)
 	, _vertexShader(nullptr)
+	, _skinnedVertexShader(nullptr)
 	, _pixelShader(nullptr)
 	, _textureLoadedCount(0)
 	, _cameraInputPosition(100, 0, 0)
@@ -601,6 +604,7 @@ void D3DApp::setCameraInput(const DirectX::XMFLOAT3& cameraPosition, const Direc
 	_cameraInputPosition = cameraPosition;
 	_cameraInputFocusPosition = focusPosition;
 	_cameraInputUpVector = DirectX::XMFLOAT4(upVector.x, upVector.y, upVector.z, 0);
+	_cameraInputLeftTickCount = 300;
 }
 
 ID3D12Resource* D3DApp::getCurrentBackBuffer() const noexcept
@@ -657,7 +661,7 @@ void D3DApp::updateCamera(void)
 		}
 		else
 		{
-			float t = (deltaTickCount - _cameraInputLeftTickCount) / static_cast<float>(_cameraInputLeftTickCount);
+			float t = (_cameraInputLeftTickCount - deltaTickCount) / static_cast<float>(_cameraInputLeftTickCount);
 			position = XMVectorLerp(position, inputPosition, t);
 			upVector = XMVectorLerp(upVector, inputUpVector, t);
 			focusPosition = XMVectorLerp(focusPosition, inputFocusPosition, t);
@@ -686,7 +690,7 @@ void D3DApp::updateObjectConstantBuffer()
 
 			XMMATRIX textureTransform = XMLoadFloat4x4(&e->_textureTransform);
 			XMStoreFloat4x4(&objectConstants._textureTransform, XMMatrixTranspose(textureTransform));
-				
+
 			currentFrameResource->setObjectCB(e->_objConstantBufferIndex, objectConstants);
 			--e->_dirtyFrames;
 		}
@@ -731,8 +735,8 @@ void D3DApp::updatePassConstantBuffer()
 	XMStoreFloat4x4(&_passConstants._invViewProj, XMMatrixTranspose(invViewProj));
 	_passConstants._cameraPos = _cameraPosition;
 
-	const float width = SMGFramework::Get().getClientWidth();
-	const float height = SMGFramework::Get().getClientHeight();
+	const float width = static_cast<float>(SMGFramework::Get().getClientWidth());
+	const float height = static_cast<float>(SMGFramework::Get().getClientHeight());
 	_passConstants._renderTargetSize = XMFLOAT2(static_cast<float>(width), static_cast<float>(height));
 	_passConstants._invRenderTargetSize = XMFLOAT2(1.0f / width, 1.0f / height);
 	_passConstants._nearZ = 1.0f;
@@ -944,7 +948,10 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		subMeshNodes[j].loadAttribute("MaterialFile", materialFile);
 		subMeshNodes[j].loadAttribute("MaterialName", materialName);
 		Material* material = loadXmlMaterial(materialFile, materialName);
-		
+		if (isSkinned && material->getRenderLayer() != RenderLayer::OpaqueSkinned)
+		{
+			ThrowErrCode(ErrCode::NotSkinnedMaterial, materialFile + "/" + materialName + "in " + fileName);
+		}
 		auto renderItem = make_unique<RenderItem>();
 		renderItem->_objConstantBufferIndex = gameObject->_objConstantBufferIndex;
 		renderItem->_geometry = mesh;
@@ -959,10 +966,62 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		gameObject->_renderItems.push_back(renderItem.get());
 		_renderItems[static_cast<int>(material->getRenderLayer())].emplace_back(std::move(renderItem));
 	}
-
 	return gameObject;
 }
 
+#if defined DEBUG | defined _DEBUG
+void D3DApp::createGameObjectDev(Actor* actor)
+{
+	check(actor != nullptr);
+	check(actor->getGameObject() != nullptr);
+	check(actor->getCharacterInfo() != nullptr);
+
+	// collision boundary
+	const CharacterInfo* characterInfo = actor->getCharacterInfo();
+	GeneratedMeshData meshData;
+	switch (characterInfo->getCollisionShape())
+	{
+		case CollisionShape::Sphere:
+		{
+			meshData = GeometryGenerator::CreateGeosphere(characterInfo->getRadius(), 2);
+		}
+		break;
+		case CollisionShape::Box:
+		{
+			meshData = GeometryGenerator::CreateBox(characterInfo->getSizeX() * 2,
+													characterInfo->getSizeY() * 2,
+													characterInfo->getSizeZ() * 2,
+													0);
+		}
+		break;
+		case CollisionShape::Polygon:
+		{
+			meshData = GeometryGenerator::CreateGeosphere(characterInfo->getRadius(), 2);
+		}
+		break;
+		case CollisionShape::Count:
+		default:
+		{
+			check(false, "타입 추가시 확인해야함.");
+			static_assert(static_cast<int>(CollisionShape::Count) == 3);
+		}
+	}
+	auto it = _geometries.emplace(actor->getCharacterInfo()->getName() + "_CollisionBox",
+		new MeshGeometry(meshData, _deviceD3d12.Get(), _commandList.Get()));
+
+	auto renderItem = make_unique<RenderItem>();
+	renderItem->_objConstantBufferIndex = actor->getGameObject()->_objConstantBufferIndex;
+	renderItem->_geometry = it.first->second.get();
+	renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+	renderItem->_indexCount = meshData._indices.size();
+	renderItem->_baseVertexLocation = 0;
+	renderItem->_startIndexLocation = 0;
+	renderItem->_material = loadXmlMaterial("devMat", "green");
+	renderItem->_renderLayer = RenderLayer::GameObjectDev;
+
+	_renderItems[static_cast<int>(RenderLayer::GameObjectDev)].emplace_back(std::move(renderItem));
+}
+#endif
 void D3DApp::drawUI(void)
 {
 	_deviceD3d11On12->AcquireWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);
@@ -1013,6 +1072,11 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 			__noop;
 		}
 		break;
+		case RenderLayer::OpaqueSkinned:
+		{
+			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Skinned].Get());
+		}
+		break;
 		case RenderLayer::AlphaTested:
 		{
 			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::BackSideNotCulling].Get());
@@ -1020,8 +1084,6 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		break;
 		case RenderLayer::Transparent:
 		{
-			_commandList->SetGraphicsRootConstantBufferView(2,
-				_frameResources[_frameIndex]->getPassCBVirtualAddress());
 			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Transparent].Get());
 		}
 		break;
@@ -1030,11 +1092,18 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
 		}
 		break;
+#if defined(DEBUG) | defined(_DEBUG)
+		case RenderLayer::GameObjectDev:
+		{
+			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::GameObjectDev].Get());
+		}
+		break;
+#endif
 		case RenderLayer::Count:
 		default:
 		{
-			static_assert(static_cast<int>(RenderLayer::Count) == 4, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
-			static_assert(static_cast<int>(PSOType::Count) == 5, "PSO 타입이 추가되었다면 확인해주세요");
+			static_assert(static_cast<int>(RenderLayer::Count) == 6, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
+			static_assert(static_cast<int>(PSOType::Count) == 7, "PSO 타입이 추가되었다면 확인해주세요");
 			ThrowErrCode(ErrCode::UndefinedType, "비정상입니다");
 		}
 	}
@@ -1056,7 +1125,7 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		_commandList->IASetVertexBuffers(0, 1, &vbv);
 		D3D12_INDEX_BUFFER_VIEW ibv = renderItem->_geometry->getIndexBufferView();
 		_commandList->IASetIndexBuffer(&ibv);
-		_commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		_commandList->IASetPrimitiveTopology(renderItem->_primitive);
 
 		CD3DX12_GPU_DESCRIPTOR_HANDLE textureHandle(_srvHeap->GetGPUDescriptorHandleForHeapStart());
 		textureHandle.Offset(renderItem->_material->getDiffuseSRVHeapIndex(), _cbvSrcUavDescriptorSize);
@@ -1065,9 +1134,12 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		D3D12_GPU_VIRTUAL_ADDRESS objectCBaddress = objectCBBaseAddress + renderItem->_objConstantBufferIndex * objectCBByteSize;
 		_commandList->SetGraphicsRootConstantBufferView(1, objectCBaddress);
 
-		D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCBBaseAddress + renderItem->_skinnedConstantBufferIndex * skinnedCBByteSize;
-		_commandList->SetGraphicsRootConstantBufferView(2, skinnedCBAdress);
-
+		if (renderItem->_skinnedConstantBufferIndex != SKINNED_UNDEFINED)
+		{
+			D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCBBaseAddress + renderItem->_skinnedConstantBufferIndex * skinnedCBByteSize;
+			_commandList->SetGraphicsRootConstantBufferView(2, skinnedCBAdress);
+		}
+		
 		D3D12_GPU_VIRTUAL_ADDRESS materialCBAddress = materialCBBaseAddress + renderItem->_material->getMaterialCBIndex() * materialCBByteSize;
 		_commandList->SetGraphicsRootConstantBufferView(4, materialCBAddress);
 
@@ -1174,6 +1246,7 @@ void D3DApp::buildRootSignature(void)
 void D3DApp::buildShaders(void)
 {
 	_vertexShader = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultVertexShader", "vs_5_0");
+	_skinnedVertexShader = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForSkinnedVertexShader, "DefaultVertexShader", "vs_5_0");
 	_pixelShader = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultPixelShader", "ps_5_0");
 }
 
@@ -1196,7 +1269,7 @@ void D3DApp::buildPipelineStateObject(void)
 		psoDescNormal.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDescNormal.SampleMask = UINT_MAX;
 		psoDescNormal.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		psoDescNormal.InputLayout = { SKINNED_VERTEX_INPUT_LAYOUT, SKINNED_VERTEX_INPUT_DESC_SIZE };
+		psoDescNormal.InputLayout = { VERTEX_INPUT_LAYOUT, VERTEX_INPUT_DESC_SIZE };
 		psoDescNormal.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		psoDescNormal.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		psoDescNormal.NumRenderTargets = 1;
@@ -1268,6 +1341,16 @@ void D3DApp::buildPipelineStateObject(void)
 						"PSO 생성 실패! PSOType::Normal");
 	}
 	{
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescSkinned = psoDescNormal;
+		psoDescSkinned.InputLayout = { SKINNED_VERTEX_INPUT_LAYOUT, SKINNED_VERTEX_INPUT_DESC_SIZE };
+		psoDescSkinned.VS = { reinterpret_cast<BYTE*>(_skinnedVertexShader->GetBufferPointer()), _skinnedVertexShader->GetBufferSize() };
+		auto skinnedPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Skinned, nullptr));
+		check(skinnedPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Skinned");
+
+		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescSkinned, IID_PPV_ARGS(&skinnedPSO.first->second)),
+			"PSO 생성 실패! PSOType::Skinned");
+	}
+	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescBackSideNotCulling = psoDescNormal;
 		psoDescBackSideNotCulling.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 		auto backSideNotCullingPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::BackSideNotCulling, nullptr));
@@ -1312,7 +1395,20 @@ void D3DApp::buildPipelineStateObject(void)
 		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescUI, IID_PPV_ARGS(&UIPSO.first->second)),
 			"PSO 생성 실패! PSOType::UIPSO");
 	}
-	static_assert(static_cast<int>(PSOType::Count) == 5, "PSO 타입이 추가되었다면 확인해주세요.");
+#if defined(DEBUG) | defined(_DEBUG)
+	{
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescGameObjectDev = psoDescNormal;
+
+		psoDescGameObjectDev.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		psoDescGameObjectDev.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		auto gameObjectDevPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::GameObjectDev, nullptr));
+		check(gameObjectDevPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Shadow");
+
+		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescGameObjectDev, IID_PPV_ARGS(&gameObjectDevPSO.first->second)),
+			"PSO 생성 실패! PSOType::GameObjectDev");
+	}
+#endif
+	static_assert(static_cast<int>(PSOType::Count) == 7, "PSO 타입이 추가되었다면 확인해주세요.");
 }
 
 bool D3DApp::Initialize(void)
@@ -1410,7 +1506,7 @@ RenderItem::RenderItem() noexcept
 	, _startIndexLocation(0)
 	, _baseVertexLocation(0)
 	, _material(nullptr)
-	, _skinnedConstantBufferIndex(std::numeric_limits<uint16_t>::max())
+	, _skinnedConstantBufferIndex(SKINNED_UNDEFINED)
 {
 
 }
@@ -1420,7 +1516,7 @@ GameObject::GameObject() noexcept
 	, _textureTransform(MathHelper::Identity4x4)
 	, _objConstantBufferIndex(std::numeric_limits<uint16_t>::max())
 	, _dirtyFrames(FRAME_RESOURCE_COUNT)
-	, _skinnedConstantBufferIndex(std::numeric_limits<uint16_t>::max())
+	, _skinnedConstantBufferIndex(SKINNED_UNDEFINED)
 	, _skinnedModelInstance(nullptr)
 {
 

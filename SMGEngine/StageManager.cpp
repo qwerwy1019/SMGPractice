@@ -35,6 +35,12 @@ void StageManager::loadStage(void)
 	loadStageInfo();
 	//createMap();
 	spawnActors();
+#if defined DEBUG | defined _DEBUG
+	for (const auto& actor : _actors)
+	{
+		SMGFramework::getD3DApp()->createGameObjectDev(actor.get());
+	}
+#endif
 	SMGFramework::getD3DApp()->executeCommandQueue();
 	_isLoading = false;
 }
@@ -186,7 +192,30 @@ void StageManager::spawnActors()
 	const auto& spawnInfos = _stageInfo->getSpawnInfos();
 	for (const auto& spawnInfo : spawnInfos)
 	{
-		std::unique_ptr<Actor> actor(new Actor(spawnInfo));
+		std::unique_ptr<Actor> actor;
+		auto characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo._key);
+		check(characterInfo != nullptr);
+		switch (characterInfo->getCharacterType())
+		{
+			case CharacterType::Player:
+			{
+				actor = std::make_unique<PlayerActor>(spawnInfo);
+				_playerActor = static_cast<PlayerActor*>(actor.get());
+			}
+			break;
+			case CharacterType::Monster:
+			case CharacterType::Object:
+			{
+				actor = std::make_unique<Actor>(spawnInfo);
+			}
+			break;
+			case CharacterType::Count:
+			default:
+			{
+				static_assert(static_cast<int>(CharacterType::Count) == 3);
+				check(false, "spawnInfo" + std::to_string(spawnInfo._key) + " characterType이 이상합니다.");
+			}
+		}
 		
 		int sectorIndex = sectorCoordToIndex(getSectorCoord(spawnInfo._position));
 		check(sectorIndex < _actorsBySector.size());
@@ -211,6 +240,7 @@ void StageManager::loadStageInfo()
 void StageManager::updateCamera() noexcept
 {
 	check(_stageInfo != nullptr);
+	check(_playerActor != nullptr);
 
 	if (!_fixedCameraName.empty())
 	{
@@ -229,10 +259,11 @@ void StageManager::updateCamera() noexcept
 			auto playerPosition = _playerActor->getPosition();
 			auto playerDirection = _playerActor->getDirection();
 			auto playerUpVector = _playerActor->getUpVector();
-
-			auto cameraPosition = add(playerPosition, mul(sub(playerUpVector, playerDirection), CAM_DISTANCE_DEFAULT));
 			
-			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, playerPosition, playerUpVector);
+			auto cameraFocusPosition = add(playerPosition, mul(playerUpVector, 150));
+			auto cameraPosition = add(playerPosition, mul(sub(playerUpVector, mul(playerDirection, 2.f)), 400));
+			
+			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector);
 		}
 		else
 		{

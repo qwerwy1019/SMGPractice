@@ -478,11 +478,18 @@ void Actor::updateActionChart(const TickCount64& deltaTick) noexcept
 
 void Actor::setActionState(const ActionState* nextState) noexcept
 {
+	std::string debugString = nextState->getAnimationName() + "\n";
+	OutputDebugStringA(debugString.c_str());
+	if (nextState->getAnimationName() == "IDLE" && _currentActionState->getAnimationName() == "DUCK")
+	{
+		OutputDebugStringA(debugString.c_str());
+	}
 	_localTickCount = 0;
 	if (_gameObject->_skinnedModelInstance != nullptr)
 	{
 		_gameObject->_skinnedModelInstance->setAnimation(nextState->getAnimationName(), nextState->getBlendTick());
 	}
+	_currentActionState = nextState;
 
 	//0tickÀÇ frameevent ÁøÇà
 	//updateRenderWorldMatrix();
@@ -494,13 +501,13 @@ void Actor::updateObjectWorldMatrix() noexcept
 
 	XMMATRIX position = XMMatrixTranslation(_position.x, _position.y, _position.z);
 	
-	XMMATRIX rotation = XMMatrixSet(_direction.x, _direction.y, _direction.z, 0,
-									_upVector.x, _upVector.y, _upVector.z, 0,
-									_direction.y * _upVector.z - _direction.z * _upVector.y,
+	XMMATRIX rotation = XMMatrixSet(_direction.y * _upVector.z - _direction.z * _upVector.y,
 									_direction.z * _upVector.x - _direction.x * _upVector.z,
 									_direction.x * _upVector.y - _direction.y * _upVector.x, 0,
+									_upVector.x, _upVector.y, _upVector.z, 0,
+									-_direction.x, -_direction.y, -_direction.z, 0,
 									0, 0, 0, 1);
-	XMMATRIX scaling = XMMatrixScaling(_characterInfo->getSizeX(), _characterInfo->getSizeY(), _characterInfo->getSizeZ()) * _size;
+	XMMATRIX scaling = XMMatrixScaling(_size, _size, _size);
 	
 	XMStoreFloat4x4(&_gameObject->_worldMatrix, scaling * rotation * position);
 	_gameObject->_dirtyFrames = FRAME_RESOURCE_COUNT;
@@ -535,4 +542,21 @@ void Actor::setDeceleration(const float deceleration, const float minSpeed) noex
 void Actor::setVerticalSpeed(const float speed) noexcept
 {
 	_verticalSpeed = speed;
+}
+
+const CharacterInfo* Actor::getCharacterInfo(void) const noexcept
+{
+	return _characterInfo;
+}
+
+const GameObject* Actor::getGameObject(void) const noexcept
+{
+	return _gameObject;
+}
+
+PlayerActor::PlayerActor(const SpawnInfo& spawnInfo)
+	: Actor(spawnInfo)
+	,_gravityPointIndex(-1)
+	, _isMoving(false)
+{
 }

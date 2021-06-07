@@ -7,7 +7,7 @@ struct KeyFrame
 {
 	KeyFrame() noexcept;
 
-	uint32_t _frame;
+	uint32_t _tick;
 	DirectX::XMFLOAT3 _translation;
 	DirectX::XMFLOAT3 _scaling;
 	DirectX::XMFLOAT4 _rotationQuat;

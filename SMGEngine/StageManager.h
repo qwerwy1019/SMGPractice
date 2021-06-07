@@ -25,7 +25,6 @@ public:
 	void setNextStage(std::string stageName) noexcept;
 	ActionChart* loadActionChartFromXML(const std::string& actionChartName);
 private:
-	static constexpr float CAM_DISTANCE_DEFAULT = 20.f;
 	int sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept;
 	std::vector<GameObject> _terrainObjects;
 	DirectX::XMINT3 _sectorSize;

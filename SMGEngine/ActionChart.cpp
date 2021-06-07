@@ -30,7 +30,7 @@ bool ActionBranch::checkBranchCondition(const Actor& actor) const noexcept
 {
 	for (const auto& condition : _actionConditions)
 	{
-		if (false == condition->checkCondition(actor))
+		if (condition->isNotCondition() == condition->checkCondition(actor))
 		{
 			return false;
 		}

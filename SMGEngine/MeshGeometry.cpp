@@ -2,6 +2,7 @@
 #include "MeshGeometry.h"
 #include "D3DUtil.h"
 #include "FileHelper.h"
+#include "GeometryGenerator.h"
 
 void MeshGeometry::createMeshGeometryXXX(ID3D12Device* device,
 										ID3D12GraphicsCommandList* commandList,
@@ -160,6 +161,16 @@ MeshGeometry::MeshGeometry(const XMLReaderNode& rootNode, ID3D12Device* device, 
 		createMeshGeometryXXX(device, commandList, vertices.data(), indices.data());
 	}
 }
+#if defined DEBUG | defined _DEBUG
+MeshGeometry::MeshGeometry(const GeneratedMeshData& meshData, ID3D12Device* device, ID3D12GraphicsCommandList* commandList)
+{
+	_vertexBufferByteSize = meshData._vertices.size() * sizeof(Vertex);
+	_vertexByteStride = sizeof(Vertex);
+	_indexBufferByteSize = meshData._indices.size() * sizeof(GeoIndex);
+
+	createMeshGeometryXXX(device, commandList, meshData._vertices.data(), meshData._indices.data());
+}
+#endif
 
 void MeshGeometry::setVertexByteSizeOnlyXXXXX(UINT vertexBufferSize) noexcept
 {

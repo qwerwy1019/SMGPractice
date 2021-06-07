@@ -18,6 +18,7 @@ struct IDXGIAdapter;
 struct IDXGIOutput;
 class Material;
 class UIManager;
+class Actor;
 
 // 정점 관련
 static constexpr size_t VERTEX_INPUT_DESC_SIZE = 3;
@@ -38,6 +39,7 @@ const D3D12_INPUT_ELEMENT_DESC SKINNED_VERTEX_INPUT_LAYOUT[SKINNED_VERTEX_INPUT_
 enum class PSOType : uint8_t
 {
 	Normal,
+	Skinned,
 	//WireFrame,
 	BackSideNotCulling,
 	//MirrorStencil,
@@ -46,6 +48,7 @@ enum class PSOType : uint8_t
 	Transparent,
 	Shadow,
 	UI,
+	GameObjectDev,
 	Count,
 };
 
@@ -99,6 +102,10 @@ public:
 	~D3DApp();
 
 	GameObject* createObjectFromXML(const std::string& fileName);
+
+#if defined DEBUG | defined _DEBUG
+	void createGameObjectDev(Actor* actor);
+#endif
 	uint16_t loadTexture(const string& textureName, const wstring& fileName);
 
 	// 업데이트
@@ -212,6 +219,7 @@ private:
 	// 셰이더 입력 관련
 	WComPtr<ID3D12RootSignature> _rootSignature;
 	WComPtr<ID3DBlob> _vertexShader;
+	WComPtr<ID3DBlob> _skinnedVertexShader;
 	WComPtr<ID3DBlob> _pixelShader;
 
 	unordered_map<PSOType, WComPtr<ID3D12PipelineState>> _pipelineStateObjectMap;

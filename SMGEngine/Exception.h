@@ -43,6 +43,7 @@ enum class ErrCode : uint32_t
 	AnimationNotFound,
 	ActionChartLoadFail,
 	CameraNotFound,
+	NotSkinnedMaterial,
 };
 
 #define ErrCodeSuccess(_val) (_val == ErrCode::Success)
@@ -58,8 +59,7 @@ enum class ErrCode : uint32_t
 	{																		\
 		std::wstring wfn = AnsiToWString(__FILE__);							\
 		DxException e(hr__, ErrCode::HRESULTFail, L#_expr, wfn, __LINE__);	\
-		USES_CONVERSION;													\
-		std::string errorString(W2A(e.to_wstring().c_str()));				\
+		std::string errorString = e.to_string();							\
 		errorString.append({__VA_ARGS__});									\
 		OutputDebugStringA(("Error! " + errorString).c_str());				\
 		MessageBoxA(NULL, errorString.c_str(), "Assert Check", MB_OK);		\
@@ -75,8 +75,7 @@ enum class ErrCode : uint32_t
 	{																		\
 		std::wstring wfn = AnsiToWString(__FILE__);							\
 		DxException e(E_FAIL, _err, L#_err, wfn, __LINE__);					\
-		USES_CONVERSION;													\
-		std::string errorString(W2A(e.to_wstring().c_str()));				\
+		std::string errorString = e.to_string();							\
 		errorString.append({__VA_ARGS__});									\
 		OutputDebugStringA(("Error! " + errorString).c_str());				\
 		MessageBoxA(NULL, errorString.c_str(), "Assert Check", MB_OK);		\
@@ -87,7 +86,7 @@ enum class ErrCode : uint32_t
 #endif
 
 #ifndef check
-#define check(_val, _msg)																										\
+#define check(_val, ...)																										\
 {																																\
 	if((_val) == false)																											\
 	{																															\
@@ -97,7 +96,8 @@ enum class ErrCode : uint32_t
 			std::string fileName = __FILE__;																					\
 			size_t fileNameOffset = fileName.find("Codes");																		\
 			fileName = fileName.substr(fileNameOffset);																			\
-			std::string text = "In " + fileName + ": line " + std::to_string(__LINE__) + "\n" + #_val + "\n" + _msg + "\n";		\
+			std::string text = "In " + fileName + ": line " + std::to_string(__LINE__) + "\n" + #_val + "\n";					\
+			text.append({__VA_ARGS__});																							\
 			OutputDebugStringA(("Assert! " + text).c_str());																	\
 			switch(MessageBoxA(NULL, text.c_str(), "Assert Check", MB_ICONERROR | MB_ABORTRETRYIGNORE))							\
 			{																													\
@@ -132,6 +132,7 @@ public:
 
 	std::wstring to_wstring() const noexcept;
 
+	std::string to_string() const noexcept;
 	HRESULT			_hr;
 	ErrCode			_errorCode;
 	std::wstring	_functionName;

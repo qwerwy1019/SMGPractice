@@ -11,6 +11,7 @@ public:
 	virtual ~ActionCondition() = default;
 	virtual ActionConditionType getType(void) const noexcept = 0;
 	virtual bool checkCondition(const Actor& actor) const noexcept = 0;
+	bool isNotCondition(void) const noexcept { return _not; }
 	void setNotCondition(void) noexcept { _not = true; }
 	static std::unique_ptr<ActionCondition> parseConditionString(const std::string& input);
 public:

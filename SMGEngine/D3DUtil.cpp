@@ -25,6 +25,12 @@ std::wstring DxException::to_wstring() const noexcept
 	return _functionName + L" failed in " + _fileName + L": line " + std::to_wstring(_lineNumber) + L"\n" 
 		+ err.ErrorMessage() + L" " + ErrCodeWString(_errorCode) + L"\n";
 }
+std::string DxException::to_string() const noexcept
+{
+	USES_CONVERSION;
+	std::string rv = W2A(to_wstring().c_str());
+	return rv;
+}
 
 WComPtr<ID3D12Resource> D3DUtil::CreateDefaultBuffer(ID3D12Device* device,
 													 ID3D12GraphicsCommandList* cmdList,
@@ -93,6 +99,7 @@ WComPtr<ID3DBlob> D3DUtil::CompileShader(const std::wstring& fileName,
 	{
 		OutputDebugStringA((char*)errors->GetBufferPointer());
 	}
+
 	ThrowIfFailed(hr, "shader compile fail");
 
 	return byteCode;

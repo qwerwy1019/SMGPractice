@@ -46,44 +46,63 @@ CharacterInfo::CharacterInfo(const XMLReaderNode& node)
 	node.loadAttribute("ObjectFile", _objectFileName);
 	node.loadAttribute("ActionChart", _actionChartFileName);
 
-	std::string typeString;
-	node.loadAttribute("CollisionType", typeString);
-	if (typeString == "SolidObject")
+	std::string stringBuffer;
+
+	node.loadAttribute("CharacterType", stringBuffer);
+	if(stringBuffer == "Player")
+	{
+		_characterType = CharacterType::Player;
+	}
+	else if (stringBuffer == "Monster")
+	{
+		_characterType = CharacterType::Monster;
+	}
+	else if (stringBuffer == "Object")
+	{
+		_characterType = CharacterType::Object;
+	}
+	else
+	{
+		static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
+		ThrowErrCode(ErrCode::UndefinedType, "characterType Error : " + stringBuffer);
+	}
+
+	node.loadAttribute("CollisionType", stringBuffer);
+	if (stringBuffer == "SolidObject")
 	{
 		_collisionType = CollisionType::SolidObject;
 	}
-	else if (typeString == "Character")
+	else if (stringBuffer == "Character")
 	{
 		_collisionType = CollisionType::Character;
 	}
-	else if (typeString == "Item")
+	else if (stringBuffer == "Item")
 	{
 		_collisionType = CollisionType::Item;
 	}
 	else
 	{
 		static_assert(static_cast<int>(CollisionType::Count) == 3, "타입 추가시 확인");
-		ThrowErrCode(ErrCode::UndefinedType, "collisionType Error : " + typeString);
+		ThrowErrCode(ErrCode::UndefinedType, "collisionType Error : " + stringBuffer);
 	}
 
-	std::string shapeString;
-	node.loadAttribute("CollisionShape", shapeString);
-	if (shapeString == "Sphere")
+	node.loadAttribute("CollisionShape", stringBuffer);
+	if (stringBuffer == "Sphere")
 	{
 		_collisionShape = CollisionShape::Sphere;
 	}
-	else if (shapeString == "Box")
+	else if (stringBuffer == "Box")
 	{
 		_collisionShape = CollisionShape::Box;
 	}
-	else if (shapeString == "Polygon")
+	else if (stringBuffer == "Polygon")
 	{
 		_collisionShape = CollisionShape::Polygon;
 	}
 	else
 	{
 		static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
-		ThrowErrCode(ErrCode::UndefinedType, "collisionShape Error : " + shapeString);
+		ThrowErrCode(ErrCode::UndefinedType, "collisionShape Error : " + stringBuffer);
 	}
 
 	node.loadAttribute("Radius", _radius);

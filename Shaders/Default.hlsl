@@ -10,8 +10,6 @@
 	#define NUM_SPOT_LIGHTS 0
 #endif
 
-#define SKINNED
-
 #include "LightingUtil.hlsl"
 Texture2D gDiffuseMap : register(t0);
 SamplerState gsamPointWrap : register(s0);
@@ -25,12 +23,15 @@ cbuffer cbPerObject : register(b0)
 {
 	float4x4 gWorld;
 	float4x4 gTextureTransform;
+	bool	 gIsSkinned;
 };
 
+#ifdef SKINNED
 cbuffer cbSkinned : register(b1)
 {
 	float4x4 gBoneTransforms[96];
 };
+#endif
 
 cbuffer cbPassConstants : register(b2)
 {
@@ -86,31 +87,30 @@ struct VertexOut
 
 VertexOut DefaultVertexShader(VertexIn vIn)
 {
-	//if (pad1 != 0.f)
+#ifdef SKINNED
+	float weights[4] = { 0.f, 0.f, 0.f, 0.f };
+	weights[0] = vIn._boneWeights.x;
+	weights[1] = vIn._boneWeights.y;
+	weights[2] = vIn._boneWeights.z;
+	weights[3] = 1.f - weights[0] - weights[1] - weights[2];
+
+	float3 posLocal = float3(0.f, 0.f, 0.f);
+	float3 normalLocal = float3(0.f, 0.f, 0.f);
+	float3 tangentLocal = float3(0.f, 0.f, 0.f);
+
+	for (int i = 0; i < 4; ++i)
 	{
-		float weights[4] = { 0.f, 0.f, 0.f, 0.f };
-		weights[0] = vIn._boneWeights.x;
-		weights[1] = vIn._boneWeights.y;
-		weights[2] = vIn._boneWeights.z;
-		weights[3] = 1.f - weights[0] - weights[1] - weights[2];
-
-		float3 posLocal = float3(0.f, 0.f, 0.f);
-		float3 normalLocal = float3(0.f, 0.f, 0.f);
-		float3 tangentLocal = float3(0.f, 0.f, 0.f);
-
-		for (int i = 0; i < 4; ++i)
+		if (vIn._boneIndices[i] != 255)
 		{
-			if (vIn._boneIndices[i] != 255)
-			{
-				posLocal += weights[i] * mul(float4(vIn._posLocal, 1.f), gBoneTransforms[vIn._boneIndices[i]]).xyz;
-				normalLocal += weights[i] * mul(vIn._normalLocal, (float3x3)gBoneTransforms[vIn._boneIndices[i]]);
-			}
-			//tangent
+			posLocal += weights[i] * mul(float4(vIn._posLocal, 1.f), gBoneTransforms[vIn._boneIndices[i]]).xyz;
+			normalLocal += weights[i] * mul(vIn._normalLocal, (float3x3)gBoneTransforms[vIn._boneIndices[i]]);
 		}
-		vIn._posLocal = posLocal;
-		vIn._normalLocal = normalLocal;
 		//tangent
 	}
+	vIn._posLocal = posLocal;
+	vIn._normalLocal = normalLocal;
+	//tangent
+#endif
 	
 	VertexOut vOut;
 

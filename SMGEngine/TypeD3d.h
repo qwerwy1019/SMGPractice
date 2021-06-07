@@ -30,6 +30,11 @@ const D3D_SHADER_MACRO definesForShader[] =
 //	"CARTOON_RENDER", "1",
 	NULL, NULL
 };
+const D3D_SHADER_MACRO definesForSkinnedVertexShader[] =
+{
+	"SKINNED", "1",
+	NULL, NULL
+};
 
 constexpr int FPS = 60;
 constexpr float FPS_f = static_cast<float>(FPS);
@@ -37,22 +42,28 @@ constexpr float FPS_f = static_cast<float>(FPS);
 enum class RenderLayer : uint8_t
 {
 	Opaque,
+	OpaqueSkinned,
 	AlphaTested,
 	Shadow,
 	//MirrorStencil,
 	//ReflectedOpaque,
 	//ReflectedTransparent,
 	Transparent,
+	GameObjectDev,
 	Count,
 };
 constexpr RenderLayer RenderLayers[] =
 {
 	RenderLayer::Opaque,
+	RenderLayer::OpaqueSkinned,
 	RenderLayer::AlphaTested,
 	RenderLayer::Shadow,
 	//RenderLayer::MirrorStencil,
 	//RenderLayer::ReflectedOpaque,
 	//RenderLayer::ReflectedTransparent,
 	RenderLayer::Transparent,
+	RenderLayer::GameObjectDev,
 };
 static_assert(sizeof(RenderLayers) == static_cast<int>(RenderLayer::Count), "RenderLayer 추가 시 수정해주세요.");
+
+constexpr uint16_t SKINNED_UNDEFINED = std::numeric_limits<uint16_t>::max();

@@ -102,3 +102,9 @@ struct Texture
 	WComPtr<ID3D12Resource> _resource;
 	WComPtr<ID3D12Resource> _uploader;
 };
+
+struct GeneratedMeshData
+{
+	std::vector<Vertex> _vertices;
+	std::vector<uint16_t> _indices;
+};

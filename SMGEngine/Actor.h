@@ -47,7 +47,7 @@ public:
 
 	void updateActionChart(const TickCount64& deltaTick) noexcept;
 
-	ActionState* getCurrentActionState(void) const noexcept { return _currentActionState; }
+	const ActionState* getCurrentActionState(void) const noexcept { return _currentActionState; }
 
 	void setActionState(const ActionState* nextState) noexcept;
 	void updateObjectWorldMatrix() noexcept;
@@ -56,6 +56,8 @@ public:
 	void setAcceleration(const float acceleration, const float maxSpeed) noexcept;
 	void setDeceleration(const float deceleration, const float minSpeed) noexcept;
 	void setVerticalSpeed(const float speed) noexcept;
+	const CharacterInfo* getCharacterInfo(void) const noexcept;
+	const GameObject* getGameObject(void) const noexcept;
 private:
 	DirectX::XMFLOAT3 _position;
 	//DirectX::XMFLOAT4 _rotationQuat;
@@ -86,8 +88,8 @@ private:
 
 	const CharacterInfo* _characterInfo;
 
-	ActionChart* _actionChart;
-	ActionState* _currentActionState;
+	const ActionChart* _actionChart;
+	const ActionState* _currentActionState;
 	
 	TickCount64 _localTickCount;
 };
@@ -95,6 +97,7 @@ private:
 class PlayerActor : public Actor
 {
 public:
+	PlayerActor(const SpawnInfo& spawnInfo);
 	bool isMoving(void) const noexcept { return _isMoving; }
 private:
 	int _gravityPointIndex;

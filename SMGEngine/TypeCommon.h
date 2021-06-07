@@ -39,3 +39,11 @@ enum class StickInputType
 };
 
 using CharacterKey = uint16_t;
+enum class CharacterType
+{
+	Player,
+	Monster,
+	Object,
+
+	Count,
+};

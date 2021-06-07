@@ -30,6 +30,10 @@ Material::Material(const int materialCBIndex, const XMLReaderNode& node)
 	{
 		_renderLayer = RenderLayer::Opaque;
 	}
+	else if (renderLayerString == "OpaqueSkinned")
+	{
+		_renderLayer = RenderLayer::OpaqueSkinned;
+	}
 	else if (renderLayerString == "AlphaTested")
 	{
 		_renderLayer = RenderLayer::AlphaTested;
@@ -42,9 +46,13 @@ Material::Material(const int materialCBIndex, const XMLReaderNode& node)
 	{
 		_renderLayer = RenderLayer::Transparent;
 	}
+	else if (renderLayerString == "GameObjectDev")
+	{
+		_renderLayer = RenderLayer::GameObjectDev;
+	}
 	else
 	{
 		ThrowErrCode(ErrCode::UndefinedType, renderLayerString);
-		static_assert(static_cast<int>(RenderLayer::Count) == 4, "타입 추가시 확인");
+		static_assert(static_cast<int>(RenderLayer::Count) == 6, "타입 추가시 확인");
 	}
 }

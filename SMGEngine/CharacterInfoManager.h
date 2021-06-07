@@ -12,6 +12,7 @@ public:
 	const std::string& getName() const noexcept { return _name; }
 	const std::string& getObjectFileName() const noexcept { return _objectFileName; }
 	const std::string& getActionChartFileName() const noexcept { return _actionChartFileName; }
+	CharacterType getCharacterType(void) const noexcept { return _characterType; }
 	CollisionShape getCollisionShape(void) const noexcept { return _collisionShape; }
 	CollisionType getCollisionType(void) const noexcept { return _collisionType; }
 	float getRadius(void) const noexcept { return _radius; }
@@ -22,6 +23,8 @@ private:
 	std::string _name;
 	std::string _objectFileName;
 	std::string _actionChartFileName;
+	CharacterType _characterType;
+
 	CollisionType _collisionType;
 	CollisionShape _collisionShape;
 
