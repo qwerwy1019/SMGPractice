@@ -49,3 +49,15 @@ public:
 	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::End; }
 	virtual bool checkCondition(const Actor& actor) const noexcept override;
 };
+
+class ActionCondition_Stick : public ActionCondition
+{
+public:
+	ActionCondition_Stick(const std::string& args);
+	virtual ~ActionCondition_Stick() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::Key; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	StickInputType _stickType;
+	StickInputState _stickInputState;
+};

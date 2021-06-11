@@ -4,6 +4,7 @@
 #include "Exception.h"
 #include "SMGFramework.h"
 #include "D3DUtil.h"
+#include "StageManager.h"
 
 ActionCondition_Tick::ActionCondition_Tick(const std::string& args)
 {
@@ -106,6 +107,7 @@ ActionCondition_Key::ActionCondition_Key(const std::string& args)
 
 bool ActionCondition_Key::checkCondition(const Actor& actor) const noexcept
 {
+	check(&actor == SMGFramework::getStageManager()->getPlayerActor());
 	if (_buttonState == SMGFramework::Get().getButtonInput(_buttonType))
 	{
 		return true;
@@ -153,13 +155,9 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	{
 		condition = std::make_unique<ActionCondition_Key>(conditionArgs);
 	}
-	else if (conditionTypeString == "LStickMove")
+	else if (conditionTypeString == "Stick")
 	{
-		return nullptr;
-	}
-	else if (conditionTypeString == "RStickMove")
-	{
-		return nullptr;
+		condition = std::make_unique<ActionCondition_Stick>(conditionArgs);
 	}
 	else if (conditionTypeString == "OnGround")
 	{
@@ -180,4 +178,103 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 		condition->setNotCondition();
 	}
 	return condition;
+}
+
+ActionCondition_Stick::ActionCondition_Stick(const std::string& args)
+{
+	const auto& tokenized = D3DUtil::tokenizeString(args, '_');
+	if (tokenized.size() != 2)
+	{
+		ThrowErrCode(ErrCode::ActionChartLoadFail, "ActionCondition_Key" + args);
+	}
+
+	if (tokenized[0] == "L")
+	{
+		_stickType = StickInputType::LStick;
+	}
+	else if (tokenized[0] == "R")
+	{
+		_stickType = StickInputType::RStick;
+	}
+	else
+	{
+		static_assert(static_cast<int>(StickInputType::Count) == 3, "타입 추가시 확인");
+		ThrowErrCode(ErrCode::ActionChartLoadFail, tokenized[0]);
+	}
+
+	if (tokenized[1] == "FrontLong")
+	{
+		_stickInputState = StickInputState::FrontLong;
+	}
+	else if (tokenized[1] == "LeftLong")
+	{
+		_stickInputState = StickInputState::LeftLong;
+	}
+	else if (tokenized[1] == "BackLong")
+	{
+		_stickInputState = StickInputState::BackLong;
+	}
+	else if (tokenized[1] == "RightLong")
+	{
+		_stickInputState = StickInputState::RightLong;
+	}
+	else if (tokenized[1] == "FrontShort")
+	{
+		_stickInputState = StickInputState::FrontShort;
+	}
+	else if (tokenized[1] == "LeftShort")
+	{
+		_stickInputState = StickInputState::LeftShort;
+	}
+	else if (tokenized[1] == "BackShort")
+	{
+		_stickInputState = StickInputState::BackShort;
+	}
+	else if (tokenized[1] == "RightShort")
+	{
+		_stickInputState = StickInputState::RightShort;
+	}
+	else if (tokenized[1] == "Front")
+	{
+		_stickInputState = StickInputState::Front;
+	}
+	else if (tokenized[1] == "Left")
+	{
+		_stickInputState = StickInputState::Left;
+	}
+	else if (tokenized[1] == "Back")
+	{
+		_stickInputState = StickInputState::Back;
+	}
+	else if (tokenized[1] == "Right")
+	{
+		_stickInputState = StickInputState::Right;
+	}
+	else if (tokenized[1] == "Long")
+	{
+		_stickInputState = StickInputState::Long;
+	}
+	else if (tokenized[1] == "Short")
+	{
+		_stickInputState = StickInputState::Short;
+	}
+	else if (tokenized[1] == "Move")
+	{
+		_stickInputState = StickInputState::Move;
+	}
+	else
+	{
+		ThrowErrCode(ErrCode::ActionChartLoadFail, tokenized[1]);
+	}
+}
+
+bool ActionCondition_Stick::checkCondition(const Actor& actor) const noexcept
+{
+	check(&actor == SMGFramework::getStageManager()->getPlayerActor());
+
+	if ((SMGFramework::Get().getStickInputState(_stickType) & _stickInputState) != StickInputState::None)
+	{
+		return true;
+	}
+	return false;
 }

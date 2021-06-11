@@ -88,12 +88,14 @@ private:
 	
 public:
 	ButtonState getButtonInput(const ButtonInputType type) const noexcept;
+	StickInputState getStickInputState(const StickInputType type) const noexcept;
 private:
 	void setButtonInput(const ButtonInputType type, bool pressed) noexcept;
 	ButtonState _buttonInput[static_cast<int>(ButtonInputType::Count)];
 	void setStickInput(const StickInputType type, float dx, float dy) noexcept;
 	void resetStickInput(const StickInputType type) noexcept;
 	DirectX::XMFLOAT2 _stickInput[static_cast<int>(StickInputType::Count)];
+	StickInputState _stickInputState[static_cast<int>(StickInputType::Count)];
 
 	// 마우스 입력
 	POINT _mousePos;

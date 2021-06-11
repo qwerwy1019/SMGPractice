@@ -10,8 +10,8 @@
 SMGFramework::SMGFramework(HINSTANCE hInstance)
 	: _hInstance(hInstance)
 	, _hMainWnd(nullptr)
-	, _clientWidth(800)
-	, _clientHeight(600)
+	, _clientWidth(1280)
+	, _clientHeight(1024)
 	, _minimized(false)
 	, _maximized(false)
 	, _resizing(false)
@@ -83,6 +83,11 @@ ButtonState SMGFramework::getButtonInput(const ButtonInputType type) const noexc
 	return _buttonInput[static_cast<int>(type)];
 }
 
+StickInputState SMGFramework::getStickInputState(const StickInputType type) const noexcept
+{
+	return _stickInputState[static_cast<int>(type)];
+}
+
 void SMGFramework::setButtonInput(const ButtonInputType type, bool pressed) noexcept
 {
 	check(type < ButtonInputType::Count, "buttonInputType이 이상합니다.");
@@ -136,15 +141,71 @@ void SMGFramework::setButtonInput(const ButtonInputType type, bool pressed) noex
 void SMGFramework::setStickInput(const StickInputType type, float dx, float dy) noexcept
 {
 	check(type < StickInputType::Count, "타입이 비정상입니다.");
-	_stickInput[static_cast<int>(type)].x += dx;
-	_stickInput[static_cast<int>(type)].y += dy;
+	const size_t typeIndex = static_cast<int>(type);
+	float x = _stickInput[typeIndex].x + dx;
+	float y = _stickInput[typeIndex].y + dy;
+	float length = std::sqrt(x * x + y * y);
+	if (length > 1.f)
+	{
+		x /= length;
+		y /= length;
+		length = 1.f;
+	}
+
+	std::string stateStr = "";
+	if (y <= x && y <= -x)
+	{
+		_stickInputState[typeIndex] = StickInputState::Front;
+		stateStr += "Front";
+	}
+	else if (y >= x && y <= -x)
+	{
+		_stickInputState[typeIndex] = StickInputState::Left;
+		stateStr += "Left";
+	}
+	else if (y >= x && y >= -x)
+	{
+		_stickInputState[typeIndex] = StickInputState::Back;
+		stateStr += "Back";
+	}
+	else if (y <= x && y >= -x)
+	{
+		_stickInputState[typeIndex] = StickInputState::Right;
+		stateStr += "Right";
+	}
+	else
+	{
+		check(false, "stickInputState Error!");
+	}
+
+	if (length < 0.5f)
+	{
+		_stickInputState[typeIndex] = _stickInputState[typeIndex] & StickInputState::Short;
+		stateStr += "Short";
+	}
+	else
+	{
+		_stickInputState[typeIndex] = _stickInputState[typeIndex] & StickInputState::Long;
+		stateStr += "Long";
+	}
+
+	_stickInput[typeIndex].x = x;
+	_stickInput[typeIndex].y = y;
+	
+	std::string typeIndexStr = std::to_string(typeIndex) + "\n";
+	std::string positionStr = std::to_string(_stickInput[typeIndex].x) + ", " + std::to_string(_stickInput[typeIndex].y) + "\n";
+	stateStr += "\n";
+	OutputDebugStringA((typeIndexStr + positionStr + stateStr).c_str());
 }
 
 void SMGFramework::resetStickInput(const StickInputType type) noexcept
 {
 	check(type < StickInputType::Count, "타입이 비정상입니다.");
 
-	_stickInput[static_cast<int>(type)] = { 0, 0 };
+	const size_t typeIndex = static_cast<size_t>(type);
+	_stickInput[typeIndex] = { 0, 0 };
+
+	_stickInputState[typeIndex] = StickInputState::None;
 }
 
 int SMGFramework::Run(void)
@@ -264,8 +325,8 @@ LRESULT SMGFramework::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		case WM_GETMINMAXINFO:
 			((MINMAXINFO*)lParam)->ptMinTrackSize.x = 800;
 			((MINMAXINFO*)lParam)->ptMinTrackSize.y = 600;
-			((MINMAXINFO*)lParam)->ptMaxTrackSize.x = 800;
-			((MINMAXINFO*)lParam)->ptMaxTrackSize.y = 600;
+			((MINMAXINFO*)lParam)->ptMaxTrackSize.x = 1920;
+			((MINMAXINFO*)lParam)->ptMaxTrackSize.y = 1080;
 			return 0;
 		case WM_LBUTTONDOWN:
 			onMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), ButtonInputType::LStickButton);
@@ -448,6 +509,14 @@ void SMGFramework::onMouseDown(WPARAM buttonState, int x, int y, ButtonInputType
 void SMGFramework::onMouseUp(WPARAM buttonState, int x, int y, ButtonInputType type) noexcept
 {
 	setButtonInput(type, false);
+	if (type == ButtonInputType::LStickButton)
+	{
+		resetStickInput(StickInputType::LStick);
+	}
+	else if (type == ButtonInputType::RStickButton)
+	{
+		resetStickInput(StickInputType::RStick);
+	}
 }
 
 void SMGFramework::onMouseMove(WPARAM buttonState, int x, int y) noexcept
@@ -473,7 +542,7 @@ void SMGFramework::onMouseMove(WPARAM buttonState, int x, int y) noexcept
 		resetStickInput(StickInputType::RStick);
 	}
 
-	if((buttonState & MK_LBUTTON) == 0 && (buttonState & MK_RBUTTON) != 0)
+	if((buttonState & MK_LBUTTON) == 0 && (buttonState & MK_RBUTTON) == 0)
 	{
 		setStickInput(StickInputType::Pointer, dx, dy);
 	}

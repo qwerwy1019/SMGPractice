@@ -105,6 +105,7 @@ public:
 
 #if defined DEBUG | defined _DEBUG
 	void createGameObjectDev(Actor* actor);
+	void createGameObjectDev(GameObject* gameObject);
 #endif
 	uint16_t loadTexture(const string& textureName, const wstring& fileName);
 

@@ -38,6 +38,32 @@ enum class StickInputType
 	Count,
 };
 
+enum class StickInputState
+{
+	None			= 0,
+	FrontLong		= 1 << 0,
+	LeftLong		= 1 << 1,
+	BackLong		= 1 << 2,
+	RightLong		= 1 << 3,
+
+	FrontShort		= 1 << 4,
+	LeftShort		= 1 << 5,
+	BackShort		= 1 << 6,
+	RightShort		= 1 << 7,
+
+	Front			= FrontLong | FrontShort,
+	Left			= LeftLong | LeftShort,
+	Back			= BackLong | BackShort,
+	Right			= RightLong | RightShort,
+
+
+	Long			= FrontLong | LeftLong | BackLong | RightLong,
+	Short			= FrontShort | LeftShort | BackShort | RightShort,
+	
+	Move			= Long | Short,
+};
+DEFINE_ENUM_FLAG_OPERATORS(StickInputState);
+
 using CharacterKey = uint16_t;
 enum class CharacterType
 {

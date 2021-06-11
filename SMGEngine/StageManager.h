@@ -24,9 +24,10 @@ public:
 	bool isLoading(void) const noexcept { return _isLoading; };
 	void setNextStage(std::string stageName) noexcept;
 	ActionChart* loadActionChartFromXML(const std::string& actionChartName);
+	const PlayerActor* getPlayerActor(void) const noexcept;
 private:
 	int sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept;
-	std::vector<GameObject> _terrainObjects;
+	std::vector<const GameObject*> _terrainObjects;
 	DirectX::XMINT3 _sectorSize;
 	DirectX::XMINT3 _sectorUnitNumber;
 	std::vector<std::unordered_set<Actor*>> _actorsBySector;
@@ -50,5 +51,6 @@ private:
 	void setCameraCount(const int count) noexcept;
 	int getCameraCount() const noexcept;
 	int getCameraIndex() const noexcept;
+	void createMap(void);
 };
 

@@ -1097,20 +1097,27 @@ void FbxLoader::loadFbxMaterial(FbxScene* node)
 	for (int i = 0; i < materialCount; ++i)
 	{
 		const FbxSurfaceMaterial* material = node->GetMaterial(i);
-		if (!material->GetClassId().Is(FbxSurfacePhong::ClassId))
+		if (material->GetClassId().Is(FbxSurfacePhong::ClassId))
 		{
-			ThrowErrCode(ErrCode::UndefinedType, "고려되지 않은 타입입니다.");
+			const FbxSurfacePhong* phong = static_cast<const FbxSurfacePhong*>(material);
+			const FbxDouble3& diffuse = phong->Diffuse.Get();
+			const FbxDouble3& fresnelR0 = phong->Reflection.Get(); // 확인 필요 [1/13/2021 qwerw]
+			const float shininess = phong->Shininess.Get();
+
+			_materialsInfos.emplace_back(phong->GetName(),
+				DirectX::XMFLOAT4(diffuse.mData[0], diffuse.mData[1], diffuse.mData[2], 1.f),
+				DirectX::XMFLOAT3(fresnelR0.mData[0], fresnelR0.mData[1], fresnelR0.mData[2]),
+				1.f - shininess);
+		}
+		else
+		{
+			_materialsInfos.emplace_back("UnknownMat" + std::to_string(i),
+				DirectX::XMFLOAT4(0, 0, 0, 0),
+				DirectX::XMFLOAT3(0, 0, 0),
+				1.f);
 		}
 		
-		const FbxSurfacePhong* phong = static_cast<const FbxSurfacePhong*>(material);
-		const FbxDouble3& diffuse = phong->Diffuse.Get();
-		const FbxDouble3& fresnelR0 = phong->Reflection.Get(); // 확인 필요 [1/13/2021 qwerw]
-		const float shininess = phong->Shininess.Get();
 		
-		_materialsInfos.emplace_back(phong->GetName(),
-			DirectX::XMFLOAT4(diffuse.mData[0], diffuse.mData[1], diffuse.mData[2], 1.f),
-			DirectX::XMFLOAT3(fresnelR0.mData[0], fresnelR0.mData[1], fresnelR0.mData[2]),
-			1.f - shininess);
 
 		const FbxProperty diffuseProperty = material->FindProperty(FbxSurfaceMaterial::sDiffuse);
 		if (diffuseProperty.IsValid())

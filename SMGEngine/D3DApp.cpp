@@ -377,7 +377,7 @@ void D3DApp::createDescriptorHeaps(void)
 	ThrowIfFailed(_deviceD3d12->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(_dsvHeap.GetAddressOf())));
 
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc;
-	srvHeapDesc.NumDescriptors = 20;
+	srvHeapDesc.NumDescriptors = 200;
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	srvHeapDesc.NodeMask = 0;
@@ -500,7 +500,7 @@ void D3DApp::OnResize(void)
 	flushCommandQueue();
 
 	double aspectRatio = static_cast<double>(width) / height;
-	XMMATRIX&& proj = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, aspectRatio, 1.f, 1000.f);
+	XMMATRIX&& proj = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, aspectRatio, 1.f, 5000.0f);
 	XMStoreFloat4x4(&_projectionMatrix, proj);
 }
 
@@ -740,33 +740,33 @@ void D3DApp::updatePassConstantBuffer()
 	_passConstants._renderTargetSize = XMFLOAT2(static_cast<float>(width), static_cast<float>(height));
 	_passConstants._invRenderTargetSize = XMFLOAT2(1.0f / width, 1.0f / height);
 	_passConstants._nearZ = 1.0f;
-	_passConstants._farZ = 200.0f;
+	_passConstants._farZ = 5000.0f;
 	_passConstants._totalTime = SMGFramework::Get().getTimer().getTotalTime();
 	_passConstants._deltaTime = SMGFramework::Get().getTimer().getDeltaTime();
 
 	_passConstants._fogColor = DirectX::XMFLOAT4(DirectX::Colors::LightSteelBlue);
 	_passConstants._fogStart = 20.f;
-	_passConstants._fogEnd = 100.f;
-	_passConstants._ambientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
+	_passConstants._fogEnd = 4000.f;
+	_passConstants._ambientLight = { 0.5f, 0.5f, 0.6f, 1.0f };
 	
 	// ÁÖ±¤
 	XMVECTOR lightDir = XMVectorSet(0.f, -1.f, 0.f, 0.f);
 	XMStoreFloat3(&_passConstants._lights[0]._direction, lightDir);
 	XMStoreFloat3(&_passConstants._lights[0]._position, -lightDir * 30.0f);
-	_passConstants._lights[0]._strength = { 0.8f, 0.8f, 0.6f };
+	_passConstants._lights[0]._strength = { 0.5f, 0.5f, 0.7f };
 	_passConstants._lights[0]._falloffEnd = 200.f;
 	//_passConstants._lights[0]._strength = { 0.7f * abs(sinf(3.f * _timer.GetTotalTime())) + 0.3f, 0.f, 0.f };
 	// º¸Á¶±¤
 	XMVECTOR subLightDir = XMVectorSet(1.f, 0.f, 0.f, 0.f);
 	XMStoreFloat3(&_passConstants._lights[1]._direction, subLightDir);
 	XMStoreFloat3(&_passConstants._lights[1]._position, -subLightDir * 50.f);
-	_passConstants._lights[1]._strength = { 1.f, 1.f, 0.9f };
+	_passConstants._lights[1]._strength = { 0.1f, 0.1f, 0.1f };
 	_passConstants._lights[1]._falloffEnd = 200.f;
 	// ¿ª±¤
 	XMVECTOR backLightDir = XMVectorSet(0.f, 1.f, 0.f, 0.f);
 	XMStoreFloat3(&_passConstants._lights[2]._direction, backLightDir);
 	XMStoreFloat3(&_passConstants._lights[2]._position, -backLightDir * 50.f);
-	_passConstants._lights[2]._strength = { 1.f, 1.f, 0.9f };
+	_passConstants._lights[2]._strength = { 0.1f, 0.1f, 0.3f };
 	_passConstants._lights[2]._falloffEnd = 200.f;
 	
 	_frameResources[_frameIndex]->setPassCB(0, _passConstants);
@@ -1012,7 +1012,7 @@ void D3DApp::createGameObjectDev(Actor* actor)
 	auto renderItem = make_unique<RenderItem>();
 	renderItem->_objConstantBufferIndex = actor->getGameObject()->_objConstantBufferIndex;
 	renderItem->_geometry = it.first->second.get();
-	renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+	renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP;
 	renderItem->_indexCount = meshData._indices.size();
 	renderItem->_baseVertexLocation = 0;
 	renderItem->_startIndexLocation = 0;
@@ -1021,6 +1021,46 @@ void D3DApp::createGameObjectDev(Actor* actor)
 
 	_renderItems[static_cast<int>(RenderLayer::GameObjectDev)].emplace_back(std::move(renderItem));
 }
+
+void D3DApp::createGameObjectDev(GameObject* gameObject)
+{
+	// normal vector
+	GeneratedMeshData normalLineMeshData;
+	for (const auto& renderItem : gameObject->_renderItems)
+	{
+		size_t bufferSize = 0;
+		const Vertex* bufferPointer = renderItem->_geometry->getVertexBufferXXX(bufferSize);
+		normalLineMeshData._vertices.reserve(bufferSize * 2);
+		normalLineMeshData._indices.reserve(bufferSize * 2);
+		for (int i = 0; i < bufferSize; ++i)
+		{
+			Vertex from, to;
+			from._position = MathHelper::add(bufferPointer[i]._position, MathHelper::mul(bufferPointer[i]._normal, -100));
+			from._textureCoord = DirectX::XMFLOAT2(0, 0);
+			to._position = MathHelper::add(bufferPointer[i]._position, MathHelper::mul(bufferPointer[i]._normal, 200));
+			to._textureCoord = DirectX::XMFLOAT2(1, 1);
+			normalLineMeshData._vertices.push_back(from);
+			normalLineMeshData._vertices.push_back(to);
+			normalLineMeshData._indices.push_back(2 * i);
+			normalLineMeshData._indices.push_back(2 * i + 1);
+		}
+	}
+	auto it = _geometries.emplace("NormalVector" + std::to_string(gameObject->_objConstantBufferIndex),
+		new MeshGeometry(normalLineMeshData, _deviceD3d12.Get(), _commandList.Get()));
+
+	auto renderItem = make_unique<RenderItem>();
+	renderItem->_objConstantBufferIndex = gameObject->_objConstantBufferIndex;
+	renderItem->_geometry = it.first->second.get();
+	renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+	renderItem->_indexCount = normalLineMeshData._indices.size();
+	renderItem->_baseVertexLocation = 0;
+	renderItem->_startIndexLocation = 0;
+	renderItem->_material = loadXmlMaterial("devMat", "blueToRed");
+	renderItem->_renderLayer = RenderLayer::GameObjectDev;
+
+	_renderItems[static_cast<int>(RenderLayer::GameObjectDev)].emplace_back(std::move(renderItem));
+}
+
 #endif
 void D3DApp::drawUI(void)
 {
@@ -1092,13 +1132,16 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
 		}
 		break;
-#if defined(DEBUG) | defined(_DEBUG)
 		case RenderLayer::GameObjectDev:
 		{
+#if defined(DEBUG) | defined(_DEBUG)
 			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::GameObjectDev].Get());
+			//return;
+#else
+			return;
+#endif
 		}
 		break;
-#endif
 		case RenderLayer::Count:
 		default:
 		{

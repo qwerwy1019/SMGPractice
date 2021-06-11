@@ -119,4 +119,24 @@ namespace MathHelper
 			}
 		}
 	}
+	static void getWorldMatrix(const DirectX::XMFLOAT3& position,
+								const DirectX::XMFLOAT3& direction,
+								const DirectX::XMFLOAT3& upVector,
+								const float size,
+								DirectX::XMFLOAT4X4& outMatrix)
+	{
+		using namespace DirectX;
+
+		XMMATRIX translation = XMMatrixTranslation(position.x, position.y, position.z);
+
+		XMMATRIX rotation = XMMatrixSet(direction.y * upVector.z - direction.z * upVector.y,
+			direction.z * upVector.x - direction.x * upVector.z,
+			direction.x * upVector.y - direction.y * upVector.x, 0,
+			upVector.x, upVector.y, upVector.z, 0,
+			-direction.x, -direction.y, -direction.z, 0,
+			0, 0, 0, 1);
+		XMMATRIX scaling = XMMatrixScaling(size, size, size);
+
+		XMStoreFloat4x4(&outMatrix, scaling * rotation * translation);
+	}
 };

@@ -32,6 +32,9 @@ void StageInfo::loadXml(const XMLReaderNode& rootNode)
 
 	childIter = childNodes.find("SpawnInfo");
 	loadXmlSpawnInfo(childIter->second);
+
+	childIter = childNodes.find("TerrainObjects");
+	loadXmlTerrainObjectInfo(childIter->second);
 }
 
 void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
@@ -74,4 +77,23 @@ const FixedCameraPoint& StageInfo::getFixedCameraPoint(const std::string& name) 
 const std::vector<SpawnInfo>& StageInfo::getSpawnInfos(void) const noexcept
 {
 	return _spawnInfo;
+}
+
+const std::vector<TerrainObjectInfo>& StageInfo::getTerrainObjectInfos(void) const noexcept
+{
+	return _terrainObjectInfo;
+}
+
+void StageInfo::loadXmlTerrainObjectInfo(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	_terrainObjectInfo.resize(childNodes.size());
+	for (int i = 0; i < childNodes.size(); ++i)
+	{
+		childNodes[i].loadAttribute("ObjectFile", _terrainObjectInfo[i]._objectFileName);
+		childNodes[i].loadAttribute("Position", _terrainObjectInfo[i]._position);
+		childNodes[i].loadAttribute("Direction", _terrainObjectInfo[i]._direction);
+		childNodes[i].loadAttribute("UpVector", _terrainObjectInfo[i]._upVector);
+		childNodes[i].loadAttribute("Size", _terrainObjectInfo[i]._size);
+	}
 }

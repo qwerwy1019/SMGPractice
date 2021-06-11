@@ -33,7 +33,7 @@ void StageManager::loadStage(void)
 {	
 	SMGFramework::getD3DApp()->prepareCommandQueue();
 	loadStageInfo();
-	//createMap();
+	createMap();
 	spawnActors();
 #if defined DEBUG | defined _DEBUG
 	for (const auto& actor : _actors)
@@ -83,7 +83,7 @@ bool StageManager::rotateActor(Actor* actor, const TickCount64& deltaTick) const
 
 bool StageManager::applyGravity(Actor* actor, const TickCount64& deltaTick) const noexcept
 {
-	return true;
+	return false;
 }
 
 void StageManager::setNextStage(std::string stageName) noexcept
@@ -107,6 +107,11 @@ ActionChart* StageManager::loadActionChartFromXML(const std::string& actionChart
 	auto it = _actionchartMap.emplace(actionChartName, new ActionChart(xmlActionChart.getRootNode()));
 	check(it.second == true);
 	return it.first->second.get();
+}
+
+const PlayerActor* StageManager::getPlayerActor(void) const noexcept
+{
+	return _playerActor;
 }
 
 bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcept
@@ -220,6 +225,10 @@ void StageManager::spawnActors()
 		int sectorIndex = sectorCoordToIndex(getSectorCoord(spawnInfo._position));
 		check(sectorIndex < _actorsBySector.size());
 		_actorsBySector[sectorIndex].emplace(actor.get());
+		if (spawnInfo._isTerrain)
+		{
+			_terrainObjects.push_back(actor->getGameObject());
+		}
 		_actors.emplace_back(std::move(actor));
 	}
 }
@@ -260,8 +269,8 @@ void StageManager::updateCamera() noexcept
 			auto playerDirection = _playerActor->getDirection();
 			auto playerUpVector = _playerActor->getUpVector();
 			
-			auto cameraFocusPosition = add(playerPosition, mul(playerUpVector, 150));
-			auto cameraPosition = add(playerPosition, mul(sub(playerUpVector, mul(playerDirection, 2.f)), 400));
+			auto cameraFocusPosition = add(playerPosition, mul(playerUpVector, 100));
+			auto cameraPosition = add(playerPosition, mul(sub(playerUpVector, mul(playerDirection, 2.f)), 600));
 			
 			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector);
 		}
@@ -316,4 +325,22 @@ int StageManager::getCameraCount() const noexcept
 int StageManager::getCameraIndex() const noexcept
 {
 	return _cameraIndex;
+}
+
+void StageManager::createMap(void)
+{
+	const auto& terrainObjectInfos = _stageInfo->getTerrainObjectInfos();
+	for (const auto& terrainObjectInfo : terrainObjectInfos)
+	{
+		GameObject* terrainObject = SMGFramework::getD3DApp()->createObjectFromXML(terrainObjectInfo._objectFileName);
+		
+		MathHelper::getWorldMatrix(terrainObjectInfo._position,
+									terrainObjectInfo._direction, 
+									terrainObjectInfo._upVector, 
+									terrainObjectInfo._size, 
+									terrainObject->_worldMatrix);
+		terrainObject->_dirtyFrames = FRAME_RESOURCE_COUNT;
+		SMGFramework::getD3DApp()->createGameObjectDev(terrainObject);
+		_terrainObjects.push_back(terrainObject);
+	}
 }

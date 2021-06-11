@@ -9,6 +9,7 @@ void MeshGeometry::createMeshGeometryXXX(ID3D12Device* device,
 										const void* vb,
 										const void* ib)
 {
+	// cpu buffer가 ID3DBlob이어야 하는 이유가 있는가? 알아보고 바꾸자. [6/9/2021 qwerw]
 	ThrowIfFailed(D3DCreateBlob(_vertexBufferByteSize, &_vertexBufferCPU), "vertexBuffer 할당 실패" );
 	CopyMemory(_vertexBufferCPU->GetBufferPointer(), vb, _vertexBufferByteSize);
 
@@ -171,6 +172,15 @@ MeshGeometry::MeshGeometry(const GeneratedMeshData& meshData, ID3D12Device* devi
 	createMeshGeometryXXX(device, commandList, meshData._vertices.data(), meshData._indices.data());
 }
 #endif
+
+const Vertex* MeshGeometry::getVertexBufferXXX(size_t& bufferSize) const noexcept
+{
+	check(_vertexBufferCPU != nullptr);
+	check(_vertexByteStride == sizeof(Vertex));
+
+	bufferSize = _vertexBufferCPU->GetBufferSize() / _vertexByteStride;
+	return reinterpret_cast<Vertex*>(_vertexBufferCPU->GetBufferPointer());
+}
 
 void MeshGeometry::setVertexByteSizeOnlyXXXXX(UINT vertexBufferSize) noexcept
 {
