@@ -9,6 +9,8 @@
 void StageInfo::loadXml(const XMLReaderNode& rootNode)
 {
 	rootNode.loadAttribute("Name", _name);
+	rootNode.loadAttribute("SectorUnitNumber", _sectorUnitNumber);
+	rootNode.loadAttribute("SectorSize", _sectorSize);
 
 	const auto& childNodes = rootNode.getChildNodesWithName();
 	auto childIter = childNodes.end();
@@ -82,6 +84,16 @@ const std::vector<SpawnInfo>& StageInfo::getSpawnInfos(void) const noexcept
 const std::vector<TerrainObjectInfo>& StageInfo::getTerrainObjectInfos(void) const noexcept
 {
 	return _terrainObjectInfo;
+}
+
+const DirectX::XMINT3& StageInfo::getSectorUnitNumber(void) const noexcept
+{
+	return _sectorUnitNumber;
+}
+
+const DirectX::XMINT3& StageInfo::getSectorSize(void) const noexcept
+{
+	return _sectorSize;
 }
 
 void StageInfo::loadXmlTerrainObjectInfo(const XMLReaderNode& node)

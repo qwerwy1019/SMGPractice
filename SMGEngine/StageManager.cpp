@@ -180,9 +180,9 @@ DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position) 
 									static_cast<float>((_sectorUnitNumber.y / 2) * _sectorSize.y),
 									static_cast<float>((_sectorUnitNumber.z / 2) * _sectorSize.z) };
 
-	DirectX::XMINT3 rv = { static_cast<int>(position.x + baseCoord.x) % _sectorSize.x,
-						   static_cast<int>(position.y + baseCoord.y) % _sectorSize.y,
-						   static_cast<int>(position.z + baseCoord.z) % _sectorSize.z };
+	DirectX::XMINT3 rv = { static_cast<int>(position.x + baseCoord.x) / _sectorSize.x,
+						   static_cast<int>(position.y + baseCoord.y) / _sectorSize.y,
+						   static_cast<int>(position.z + baseCoord.z) / _sectorSize.z };
 	// todo [5/22/2021 qwerwy]
 	check(0 <= rv.x && rv.x < _sectorUnitNumber.x);
 	check(0 <= rv.y && rv.y < _sectorUnitNumber.y);
@@ -270,7 +270,7 @@ void StageManager::updateCamera() noexcept
 			auto playerUpVector = _playerActor->getUpVector();
 			
 			auto cameraFocusPosition = add(playerPosition, mul(playerUpVector, 100));
-			auto cameraPosition = add(playerPosition, mul(sub(playerUpVector, mul(playerDirection, 2.f)), 600));
+			auto cameraPosition = add(playerPosition, mul(sub(playerUpVector, mul(playerDirection, 2.f)), 500));
 			
 			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector);
 		}
@@ -329,6 +329,8 @@ int StageManager::getCameraIndex() const noexcept
 
 void StageManager::createMap(void)
 {
+	_sectorSize = _stageInfo->getSectorSize();
+	_sectorUnitNumber = _stageInfo->getSectorUnitNumber();
 	const auto& terrainObjectInfos = _stageInfo->getTerrainObjectInfos();
 	for (const auto& terrainObjectInfo : terrainObjectInfos)
 	{
@@ -340,7 +342,9 @@ void StageManager::createMap(void)
 									terrainObjectInfo._size, 
 									terrainObject->_worldMatrix);
 		terrainObject->_dirtyFrames = FRAME_RESOURCE_COUNT;
+#if defined DEBUG | defined _DEBUG
 		SMGFramework::getD3DApp()->createGameObjectDev(terrainObject);
+#endif
 		_terrainObjects.push_back(terrainObject);
 	}
 }

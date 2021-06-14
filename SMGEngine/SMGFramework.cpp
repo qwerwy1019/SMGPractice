@@ -230,11 +230,13 @@ int SMGFramework::Run(void)
 			if (!isAppPaused())
 			{
 				calculateFrameStats();
-
 				onKeyboardInput();
-				//UpdateGameObject();
-				_stageManager->update();
-				_d3dApp->Update();
+				
+				if (_timer.getDeltaTickCount() != 0)
+				{
+					_stageManager->update();
+					_d3dApp->Update();
+				}
 
 				_d3dApp->Draw();
 

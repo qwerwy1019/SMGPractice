@@ -6,10 +6,23 @@
 #include "MathHelper.h"
 #include "FileHelper.h"
 
-FrameEvent::FrameEvent()
-	: _processTick(0)
+FrameEvent::FrameEvent(const XMLReaderNode& node)
 {
+	node.loadAttribute("Tick", _processTick);
 	
+	std::string conditionStrings;
+	node.loadAttribute("Condition", conditionStrings);
+
+	std::vector<std::string> conditionTokenized = D3DUtil::tokenizeString(conditionStrings, ' ');
+	for (const auto& c : conditionTokenized)
+	{
+		std::unique_ptr<ActionCondition> condition = ActionCondition::parseConditionString(c);
+
+		if (nullptr != condition) // 개발 편의를 위해..
+		{
+			_conditions.push_back(std::move(condition));
+		}
+	}
 }
 
 bool FrameEvent::checkConditions(Actor& actor) const noexcept
@@ -24,53 +37,103 @@ bool FrameEvent::checkConditions(Actor& actor) const noexcept
 	return true;
 }
 
-FrameEvent_RotateType::FrameEvent_RotateType(const XMLReaderNode& node)
-	: _rotateType(RotateType::Count)
-	, _offset(0)
-	, _rotateSpeed(0)
+std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& node)
 {
-
+	std::string typeString;
+	node.loadAttribute("Type", typeString);
+	if (typeString == "Rotate")
+	{
+		return std::make_unique<FrameEvent_Rotate>(node);
+	}
+	else if (typeString == "Speed")
+	{
+		return std::make_unique<FrameEvent_Speed>(node);
+	}
+	else if (typeString == "Jump")
+	{
+		return std::make_unique<FrameEvent_Jump>(node);
+	}
+	else
+	{
+		static_assert(static_cast<int>(FrameEventType::Count) == 3, "타입추가시 확인할것");
+		ThrowErrCode(ErrCode::UndefinedType, typeString);
+	}
 }
 
-void FrameEvent_RotateType::process(Actor& actor) const noexcept
+FrameEvent_Rotate::FrameEvent_Rotate(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("Offset", _offset);
+	node.loadAttribute("Speed", _rotateSpeed);
+
+	std::string typeString;
+	node.loadAttribute("RotateType", typeString);
+	if (typeString == "ToTarget")
+	{
+		_rotateType = RotateType::ToTarget;
+	}
+	else if (typeString == "Path")
+	{
+		_rotateType = RotateType::Path;
+	}
+	else if (typeString == "Input")
+	{
+		_rotateType = RotateType::Input;
+	}
+	else
+	{
+		static_assert(static_cast<int>(RotateType::Count) == 3);
+		ThrowErrCode(ErrCode::UndefinedType, typeString);
+	}
+}
+
+void FrameEvent_Rotate::process(Actor& actor) const noexcept
 {
 	check(0 <= _offset && _offset < MathHelper::Pi);
 	actor.setRotateType(_rotateType, _offset, _rotateSpeed);
 }
 
-FrameEvent_SpeedUp::FrameEvent_SpeedUp(const XMLReaderNode& node)
-	: _maxSpeed(0)
-	, _acceleration(0)
-	, _moveType(MoveType::Count)
+FrameEvent_Speed::FrameEvent_Speed(const XMLReaderNode& node)
+	: FrameEvent(node)
 {
-	
+	node.loadAttribute("TargetSpeed", _targetSpeed);
+	node.loadAttribute("Acceleration", _acceleration);
+	std::string typeString;
+	node.loadAttribute("MoveType", typeString);
+	if (typeString == "Fixed")
+	{
+		_moveType = MoveType::Fixed;
+	}
+	else if (typeString == "CharacterDirection")
+	{
+		_moveType = MoveType::CharacterDirection;
+	}
+	else if (typeString == "JoystickDirection")
+	{
+		_moveType = MoveType::JoystickDirection;
+	}
+	else if (typeString == "Path")
+	{
+		_moveType = MoveType::Path;
+	}
+	else
+	{
+		static_assert(static_cast<int>(MoveType::Count), "타입 추가시 확인");
+		ThrowErrCode(ErrCode::UndefinedType, typeString);
+	}
 }
 
-void FrameEvent_SpeedUp::process(Actor& actor) const noexcept
+void FrameEvent_Speed::process(Actor& actor) const noexcept
 {
 	check(_acceleration > 0.f);
-	check(_maxSpeed > 0.f);
-	actor.setAcceleration(_acceleration, _maxSpeed);
-}
-
-FrameEvent_SpeedDown::FrameEvent_SpeedDown(const XMLReaderNode& node)
-	: _minSpeed(0)
-	, _deceleration(0)
-{
-
-}
-
-void FrameEvent_SpeedDown::process(Actor& actor) const noexcept
-{
-	check(_deceleration > 0.f);
-	check(_minSpeed >= 0.f);
-	actor.setDeceleration(_deceleration, _minSpeed);
+	check(_targetSpeed >= 0.f);
+	actor.setAcceleration(_acceleration, _targetSpeed);
 }
 
 FrameEvent_Jump::FrameEvent_Jump(const XMLReaderNode& node)
-	: _speed(0)
+	: FrameEvent(node)
 {
-
+	node.loadAttribute("Speed", _speed);
 }
 
 void FrameEvent_Jump::process(Actor& actor) const noexcept

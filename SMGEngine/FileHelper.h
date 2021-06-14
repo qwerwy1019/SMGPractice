@@ -214,6 +214,21 @@ public:
 		}
 	}
 
+	template<>
+	void loadAttribute(const std::string& attrName, DirectX::XMINT3& outValue) const
+	{
+		std::string outString;
+		loadAttribute(attrName, outString);
+		const auto& tokenized = D3DUtil::tokenizeString(outString, ' ');
+		if (tokenized.size() != 3)
+		{
+			ThrowErrCode(ErrCode::TokenizeError);
+		}
+		outValue.x = std::stoi(tokenized[0]);
+		outValue.y = std::stoi(tokenized[1]);
+		outValue.z = std::stoi(tokenized[2]);
+	}
+
 	template<typename T>
 	void loadAttribute(const std::string& attrName, std::vector<T>& outValue) const
 	{

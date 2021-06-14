@@ -1,4 +1,5 @@
 #pragma once
+#include "TypeCommon.h"
 
 enum class ActionConditionType
 {
@@ -8,6 +9,16 @@ enum class ActionConditionType
 
 	Count,
 };
+
+enum class FrameEventType
+{
+	Rotate,
+	Speed,
+	Jump,
+
+	Count,
+};
+#define convertStringToFrameEventType(string) convertStringToType<ActionConditionType>(string, actionConditionString);
 
 enum class CollisionType
 {
@@ -20,6 +31,7 @@ enum class CollisionType
 
 enum class MoveType
 {
+	Fixed,
 	CharacterDirection,
 	JoystickDirection,
 	Path,

@@ -26,12 +26,12 @@ cbuffer cbPerObject : register(b0)
 	bool	 gIsSkinned;
 };
 
-#ifdef SKINNED
+//#ifdef SKINNED
 cbuffer cbSkinned : register(b1)
 {
 	float4x4 gBoneTransforms[96];
 };
-#endif
+//#endif
 
 cbuffer cbPassConstants : register(b2)
 {
@@ -120,7 +120,7 @@ VertexOut DefaultVertexShader(VertexIn vIn)
 	float4 textureCoord = mul(float4(vIn._textureCoord, 0.f, 1.f), gTextureTransform);
 	vOut._textureCoord = mul(textureCoord, gMaterialTransform).xy;
 	// 물체들에 비균등비례나 이동이 들어가지 않았으므로 역전치행렬이 월드행렬과 같아서 그대로 사용한다.
-	vOut._normalWorld = mul(vIn._normalLocal, gWorld);
+	vOut._normalWorld = mul(vIn._normalLocal, (float3x3)gWorld);
 	return vOut;
 }
 
@@ -128,9 +128,9 @@ float4 DefaultPixelShader(VertexOut pIn) : SV_TARGET
 {
 	float4 diffuseAlbedo = gDiffuseAlbedo * gDiffuseMap.Sample(gsamAnisotropicWrap, pIn._textureCoord);
 
-#ifdef ALPHA_TEST
+//#ifdef ALPHA_TEST
 	clip(diffuseAlbedo.a - 0.1f);
-#endif
+//#endif
 
 	pIn._normalWorld = normalize(pIn._normalWorld);
 

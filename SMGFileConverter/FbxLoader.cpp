@@ -193,7 +193,7 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 				+ (key.uv & 0xF);
 		}
 	};
-	unordered_map<VertexKey, GeoIndex, VertexKeyHasher> indexMap;
+	unordered_map<VertexKey, std::pair<GeoIndex, int>, VertexKeyHasher> indexMap;
 
 	for (const auto& pv : polygonVertices)
 	{
@@ -206,44 +206,66 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 		auto it = indexMap.find(key);
 		if (it != indexMap.end())
 		{
-			indices[pv._materialIndex].push_back(it->second);
-		}
-		else
-		{
+			using namespace MathHelper;
+			DirectX::XMFLOAT3 normal = fbxVector4ToXMFLOAT3(layerNomrals->GetDirectArray().GetAt(pv._normalIndex));
 			if (isSkinningMesh)
 			{
-				SkinnedVertex v;
-				v._position = controlPoints[pv._controlPointIndex];
-				v._normal = fbxVector4ToXMFLOAT3(layerNomrals->GetDirectArray().GetAt(pv._normalIndex));
-				v._textureCoord = fbxVector2ToXMFLOAT2(layerUvs->GetDirectArray().GetAt(pv._uvIndex));
-				v._boneWeights = getWeight(skinningInfos[pv._controlPointIndex]._weight);
-				v._boneIndices = skinningInfos[pv._controlPointIndex]._boneIndex;
-
-				// uv좌표 y가 뒤집어져있음. 확인 필요 [1/15/2021 qwerw]
-				v._textureCoord.y *= -1;
-
-				vector<SkinnedVertex>& subMeshVertices = skinnedVertices[pv._materialIndex];
-				const GeoIndex index = subMeshVertices.size();
-				indices[pv._materialIndex].push_back(index);
-				indexMap.emplace(make_pair(key, index));
-				subMeshVertices.push_back(v);
+				SkinnedVertex& v = skinnedVertices[pv._materialIndex][it->second.first];
+				if (lengthSq(sub(normal, v._normal)) < 0.5)
+				{
+					int accumNum = it->second.second;
+					v._normal = add(mul(v._normal, accumNum / static_cast<float>(accumNum + 1)), mul(normal, 1 / static_cast<float>(accumNum + 1)));
+					it->second.second += 1;
+					indices[pv._materialIndex].push_back(it->second.first);
+					continue;
+				}
 			}
 			else
 			{
-				Vertex v;
-				v._position = controlPoints[pv._controlPointIndex];
-				v._normal = fbxVector4ToXMFLOAT3(layerNomrals->GetDirectArray().GetAt(pv._normalIndex));
-				v._textureCoord = fbxVector2ToXMFLOAT2(layerUvs->GetDirectArray().GetAt(pv._uvIndex));
-
-				// uv좌표 y가 뒤집어져있음 [1/15/2021 qwerw]
-				v._textureCoord.y *= -1;
-
-				vector<Vertex>& subMeshVertices = vertices[pv._materialIndex];
-				const GeoIndex index = subMeshVertices.size();
-				indices[pv._materialIndex].push_back(index);
-				indexMap.emplace(make_pair(key, index));
-				subMeshVertices.push_back(v);
+				Vertex& v = vertices[pv._materialIndex][it->second.first];
+				if (lengthSq(sub(normal, v._normal)) < 0.5)
+				{
+					int accumNum = it->second.second;
+					v._normal = add(mul(v._normal, accumNum / static_cast<float>(accumNum + 1)), mul(normal, 1 / static_cast<float>(accumNum + 1)));
+					it->second.second += 1;
+					indices[pv._materialIndex].push_back(it->second.first);
+					continue;
+				}
 			}
+		}
+		if (isSkinningMesh)
+		{
+			SkinnedVertex v;
+			v._position = controlPoints[pv._controlPointIndex];
+			v._normal = fbxVector4ToXMFLOAT3(layerNomrals->GetDirectArray().GetAt(pv._normalIndex));
+			v._textureCoord = fbxVector2ToXMFLOAT2(layerUvs->GetDirectArray().GetAt(pv._uvIndex));
+			v._boneWeights = getWeight(skinningInfos[pv._controlPointIndex]._weight);
+			v._boneIndices = skinningInfos[pv._controlPointIndex]._boneIndex;
+
+			// uv좌표 y가 뒤집어져있음. 확인 필요 [1/15/2021 qwerw]
+			v._textureCoord.y *= -1;
+
+			vector<SkinnedVertex>& subMeshVertices = skinnedVertices[pv._materialIndex];
+			const GeoIndex index = subMeshVertices.size();
+			indices[pv._materialIndex].push_back(index);
+			indexMap.emplace(make_pair(key, make_pair(index, 1)));
+			subMeshVertices.push_back(v);
+		}
+		else
+		{
+			Vertex v;
+			v._position = controlPoints[pv._controlPointIndex];
+			v._normal = fbxVector4ToXMFLOAT3(layerNomrals->GetDirectArray().GetAt(pv._normalIndex));
+			v._textureCoord = fbxVector2ToXMFLOAT2(layerUvs->GetDirectArray().GetAt(pv._uvIndex));
+
+			// uv좌표 y가 뒤집어져있음 [1/15/2021 qwerw]
+			v._textureCoord.y *= -1;
+
+			vector<Vertex>& subMeshVertices = vertices[pv._materialIndex];
+			const GeoIndex index = subMeshVertices.size();
+			indices[pv._materialIndex].push_back(index);
+			indexMap.emplace(make_pair(key, make_pair(index, 1)));
+			subMeshVertices.push_back(v);
 		}
 	}
 
@@ -934,7 +956,6 @@ void FbxLoader::loadFbxMesh(FbxNode* node)
 
 	check(mesh->IsTriangleMesh(), "triangulate되지 않았음.");
 
-	ErrCode rv = ErrCode::Success;
 	std::vector<FbxPolygonVertexInfo> polygonVertices;
 	loadFbxPolygons(mesh, polygonVertices);
 

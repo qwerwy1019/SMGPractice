@@ -54,12 +54,17 @@ public:
 	const FixedCameraPoint& getFixedCameraPoint(const std::string& name) const noexcept;
 	const std::vector<SpawnInfo>& getSpawnInfos(void) const noexcept;
 	const std::vector<TerrainObjectInfo>& getTerrainObjectInfos(void) const noexcept;
+	const DirectX::XMINT3& getSectorUnitNumber(void) const noexcept;
+	const DirectX::XMINT3& getSectorSize(void) const noexcept;
 private:
 	LandscapeType _landscapeType;
 	std::vector<std::unique_ptr<CameraPoint>> _cameraPoints;
 	std::unordered_map<std::string, std::unique_ptr<FixedCameraPoint>> _fixedCameraPoints;
 	std::vector<SpawnInfo> _spawnInfo;
 	std::vector<TerrainObjectInfo> _terrainObjectInfo;
+
+	DirectX::XMINT3 _sectorUnitNumber;
+	DirectX::XMINT3 _sectorSize;
 
 	std::string _name;
 	

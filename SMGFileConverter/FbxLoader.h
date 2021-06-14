@@ -21,13 +21,14 @@ class FbxLoader
 private:
 	static constexpr int VERTEX_PER_POLYGON = 3;
 
+	// normalIndex가 오버플로우되는 일이 있었는데 시간날때 다른 변수들도 문제 일어나지 않게 고칠것 [6/13/2021 qwerw]
 	struct FbxPolygonVertexInfo
 	{
 		uint16_t _materialIndex = std::numeric_limits<uint16_t>::max();
 		uint16_t _controlPointIndex = std::numeric_limits<uint16_t>::max();
 		uint16_t _uvIndex = std::numeric_limits<uint16_t>::max();
-		uint16_t _normalIndex = std::numeric_limits<uint16_t>::max();
 		uint16_t _colorIndex = std::numeric_limits<uint16_t>::max();
+		uint32_t _normalIndex = std::numeric_limits<uint32_t>::max();
 	};
 
 	enum class IndexMappingType

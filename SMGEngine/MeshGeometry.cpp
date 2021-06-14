@@ -91,10 +91,10 @@ MeshGeometry::MeshGeometry(const XMLReaderNode& rootNode, ID3D12Device* device, 
 	}
 	else
 	{
-		vertices.reserve(totalVertexCount);
+		_vertexByteStride = sizeof(Vertex);
 		_vertexBufferByteSize = totalVertexCount * sizeof(Vertex);
 
-		_vertexByteStride = sizeof(Vertex);
+		vertices.reserve(totalVertexCount);
 	}
 	_indexBufferByteSize = totalIndexCount * sizeof(GeoIndex);
 	indices.reserve(totalIndexCount);

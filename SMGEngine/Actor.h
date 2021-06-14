@@ -53,8 +53,7 @@ public:
 	void updateObjectWorldMatrix() noexcept;
 
 	void setRotateType(const RotateType rotateType, const float rotateAngle, const float speed) noexcept;
-	void setAcceleration(const float acceleration, const float maxSpeed) noexcept;
-	void setDeceleration(const float deceleration, const float minSpeed) noexcept;
+	void setAcceleration(const float acceleration, const float targetSpeed) noexcept;
 	void setVerticalSpeed(const float speed) noexcept;
 	const CharacterInfo* getCharacterInfo(void) const noexcept;
 	const GameObject* getGameObject(void) const noexcept;
@@ -73,8 +72,7 @@ private:
 	//MoveType _moveType;
 	float _moveDirectionOffset;
 	float _acceleration;
-	float _maxSpeed;
-	float _minSpeed;
+	float _targetSpeed;
 
 	// 캐릭터 회전
 	RotateType _rotateType;

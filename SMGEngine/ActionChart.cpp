@@ -73,7 +73,7 @@ ActionState::ActionState(const XMLReaderNode& node)
 		}
 		else if(nodeName == "FrameEvent")
 		{
-			//_frameEvents.emplace_back(childNode);
+			_frameEvents.emplace_back(FrameEvent::loadXMLFrameEvent(childNode));
 		}
 		else
 		{
@@ -97,6 +97,7 @@ bool ActionState::checkBranch(Actor& actor, std::string& nextState) const noexce
 
 void ActionState::processFrameEvents(Actor& actor, const TickCount64& lastProcessedTick, const TickCount64& progressedTick) const noexcept
 {
+	check(lastProcessedTick < progressedTick);
 	// 바이너리서치로 변경할것 [4/29/2021 qwerwy]
 	for (const auto& frameEvent : _frameEvents)
 	{
@@ -124,3 +125,4 @@ TickCount64 ActionState::getBlendTick(void) const noexcept
 {
 	return _blendTick;
 }
+

@@ -19,8 +19,7 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _verticalSpeed(0.f)
 	, _moveDirectionOffset(0.f)
 	, _acceleration(0.f)
-	, _maxSpeed(0.f)
-	, _minSpeed(0.f)
+	, _targetSpeed(0.f)
 	, _rotateType(RotateType::Count)
 	, _rotateAngleLeft(0.f)
 	, _rotateSpeed(0.f)
@@ -41,6 +40,8 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	{
 		ThrowErrCode(ErrCode::ActionChartLoadFail, "기본액션 IDLE이 없습니다. " + _characterInfo->getActionChartFileName());
 	}
+
+	updateObjectWorldMatrix();
 }
 
 Actor::~Actor()
@@ -80,8 +81,17 @@ void Actor::updateActor(const TickCount64& deltaTick) noexcept
 	updateActionChart(deltaTick);
 
 	// 가속도 적용
-	_speed += _acceleration * deltaTick;
-	_speed = std::max(_minSpeed, std::min(_speed, _maxSpeed));
+	if (_speed < _targetSpeed)
+	{
+		_speed += _acceleration * deltaTick;
+		_speed = std::min(_speed, _targetSpeed);
+
+	}
+	else
+	{
+		_speed -= _acceleration * deltaTick;
+		_speed = std::max(_speed, _targetSpeed);
+	}
 	//_verticalSpeed += getGravity() * deltaTick;
 }
 
@@ -485,8 +495,9 @@ void Actor::setActionState(const ActionState* nextState) noexcept
 	}
 	_currentActionState = nextState;
 
+	_currentActionState->processFrameEvents(*this, -1, 0);
 	//0tick의 frameevent 진행
-	//updateRenderWorldMatrix();
+	updateObjectWorldMatrix();
 }
 
 void Actor::updateObjectWorldMatrix() noexcept
@@ -506,20 +517,12 @@ void Actor::setRotateType(const RotateType rotateType, const float rotateAngle, 
 	_rotateSpeed = speed;
 }
 
-void Actor::setAcceleration(const float acceleration, const float maxSpeed) noexcept
+void Actor::setAcceleration(const float acceleration, const float targetSpeed) noexcept
 {
 	check(acceleration > 0.f);
-	check(maxSpeed > 0.f);
+	check(targetSpeed >= 0.f);
 	_acceleration = acceleration;
-	_maxSpeed = maxSpeed;
-}
-
-void Actor::setDeceleration(const float deceleration, const float minSpeed) noexcept
-{
-	check(deceleration > 0.f);
-	check(minSpeed >= 0.f);
-	_acceleration = -deceleration;
-	_minSpeed = minSpeed;
+	_targetSpeed = targetSpeed;
 }
 
 void Actor::setVerticalSpeed(const float speed) noexcept

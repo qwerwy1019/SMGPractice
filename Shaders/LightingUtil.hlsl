@@ -36,7 +36,7 @@ float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 t
 	const float m = material._shininess * 256.f;
 	float3 halfVec = normalize(toEye + lightVec);
 
-	float roughnessFactor = (m + 8.f) * pow(max(dot(halfVec, normal), 0.f), m);
+	float roughnessFactor = (m + 8.f) * pow(max(dot(halfVec, normal), 0.f), m) / 8.f;
 	float3 fresnelFactor = ShlickFresnel(material._fresnelR0, halfVec, lightVec);
 
 	float3 specAlbedo = fresnelFactor * roughnessFactor;
@@ -44,81 +44,6 @@ float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 t
 	specAlbedo = (specAlbedo) / (specAlbedo + 1.f);
 	float3 diffuseAlbedo = material._diffuseAlbedo.rgb;
 	
-#ifdef CARTOON_RENDER
-	if (specAlbedo.x < 0.3)
-	{
-		specAlbedo.x = 0.1;
-	}
-	else if (specAlbedo.x < 0.7)
-	{
-		specAlbedo.x = 0.7;
-	}
-	else
-	{
-		specAlbedo.x = 1.0;
-	}
-	if (specAlbedo.y < 0.3)
-	{
-		specAlbedo.y = 0.1;
-	}
-	else if (specAlbedo.y < 0.7)
-	{
-		specAlbedo.y = 0.7;
-	}
-	else
-	{
-		specAlbedo.y = 1.0;
-	}
-	if (specAlbedo.z < 0.3)
-	{
-		specAlbedo.z = 0.1;
-	}
-	else if (specAlbedo.z < 0.7)
-	{
-		specAlbedo.z = 0.7;
-	}
-	else
-	{
-		specAlbedo.z = 1.0;
-	}
-
-	if (diffuseAlbedo.x < 0.2)
-	{
-		diffuseAlbedo.x = 0.0;
-	}
-	else if (diffuseAlbedo.x < 0.8)
-	{
-		diffuseAlbedo.x = 0.5;
-	}
-	else
-	{
-		diffuseAlbedo.x = 0.8;
-	}
-	if (diffuseAlbedo.y < 0.2)
-	{
-		diffuseAlbedo.y = 0.0;
-	}
-	else if (diffuseAlbedo.y < 0.8)
-	{
-		diffuseAlbedo.y = 0.5;
-	}
-	else
-	{
-		diffuseAlbedo.y = 0.8;
-	}
-	if (diffuseAlbedo.z < 0.2)
-	{
-		diffuseAlbedo.z = 0.0;
-	}
-	else if (diffuseAlbedo.z < 0.8)
-	{
-		diffuseAlbedo.z = 0.5;
-	}
-	else
-	{
-		diffuseAlbedo.z = 0.8;
-	}
-#endif
 	return (material._diffuseAlbedo.rgb + specAlbedo) * lightStrength;
 }
 
@@ -127,28 +52,6 @@ float3 ComputeDirectionalLight(Light light, Material material, float3 normal, fl
 	float3 lightVec = -light._direction;
 
 	float lightDotNormal = max(dot(lightVec, normal), 0.f);
-#ifdef CARTOON_RENDER
-	if (lightDotNormal < 0.2)
-	{
-		lightDotNormal = 0.25;
-	}
-	else if (lightDotNormal < 0.3)
-	{
-		lightDotNormal = 0.3;
-	}
-	else if (lightDotNormal < 0.8)
-	{
-		lightDotNormal = 0.8;
-	}
-	else if(lightDotNormal < 0.9)
-	{
-		lightDotNormal = 0.85;
-	}
-	else
-	{
-		lightDotNormal = 1;
-	}
-#endif
 	float3 lightStrength = lightDotNormal * light._strength;
 
 	return BlinnPhong(lightStrength, lightVec, normal, toEye, material);
