@@ -31,7 +31,6 @@ enum class CollisionType
 
 enum class MoveType
 {
-	Fixed,
 	CharacterDirection,
 	JoystickDirection,
 	Path,
@@ -40,9 +39,12 @@ enum class MoveType
 
 enum class RotateType
 {
+	Fixed,
 	ToTarget,
 	Path,
-	Input,
+	JoystickInput,
+	ToWall,
+
 	Count,
 };
 

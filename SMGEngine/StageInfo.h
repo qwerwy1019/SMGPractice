@@ -41,6 +41,9 @@ struct FixedCameraPoint
 	DirectX::XMFLOAT3 _position;
 	DirectX::XMFLOAT3 _upVector;
 	DirectX::XMFLOAT3 _focusPosition;
+
+	float _cameraSpeed;
+	float _cameraFocusSpeed;
 };
 
 class StageInfo

@@ -255,7 +255,7 @@ void StageManager::updateCamera() noexcept
 	{
 		setCameraCount(0);
 		const auto& camera = _stageInfo->getFixedCameraPoint(_fixedCameraName);
-		SMGFramework::getD3DApp()->setCameraInput(camera._position, camera._focusPosition, camera._upVector);
+		SMGFramework::getD3DApp()->setCameraInput(camera._position, camera._focusPosition, camera._upVector, camera._cameraSpeed, camera._cameraFocusSpeed);
 	}
 	else
 	{
@@ -268,11 +268,11 @@ void StageManager::updateCamera() noexcept
 			auto playerPosition = _playerActor->getPosition();
 			auto playerDirection = _playerActor->getDirection();
 			auto playerUpVector = _playerActor->getUpVector();
-			
+
 			auto cameraFocusPosition = add(playerPosition, mul(playerUpVector, 100));
 			auto cameraPosition = add(playerPosition, mul(sub(playerUpVector, mul(playerDirection, 2.f)), 500));
-			
-			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector);
+
+			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector, 10.f, 10.f);
 		}
 		else
 		{
@@ -295,14 +295,14 @@ void StageManager::updateCamera() noexcept
 				SMGFramework::getD3DApp()->setCameraInput(
 					div(positionSum, distanceSum),
 					_playerActor->getPosition(),
-					div(upVectorSum, distanceSum));
+					div(upVectorSum, distanceSum), 1.f, 1.f);
 			}
 			else
 			{
 				SMGFramework::getD3DApp()->setCameraInput(
 					nearCameraList[cameraIndex]->_position,
 					_playerActor->getPosition(),
-					nearCameraList[cameraIndex]->_upVector);
+					nearCameraList[cameraIndex]->_upVector, 1.f, 1.f);
 			}
 		}
 	}

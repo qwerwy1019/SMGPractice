@@ -89,6 +89,7 @@ private:
 public:
 	ButtonState getButtonInput(const ButtonInputType type) const noexcept;
 	StickInputState getStickInputState(const StickInputType type) const noexcept;
+	DirectX::XMFLOAT2 getStickInput(const StickInputType type) const noexcept;
 private:
 	void setButtonInput(const ButtonInputType type, bool pressed) noexcept;
 	ButtonState _buttonInput[static_cast<int>(ButtonInputType::Count)];

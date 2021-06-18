@@ -68,7 +68,11 @@ FrameEvent_Rotate::FrameEvent_Rotate(const XMLReaderNode& node)
 
 	std::string typeString;
 	node.loadAttribute("RotateType", typeString);
-	if (typeString == "ToTarget")
+	if (typeString == "Fixed")
+	{
+		_rotateType = RotateType::Fixed;
+	}
+	else if (typeString == "ToTarget")
 	{
 		_rotateType = RotateType::ToTarget;
 	}
@@ -76,13 +80,17 @@ FrameEvent_Rotate::FrameEvent_Rotate(const XMLReaderNode& node)
 	{
 		_rotateType = RotateType::Path;
 	}
-	else if (typeString == "Input")
+	else if (typeString == "JoystickInput")
 	{
-		_rotateType = RotateType::Input;
+		_rotateType = RotateType::JoystickInput;
+	}
+	else if (typeString == "ToWall")
+	{
+		_rotateType = RotateType::ToWall;
 	}
 	else
 	{
-		static_assert(static_cast<int>(RotateType::Count) == 3);
+		static_assert(static_cast<int>(RotateType::Count) == 5, "타입 추가시 확인");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -98,13 +106,10 @@ FrameEvent_Speed::FrameEvent_Speed(const XMLReaderNode& node)
 {
 	node.loadAttribute("TargetSpeed", _targetSpeed);
 	node.loadAttribute("Acceleration", _acceleration);
+	_acceleration *= 0.001;
 	std::string typeString;
 	node.loadAttribute("MoveType", typeString);
-	if (typeString == "Fixed")
-	{
-		_moveType = MoveType::Fixed;
-	}
-	else if (typeString == "CharacterDirection")
+	if (typeString == "CharacterDirection")
 	{
 		_moveType = MoveType::CharacterDirection;
 	}
@@ -118,7 +123,7 @@ FrameEvent_Speed::FrameEvent_Speed(const XMLReaderNode& node)
 	}
 	else
 	{
-		static_assert(static_cast<int>(MoveType::Count), "타입 추가시 확인");
+		static_assert(static_cast<int>(MoveType::Count) == 3, "타입 추가시 확인");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -127,7 +132,8 @@ void FrameEvent_Speed::process(Actor& actor) const noexcept
 {
 	check(_acceleration > 0.f);
 	check(_targetSpeed >= 0.f);
-	actor.setAcceleration(_acceleration, _targetSpeed);
+
+	actor.setAcceleration(_acceleration, _targetSpeed, _moveType);
 }
 
 FrameEvent_Jump::FrameEvent_Jump(const XMLReaderNode& node)

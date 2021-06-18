@@ -24,19 +24,8 @@
 #include "StageManager.h"
 #include "Actor.h"
 #include "CharacterInfoManager.h"
-
-void D3DApp::loadInfoMap(void)
-{
-	if (SUCCEEDED(::CoInitialize(nullptr)))
-	{
-		{
-			_cameraPosition = XMFLOAT3(200, 20, 0);
-			_cameraUpVector = XMFLOAT4(0, 1, 0, 0);
-			_cameraFocusPosition = XMFLOAT3(0, 0, 0);
-		}
-		::CoUninitialize();
-	}
-}
+#include <algorithm>
+#include <corecrt_math.h>
 
 void D3DApp::buildShaderResourceViews()
 {
@@ -87,11 +76,12 @@ D3DApp::D3DApp()
 	, _pixelShader(nullptr)
 	, _textureLoadedCount(0)
 	, _cameraInputPosition(100, 0, 0)
-	, _cameraInputUpVector(0, 1, 0, 0)
+	, _cameraInputUpVector(0, 1, 0)
 	, _cameraInputFocusPosition(0, 0, 0)
-	, _cameraInputLeftTickCount(0)
+	, _cameraSpeed(1.f)
+	, _cameraFocusSpeed(1.f)
 	, _cameraPosition(100, 0, 0)
-	, _cameraUpVector(0, 1, 0, 0)
+	, _cameraUpVector(0, 1, 0)
 	, _cameraFocusPosition(0, 0, 0)
 	, _viewMatrix(MathHelper::Identity4x4)
 	, _projectionMatrix(MathHelper::Identity4x4)
@@ -600,12 +590,28 @@ void D3DApp::executeCommandQueue(void)
 	flushCommandQueue();
 }
 
-void D3DApp::setCameraInput(const DirectX::XMFLOAT3& cameraPosition, const DirectX::XMFLOAT3& focusPosition, const DirectX::XMFLOAT3& upVector) noexcept
+void D3DApp::setCameraInput(const DirectX::XMFLOAT3& cameraPosition,
+							const DirectX::XMFLOAT3& focusPosition,
+							const DirectX::XMFLOAT3& upVector,
+							float cameraSpeed,
+							float cameraFocusSpeed) noexcept
 {
 	_cameraInputPosition = cameraPosition;
 	_cameraInputFocusPosition = focusPosition;
-	_cameraInputUpVector = DirectX::XMFLOAT4(upVector.x, upVector.y, upVector.z, 0);
-	_cameraInputLeftTickCount = 300;
+	_cameraInputUpVector = upVector;
+	_cameraSpeed = cameraSpeed;
+	_cameraFocusSpeed = cameraFocusSpeed;
+}
+
+DirectX::XMFLOAT3 D3DApp::getCameraDirection(void) const noexcept
+{
+	XMVECTOR focusPosition = XMLoadFloat3(&_cameraFocusPosition);
+	XMVECTOR camPosition = XMLoadFloat3(&_cameraPosition);
+
+	XMFLOAT3 rv;
+	XMStoreFloat3(&rv, XMVector3Normalize(focusPosition - camPosition));
+
+	return rv;
 }
 
 ID3D12Resource* D3DApp::getCurrentBackBuffer() const noexcept
@@ -646,31 +652,40 @@ void D3DApp::updateCamera(void)
 {
 	TickCount64 deltaTickCount = SMGFramework::Get().getTimer().getDeltaTickCount();
 	XMVECTOR position = XMLoadFloat3(&_cameraPosition);
-	XMVECTOR upVector = XMLoadFloat4(&_cameraUpVector);
+	XMVECTOR upVector = XMLoadFloat3(&_cameraUpVector);
 	XMVECTOR focusPosition = XMLoadFloat3(&_cameraFocusPosition);
-	if (0 < _cameraInputLeftTickCount)
+	
+	XMVECTOR inputPosition = XMLoadFloat3(&_cameraInputPosition);
+	XMVECTOR inputUpVector = XMLoadFloat3(&_cameraInputUpVector);
+	XMVECTOR inputFocusPosition = XMLoadFloat3(&_cameraInputFocusPosition);
+
+	float deltaMoveDistance = XMVectorGetX(XMVector3Length(position - inputPosition));
+	float deltaFocusMoveDistance = XMVectorGetX(XMVector3Length(focusPosition - inputFocusPosition));
+
+	if (deltaMoveDistance > _cameraSpeed * deltaTickCount)
 	{
-		XMVECTOR inputPosition = XMLoadFloat3(&_cameraInputPosition);
-		XMVECTOR inputUpVector = XMLoadFloat4(&_cameraInputUpVector);
-		XMVECTOR inputFocusPosition = XMLoadFloat3(&_cameraInputFocusPosition);
-		if (_cameraInputLeftTickCount <= deltaTickCount)
-		{
-			position = inputPosition;
-			upVector = inputUpVector;
-			focusPosition = inputFocusPosition;
-			_cameraInputLeftTickCount = 0;
-		}
-		else
-		{
-			float t = (_cameraInputLeftTickCount - deltaTickCount) / static_cast<float>(_cameraInputLeftTickCount);
-			position = XMVectorLerp(position, inputPosition, t);
-			upVector = XMVectorLerp(upVector, inputUpVector, t);
-			focusPosition = XMVectorLerp(focusPosition, inputFocusPosition, t);
-			_cameraInputLeftTickCount -= deltaTickCount;
-		}
+		float t = _cameraSpeed / static_cast<float>(deltaMoveDistance);
+		position = XMVectorLerp(position, inputPosition, t);
 	}
+	else
+	{
+		position = inputPosition;
+	}
+
+	if (deltaFocusMoveDistance > _cameraFocusSpeed * deltaTickCount)
+	{
+		float t = _cameraFocusSpeed / static_cast<float>(deltaFocusMoveDistance);
+		focusPosition = XMVectorLerp(focusPosition, inputFocusPosition, t);
+		upVector = XMVectorLerp(upVector, inputUpVector, t);
+	}
+	else
+	{
+		focusPosition = inputFocusPosition;
+		upVector = inputUpVector;
+	}
+
 	XMStoreFloat3(&_cameraPosition, position);
-	XMStoreFloat4(&_cameraUpVector, upVector);
+	XMStoreFloat3(&_cameraUpVector, upVector);
 	XMStoreFloat3(&_cameraFocusPosition, focusPosition);
 
 	XMMATRIX view = XMMatrixLookAtLH(position, focusPosition, upVector);

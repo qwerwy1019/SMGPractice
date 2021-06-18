@@ -88,6 +88,11 @@ StickInputState SMGFramework::getStickInputState(const StickInputType type) cons
 	return _stickInputState[static_cast<int>(type)];
 }
 
+DirectX::XMFLOAT2 SMGFramework::getStickInput(const StickInputType type) const noexcept
+{
+	return _stickInput[static_cast<int>(type)];
+}
+
 void SMGFramework::setButtonInput(const ButtonInputType type, bool pressed) noexcept
 {
 	check(type < ButtonInputType::Count, "buttonInputType이 이상합니다.");
@@ -143,7 +148,7 @@ void SMGFramework::setStickInput(const StickInputType type, float dx, float dy) 
 	check(type < StickInputType::Count, "타입이 비정상입니다.");
 	const size_t typeIndex = static_cast<int>(type);
 	float x = _stickInput[typeIndex].x + dx;
-	float y = _stickInput[typeIndex].y + dy;
+	float y = _stickInput[typeIndex].y - dy;
 	float length = std::sqrt(x * x + y * y);
 	if (length > 1.f)
 	{
@@ -195,7 +200,7 @@ void SMGFramework::setStickInput(const StickInputType type, float dx, float dy) 
 	std::string typeIndexStr = std::to_string(typeIndex) + "\n";
 	std::string positionStr = std::to_string(_stickInput[typeIndex].x) + ", " + std::to_string(_stickInput[typeIndex].y) + "\n";
 	stateStr += "\n";
-	OutputDebugStringA((typeIndexStr + positionStr + stateStr).c_str());
+	//OutputDebugStringA((typeIndexStr + positionStr + stateStr).c_str());
 }
 
 void SMGFramework::resetStickInput(const StickInputType type) noexcept

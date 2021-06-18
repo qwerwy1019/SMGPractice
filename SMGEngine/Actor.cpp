@@ -9,6 +9,7 @@
 #include "StageInfo.h"
 #include "SMGFramework.h"
 #include "StageManager.h"
+#include <algorithm>
 
 Actor::Actor(const SpawnInfo& spawnInfo)
 	: _position(spawnInfo._position)
@@ -20,8 +21,8 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _moveDirectionOffset(0.f)
 	, _acceleration(0.f)
 	, _targetSpeed(0.f)
-	, _rotateType(RotateType::Count)
-	, _rotateAngleLeft(0.f)
+	, _rotateType(RotateType::Fixed)
+	, _rotateAngleOffset(0.f)
 	, _rotateSpeed(0.f)
 	, _localTickCount(0)
 {
@@ -52,8 +53,6 @@ Actor::~Actor()
 void Actor::rotateOnPlane(const float rotateAngle) noexcept
 {
 	check(!MathHelper::equal(rotateAngle, 0.f));
-
-	_rotateAngleLeft -= rotateAngle;
 	XMVECTOR direction = XMLoadFloat3(&_direction);
 
 	XMMATRIX rotateMatrix = XMMatrixRotationNormal(XMLoadFloat3(&_upVector), rotateAngle);
@@ -62,18 +61,99 @@ void Actor::rotateOnPlane(const float rotateAngle) noexcept
 	XMStoreFloat3(&_direction, direction);
 }
 
-float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
+float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 {
-	float maxAngle = _rotateSpeed * deltaTick;
+	const float maxAngle = _rotateSpeed * deltaTick;
+	float deltaAngle = 0.f;
 	
-	if (_rotateAngleLeft < 0)
+	switch (_rotateType)
 	{
-		return std::max(_rotateAngleLeft, -maxAngle);
+		case RotateType::Fixed:
+		{
+			if (_rotateAngleOffset < 0)
+			{
+				deltaAngle = std::max(_rotateAngleOffset, -maxAngle);
+				_rotateAngleOffset += deltaAngle;
+			}
+			else if (_rotateAngleOffset > 0)
+			{
+				deltaAngle = std::min(_rotateAngleOffset, maxAngle);
+				_rotateAngleOffset -= deltaAngle;
+			}
+		}
+		break;
+		case RotateType::ToTarget:
+		{
+			check(false, "미구현");
+		}
+		break;
+		case RotateType::Path:
+		{
+			check(false, "미구현");
+		}
+		break;
+		case RotateType::JoystickInput:
+		{
+			XMFLOAT2 stickInput = SMGFramework::Get().getStickInput(StickInputType::LStick);
+			float stickInputLength = sqrt(stickInput.x * stickInput.x + stickInput.y * stickInput.y);
+			if (stickInputLength == 0)
+			{
+				return 0;
+			}
+			float stickAngleFromFront = acos(stickInput.y / stickInputLength);
+			if (stickInput.x < 0.f)
+			{
+				stickAngleFromFront *= -1;
+			}
+
+			const XMFLOAT3& camDirectionFloat = SMGFramework::getD3DApp()->getCameraDirection();
+
+			OutputDebugStringA((std::to_string(camDirectionFloat.x) + ", " + std::to_string(camDirectionFloat.y) + ", " + std::to_string(camDirectionFloat.z) + "\n").c_str());
+			XMVECTOR camDirection = XMLoadFloat3(&camDirectionFloat);
+			XMVECTOR actorDirection = XMLoadFloat3(&_direction);
+			XMVECTOR actorUpVector = XMLoadFloat3(&_upVector);
+			XMVECTOR frontRaw = camDirection - XMVector3Dot(camDirection, actorUpVector) * actorUpVector;
+			float frontRawLength = XMVectorGetX(XMVector3Length(frontRaw));
+			if (frontRawLength == 0)
+			{
+				check(false, "카메라 방향이 이상하지 않은지 확인해야함.");
+				return 0;
+			}
+			XMVECTOR front = frontRaw / frontRawLength;
+			XMVECTOR right = XMVector3Cross(actorUpVector, front);
+
+			float currentAngleFromFront = acos(std::clamp(XMVectorGetX(XMVector3Dot(front, actorDirection)), -1.f, 1.f));
+			if (XMVectorGetX(XMVector3Dot(right, actorDirection)) < 0.f)
+			{
+				currentAngleFromFront *= -1;
+			}
+
+			deltaAngle = stickAngleFromFront - currentAngleFromFront + _rotateAngleOffset;
+			if (deltaAngle < -MathHelper::Pi)
+			{
+				deltaAngle += MathHelper::Pi;
+			}
+			else if (deltaAngle >= MathHelper::Pi)
+			{
+				deltaAngle -= MathHelper::Pi;
+			}
+		}
+		break;
+		case RotateType::ToWall:
+		{
+			check(false, "미구현");
+		}
+		break;
+		case RotateType::Count:
+		default:
+		{
+			static_assert(static_cast<int>(RotateType::Count) == 5, "타입 추가시 확인");
+			check(false, "타입 추가시 확인");
+		}
+		break;
 	}
-	else
-	{
-		return std::min(_rotateAngleLeft, maxAngle);
-	}
+	deltaAngle = std::clamp(deltaAngle, -maxAngle, maxAngle);
+	return deltaAngle;
 }
 
 void Actor::updateActor(const TickCount64& deltaTick) noexcept
@@ -447,7 +527,45 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 {
 	using namespace DirectX;
 
-	XMVECTOR direction = XMLoadFloat3(&_direction);
+	XMVECTOR direction;
+
+	switch (_moveType)
+	{
+		case MoveType::CharacterDirection:
+		{
+			direction = XMLoadFloat3(&_direction);
+		}
+		break;
+		case MoveType::JoystickDirection:
+		{
+			XMFLOAT2 stickInput = SMGFramework::Get().getStickInput(StickInputType::LStick);
+			if (stickInput.x == 0 && stickInput.y == 0)
+			{
+				return XMFLOAT3(0, 0, 0);
+			}
+			const XMFLOAT3& camDirectionFloat = SMGFramework::getD3DApp()->getCameraDirection();
+			XMVECTOR camDirection = XMLoadFloat3(&camDirectionFloat);
+			XMVECTOR actorUpVector = XMLoadFloat3(&_upVector);
+			XMVECTOR front = camDirection - XMVector3Dot(camDirection, actorUpVector) * actorUpVector;
+			XMVECTOR right = XMVector3Cross(actorUpVector, front);
+
+			direction = XMVector3Normalize(right * stickInput.x + front * stickInput.y);
+			
+		}
+		break;
+		case MoveType::Path:
+		{
+			check(false, "미구현");
+		}
+		break;
+		case MoveType::Count:
+		default:
+		{
+			static_assert(static_cast<int>(MoveType::Count) == 3, "타입 추가시 확인");
+			check(false, "타입이 비정상입니다.");
+		}
+		break;
+	}
 	if (_moveDirectionOffset != 0)
 	{
 		XMMATRIX rotateMatrix = XMMatrixRotationNormal(XMLoadFloat3(&_upVector), _moveDirectionOffset);
@@ -507,22 +625,25 @@ void Actor::updateObjectWorldMatrix() noexcept
 	_gameObject->_dirtyFrames = FRAME_RESOURCE_COUNT;
 }
 
-void Actor::setRotateType(const RotateType rotateType, const float rotateAngle, const float speed) noexcept
+void Actor::setRotateType(const RotateType rotateType, const float rotateAngleOffset, const float speed) noexcept
 {
-	check(-MathHelper::Pi <= rotateAngle && rotateAngle < MathHelper::Pi);
+	check(-MathHelper::Pi <= rotateAngleOffset && rotateAngleOffset < MathHelper::Pi);
 	check(0 < speed);
 
 	_rotateType = rotateType;
-	_rotateAngleLeft = rotateAngle;
+	_rotateAngleOffset = rotateAngleOffset;
 	_rotateSpeed = speed;
 }
 
-void Actor::setAcceleration(const float acceleration, const float targetSpeed) noexcept
+void Actor::setAcceleration(const float acceleration, const float targetSpeed, MoveType moveType) noexcept
 {
 	check(acceleration > 0.f);
 	check(targetSpeed >= 0.f);
+	check(moveType != MoveType::Count);
+
 	_acceleration = acceleration;
 	_targetSpeed = targetSpeed;
+	_moveType = moveType;
 }
 
 void Actor::setVerticalSpeed(const float speed) noexcept

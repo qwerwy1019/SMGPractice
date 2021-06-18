@@ -125,7 +125,10 @@ public:
 
 	void setCameraInput(const DirectX::XMFLOAT3& cameraPosition,
 						const DirectX::XMFLOAT3& focusPosition,
-						const DirectX::XMFLOAT3& upVector) noexcept;
+						const DirectX::XMFLOAT3& upVector,
+						float cameraSpeed,
+						float cameraFocusSpeed) noexcept;
+	DirectX::XMFLOAT3 getCameraDirection(void) const noexcept;
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보
@@ -234,12 +237,14 @@ private:
 
 	// 카메라
 	DirectX::XMFLOAT3 _cameraInputPosition;
-	DirectX::XMFLOAT4 _cameraInputUpVector;
+	DirectX::XMFLOAT3 _cameraInputUpVector;
 	DirectX::XMFLOAT3 _cameraInputFocusPosition;
-	TickCount64 _cameraInputLeftTickCount;
+	//TickCount64 _cameraInputLeftTickCount;
+	float _cameraSpeed;
+	float _cameraFocusSpeed;
 
 	DirectX::XMFLOAT3 _cameraPosition;
-	DirectX::XMFLOAT4 _cameraUpVector;
+	DirectX::XMFLOAT3 _cameraUpVector;
 	DirectX::XMFLOAT3 _cameraFocusPosition;
 
 	// 좌표계 변환
@@ -283,7 +288,6 @@ public:
 
 	vector<string> _animationNameListDev;
 	int _animationNameIndexDev = 0;
-	void loadInfoMap(void);
 
 };
 

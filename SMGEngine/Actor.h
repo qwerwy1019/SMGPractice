@@ -20,7 +20,7 @@ public:
 	Actor(const SpawnInfo& spawnInfo);
 	virtual ~Actor();
 	void rotateOnPlane(const float rotateAngle) noexcept;
-	float getRotateAngleDelta(const TickCount64& deltaTick) const noexcept;
+	float getRotateAngleDelta(const TickCount64& deltaTick) noexcept;
 public:
 	TickCount64 getLocalTickCount(void) const noexcept;
 	DirectX::XMFLOAT3 getPosition(void) const noexcept;
@@ -52,8 +52,8 @@ public:
 	void setActionState(const ActionState* nextState) noexcept;
 	void updateObjectWorldMatrix() noexcept;
 
-	void setRotateType(const RotateType rotateType, const float rotateAngle, const float speed) noexcept;
-	void setAcceleration(const float acceleration, const float targetSpeed) noexcept;
+	void setRotateType(const RotateType rotateType, const float rotateAngleOffset, const float speed) noexcept;
+	void setAcceleration(const float acceleration, const float targetSpeed, MoveType moveType) noexcept;
 	void setVerticalSpeed(const float speed) noexcept;
 	const CharacterInfo* getCharacterInfo(void) const noexcept;
 	const GameObject* getGameObject(void) const noexcept;
@@ -69,14 +69,14 @@ private:
 	float _speed;
 	float _verticalSpeed;
 
-	//MoveType _moveType;
+	MoveType _moveType;
 	float _moveDirectionOffset;
 	float _acceleration;
 	float _targetSpeed;
 
 	// 캐릭터 회전
 	RotateType _rotateType;
-	float _rotateAngleLeft;
+	float _rotateAngleOffset;
 	float _rotateSpeed;
 
 	// 중력
