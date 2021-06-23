@@ -22,8 +22,9 @@ public:
 	virtual ~Actor();
 	void rotateOnPlane(const float rotateAngle) noexcept;
 	void rotateUpVector(const DirectX::XMFLOAT3& toUpVector) noexcept;
-	float getRotateAngleDelta(const TickCount64& deltaTick) noexcept;
-	DirectX::XMFLOAT3 applyGravityRotation(const TickCount64& deltaTick) noexcept;
+	float getRotateAngleDelta(const TickCount64& deltaTick) const noexcept;
+	void applyGravityRotation(const TickCount64& deltaTick, const DirectX::XMFLOAT3& gravityDirection) noexcept;
+	bool getGravityDirection(DirectX::XMFLOAT3& gravityDirection) const noexcept;
 	float getSpeed() const noexcept;
 	float getVerticalSpeed() const noexcept;
 public:

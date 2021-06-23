@@ -85,11 +85,15 @@ bool StageManager::rotateActor(Actor* actor, const TickCount64& deltaTick) const
 
 bool StageManager::applyGravity(Actor* actor, const TickCount64& deltaTick) const noexcept
 {
-	DirectX::XMFLOAT3 gravityDirection = actor->applyGravityRotation(deltaTick);
-	if (MathHelper::equal(MathHelper::lengthSq(gravityDirection), 0))
+	XMFLOAT3 gravityDirection;
+	bool isGravityApplied = actor->getGravityDirection(gravityDirection);
+	if (false == isGravityApplied)
 	{
 		return false;
 	}
+
+	actor->applyGravityRotation(deltaTick, gravityDirection);
+	
 	return true;
 }
 

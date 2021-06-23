@@ -58,7 +58,12 @@ void Actor::rotateOnPlane(const float rotateAngle) noexcept
 	XMMATRIX rotateMatrix = XMMatrixRotationNormal(XMLoadFloat3(&_upVector), rotateAngle);
 	direction = XMVector3Transform(direction, rotateMatrix);
 	
-	XMStoreFloat3(&_direction, direction);
+	XMStoreFloat3(&_direction, XMVector3Normalize(direction));
+
+	if (_rotateType == RotateType::Fixed)
+	{
+		_rotateAngleOffset -= rotateAngle;
+	}
 }
 
 void Actor::rotateUpVector(const DirectX::XMFLOAT3& toUpVector) noexcept
@@ -84,11 +89,11 @@ void Actor::rotateUpVector(const DirectX::XMFLOAT3& toUpVector) noexcept
 	XMMATRIX rotateMatrix = XMMatrixRotationNormal(XMVector3Cross(upVector, currentDirection), MathHelper::Pi_DIV2 - acos(dot));
 	XMVECTOR newDirection = XMVector3Transform(currentDirection, rotateMatrix);
 
-	XMStoreFloat3(&_upVector, upVector);
-	XMStoreFloat3(&_direction, newDirection);
+	XMStoreFloat3(&_upVector, XMVector3Normalize(upVector));
+	XMStoreFloat3(&_direction, XMVector3Normalize(newDirection));
 }
 
-float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
+float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 {
 	const float maxAngle = _rotateSpeed * deltaTick;
 	float deltaAngle = 0.f;
@@ -104,12 +109,10 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 			else if (_rotateAngleOffset < 0)
 			{
 				deltaAngle = std::max(_rotateAngleOffset, -maxAngle);
-				_rotateAngleOffset += deltaAngle;
 			}
 			else if (_rotateAngleOffset > 0)
 			{
 				deltaAngle = std::min(_rotateAngleOffset, maxAngle);
-				_rotateAngleOffset -= deltaAngle;
 			}
 		}
 		break;
@@ -143,7 +146,7 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 			XMVECTOR camDirection = XMLoadFloat3(&camDirectionFloat);
 			XMVECTOR actorDirection = XMLoadFloat3(&_direction);
 			XMVECTOR actorUpVector = XMLoadFloat3(&_upVector);
-			XMVECTOR frontRaw = camDirection - XMVector3Dot(camDirection, actorUpVector) * actorUpVector;
+			XMVECTOR frontRaw = camDirection - (XMVector3Dot(camDirection, actorUpVector) * actorUpVector);
 			float frontRawLength = XMVectorGetX(XMVector3Length(frontRaw));
 			if (MathHelper::equal(frontRawLength, 0))
 			{
@@ -152,8 +155,12 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 			}
 			XMVECTOR front = frontRaw / frontRawLength;
 			XMVECTOR right = XMVector3Cross(actorUpVector, front);
-
+			OutputDebugStringA((std::to_string(XMVectorGetX(front)) + ", " + std::to_string(XMVectorGetY(front)) + ", " + std::to_string(XMVectorGetZ(front)) + "\n").c_str());
 			double currentAngleFromFront = acos(std::clamp(XMVectorGetX(XMVector3Dot(front, actorDirection)), -1.f, 1.f));
+			if (XMVectorGetX(XMVector3Dot(right, actorDirection)) < 0.f)
+			{
+				currentAngleFromFront *= -1;
+			}
 
 			deltaAngle = stickAngleFromFront - currentAngleFromFront + _rotateAngleOffset;
 			if (deltaAngle < -MathHelper::Pi)
@@ -183,52 +190,57 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 	return deltaAngle;
 }
 
-DirectX::XMFLOAT3 Actor::applyGravityRotation(const TickCount64& deltaTick) noexcept
+void Actor::applyGravityRotation(const TickCount64& deltaTick, const DirectX::XMFLOAT3& gravityDirection) noexcept
+{
+	check(_gravityPoint != nullptr);
+	check(MathHelper::equal(MathHelper::length(gravityDirection), 1.f, 0.01f));
+
+	XMVECTOR gravityDirectionV = XMLoadFloat3(&gravityDirection);
+	XMVECTOR actorUpVector = XMLoadFloat3(&_upVector);
+
+	double rotateAngle = acos(std::clamp(XMVectorGetX(XMVector3Dot(-gravityDirectionV, actorUpVector)), -1.f, 1.f));
+	// gravity 회전 속도에 대한 다른 기준을 찾을때까진 일단 gravity에 비례하게 쓴다. [6/24/2021 qwerw]
+	double maxRotateAngle = _gravityPoint->_gravity * deltaTick * 0.01;
+	if (rotateAngle > maxRotateAngle)
+	{
+		XMVECTOR cross = XMVector3Cross(actorUpVector, -gravityDirectionV);
+		actorUpVector = XMVector3Transform(actorUpVector, XMMatrixRotationAxis(cross, maxRotateAngle));
+	}
+	else
+	{
+		actorUpVector = -gravityDirectionV;
+	}
+
+	XMFLOAT3 newUpVector;
+	XMStoreFloat3(&newUpVector, actorUpVector);
+
+	rotateUpVector(newUpVector);
+}
+
+bool Actor::getGravityDirection(DirectX::XMFLOAT3& gravityDirection) const noexcept
 {
 	if (_gravityPoint == nullptr)
 	{
-		return DirectX::XMFLOAT3(0, 0, 0);
+		return false;
 	}
 
 	switch (_gravityPoint->_type)
 	{
 		case GravityPointType::Fixed:
 		{
-
+			gravityDirection = _gravityPoint->_position;
 		}
 		break;
 		case GravityPointType::Point:
 		{
 			XMVECTOR actorPosition = XMLoadFloat3(&_position);
 			XMVECTOR toGravityPoint = XMLoadFloat3(&_gravityPoint->_position) - actorPosition;
-			double toGravityPointLength = XMVectorGetX(XMVector3Length(toGravityPoint));
+			float toGravityPointLength = XMVectorGetX(XMVector3Length(toGravityPoint));
 			if (MathHelper::equal(toGravityPointLength, 0))
 			{
-				return DirectX::XMFLOAT3(0, 0, 0);
+				return false;
 			}
-			XMVECTOR gravityDirection = toGravityPoint / toGravityPointLength;
-			XMVECTOR actorUpVector = XMLoadFloat3(&_upVector);
-
-			double rotateAngle = acos(std::clamp(XMVectorGetX(XMVector3Dot(-gravityDirection, actorUpVector)), -1.f, 1.f));
-			double maxRotateAngle = _gravityPoint->_gravity * deltaTick * 0.001;
-			if (rotateAngle > maxRotateAngle)
-			{
-				XMVECTOR cross =  XMVector3Cross(actorUpVector, -gravityDirection);
-				actorUpVector = XMVector3Transform(actorUpVector, XMMatrixRotationAxis(cross, maxRotateAngle));
-			}
-			else
-			{
-				actorUpVector = -gravityDirection;
-			}
-
-			XMFLOAT3 newUpVector;
-			XMStoreFloat3(&newUpVector, actorUpVector);
-
-			rotateUpVector(newUpVector);
-
-			XMFLOAT3 rvGravity;
-			XMStoreFloat3(&rvGravity, gravityDirection);
-			return rvGravity;
+			XMStoreFloat3(&gravityDirection, XMVector3Normalize(toGravityPoint));
 		}
 		break;
 		case GravityPointType::GroundNormal:
@@ -243,7 +255,6 @@ DirectX::XMFLOAT3 Actor::applyGravityRotation(const TickCount64& deltaTick) noex
 			check(false, "타입 추가시 확인");
 		}
 		break;
-
 	}
 }
 
