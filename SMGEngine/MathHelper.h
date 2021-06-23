@@ -6,6 +6,7 @@
 namespace MathHelper
 {
 	static constexpr float Pi = 3.1415926535f;
+	static constexpr float Pi_DIV2 = 1.57079632679f;
 	static constexpr DirectX::XMFLOAT4X4 Identity4x4{ 1.f, 0.f, 0.f, 0.f,
 													  0.f, 1.f, 0.f, 0.f,
 													  0.f, 0.f, 1.f, 0.f,
@@ -58,6 +59,10 @@ namespace MathHelper
 		return true;
 	}
 
+	static bool equal_d(double lhs, double rhs, double epsilon = DBL_EPSILON)
+	{
+		return abs(lhs - rhs) < epsilon;
+	}
 	static bool equal(float lhs, float rhs, float epsilon = FLT_EPSILON)
 	{
 		return abs(lhs - rhs) < epsilon;

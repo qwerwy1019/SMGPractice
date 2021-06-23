@@ -61,6 +61,33 @@ void Actor::rotateOnPlane(const float rotateAngle) noexcept
 	XMStoreFloat3(&_direction, direction);
 }
 
+void Actor::rotateUpVector(const DirectX::XMFLOAT3& toUpVector) noexcept
+{
+	XMVECTOR upVector = XMLoadFloat3(&toUpVector);
+	XMVECTOR currentDirection = XMLoadFloat3(&_direction);
+	double dot = clamp(XMVectorGetX(XMVector3Dot(upVector, currentDirection)), -1.f, 1.f);
+	if (MathHelper::equal_d(dot, 0))
+	{
+		_upVector = toUpVector;
+		return;
+	}
+	else if (MathHelper::equal_d(dot, 1) || MathHelper::equal_d(dot , -1))
+	{
+		check(false, "한 프레임에 90도 회전. 회전 속도를 조절해야함");
+		upVector *= dot;
+
+		_direction = _upVector;
+		XMStoreFloat3(&_upVector, upVector);
+		return;
+	}
+
+	XMMATRIX rotateMatrix = XMMatrixRotationNormal(XMVector3Cross(upVector, currentDirection), MathHelper::Pi_DIV2 - acos(dot));
+	XMVECTOR newDirection = XMVector3Transform(currentDirection, rotateMatrix);
+
+	XMStoreFloat3(&_upVector, upVector);
+	XMStoreFloat3(&_direction, newDirection);
+}
+
 float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 {
 	const float maxAngle = _rotateSpeed * deltaTick;
@@ -70,7 +97,11 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 	{
 		case RotateType::Fixed:
 		{
-			if (_rotateAngleOffset < 0)
+			if (MathHelper::equal(_rotateAngleOffset, 0))
+			{
+				__noop;
+			}
+			else if (_rotateAngleOffset < 0)
 			{
 				deltaAngle = std::max(_rotateAngleOffset, -maxAngle);
 				_rotateAngleOffset += deltaAngle;
@@ -95,12 +126,13 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 		case RotateType::JoystickInput:
 		{
 			XMFLOAT2 stickInput = SMGFramework::Get().getStickInput(StickInputType::LStick);
+			
 			float stickInputLength = sqrt(stickInput.x * stickInput.x + stickInput.y * stickInput.y);
-			if (stickInputLength == 0)
+			if (MathHelper::equal(stickInputLength, 0))
 			{
 				return 0;
 			}
-			float stickAngleFromFront = acos(stickInput.y / stickInputLength);
+			double stickAngleFromFront = acos(stickInput.y / stickInputLength);
 			if (stickInput.x < 0.f)
 			{
 				stickAngleFromFront *= -1;
@@ -108,13 +140,12 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 
 			const XMFLOAT3& camDirectionFloat = SMGFramework::getD3DApp()->getCameraDirection();
 
-			OutputDebugStringA((std::to_string(camDirectionFloat.x) + ", " + std::to_string(camDirectionFloat.y) + ", " + std::to_string(camDirectionFloat.z) + "\n").c_str());
 			XMVECTOR camDirection = XMLoadFloat3(&camDirectionFloat);
 			XMVECTOR actorDirection = XMLoadFloat3(&_direction);
 			XMVECTOR actorUpVector = XMLoadFloat3(&_upVector);
 			XMVECTOR frontRaw = camDirection - XMVector3Dot(camDirection, actorUpVector) * actorUpVector;
 			float frontRawLength = XMVectorGetX(XMVector3Length(frontRaw));
-			if (frontRawLength == 0)
+			if (MathHelper::equal(frontRawLength, 0))
 			{
 				check(false, "카메라 방향이 이상하지 않은지 확인해야함.");
 				return 0;
@@ -122,11 +153,7 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 			XMVECTOR front = frontRaw / frontRawLength;
 			XMVECTOR right = XMVector3Cross(actorUpVector, front);
 
-			float currentAngleFromFront = acos(std::clamp(XMVectorGetX(XMVector3Dot(front, actorDirection)), -1.f, 1.f));
-			if (XMVectorGetX(XMVector3Dot(right, actorDirection)) < 0.f)
-			{
-				currentAngleFromFront *= -1;
-			}
+			double currentAngleFromFront = acos(std::clamp(XMVectorGetX(XMVector3Dot(front, actorDirection)), -1.f, 1.f));
 
 			deltaAngle = stickAngleFromFront - currentAngleFromFront + _rotateAngleOffset;
 			if (deltaAngle < -MathHelper::Pi)
@@ -156,6 +183,75 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) noexcept
 	return deltaAngle;
 }
 
+DirectX::XMFLOAT3 Actor::applyGravityRotation(const TickCount64& deltaTick) noexcept
+{
+	if (_gravityPoint == nullptr)
+	{
+		return DirectX::XMFLOAT3(0, 0, 0);
+	}
+
+	switch (_gravityPoint->_type)
+	{
+		case GravityPointType::Fixed:
+		{
+
+		}
+		break;
+		case GravityPointType::Point:
+		{
+			XMVECTOR actorPosition = XMLoadFloat3(&_position);
+			XMVECTOR toGravityPoint = XMLoadFloat3(&_gravityPoint->_position) - actorPosition;
+			double toGravityPointLength = XMVectorGetX(XMVector3Length(toGravityPoint));
+			if (MathHelper::equal(toGravityPointLength, 0))
+			{
+				return DirectX::XMFLOAT3(0, 0, 0);
+			}
+			XMVECTOR gravityDirection = toGravityPoint / toGravityPointLength;
+			XMVECTOR actorUpVector = XMLoadFloat3(&_upVector);
+
+			double rotateAngle = acos(std::clamp(XMVectorGetX(XMVector3Dot(-gravityDirection, actorUpVector)), -1.f, 1.f));
+			double maxRotateAngle = _gravityPoint->_gravity * deltaTick * 0.001;
+			if (rotateAngle > maxRotateAngle)
+			{
+				XMVECTOR cross =  XMVector3Cross(actorUpVector, -gravityDirection);
+				actorUpVector = XMVector3Transform(actorUpVector, XMMatrixRotationAxis(cross, maxRotateAngle));
+			}
+			else
+			{
+				actorUpVector = -gravityDirection;
+			}
+
+			XMFLOAT3 newUpVector;
+			XMStoreFloat3(&newUpVector, actorUpVector);
+
+			rotateUpVector(newUpVector);
+
+			XMFLOAT3 rvGravity;
+			XMStoreFloat3(&rvGravity, gravityDirection);
+			return rvGravity;
+		}
+		break;
+		case GravityPointType::GroundNormal:
+		{
+			check(false, "미구현");
+		}
+		break;
+		case GravityPointType::Count:
+		default:
+		{
+			static_assert(static_cast<int>(GravityPointType::Count) == 3, "타입 추가시 확인");
+			check(false, "타입 추가시 확인");
+		}
+		break;
+
+	}
+}
+
+float Actor::getSpeed() const noexcept
+{
+	return _speed;
+}
+
 void Actor::updateActor(const TickCount64& deltaTick) noexcept
 {
 	updateActionChart(deltaTick);
@@ -173,6 +269,11 @@ void Actor::updateActor(const TickCount64& deltaTick) noexcept
 		_speed = std::max(_speed, _targetSpeed);
 	}
 	//_verticalSpeed += getGravity() * deltaTick;
+}
+
+float Actor::getVerticalSpeed() const noexcept
+{
+	return _verticalSpeed;
 }
 
 TickCount64 Actor::getLocalTickCount(void) const noexcept
@@ -539,7 +640,7 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 		case MoveType::JoystickDirection:
 		{
 			XMFLOAT2 stickInput = SMGFramework::Get().getStickInput(StickInputType::LStick);
-			if (stickInput.x == 0 && stickInput.y == 0)
+			if (MathHelper::equal(stickInput.x, 0) && MathHelper::equal(stickInput.y, 0))
 			{
 				return XMFLOAT3(0, 0, 0);
 			}
@@ -579,6 +680,10 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 void Actor::setPosition(const DirectX::XMFLOAT3& toPosition) noexcept
 {
 	_position = toPosition;
+	if (_gravityPoint == nullptr || MathHelper::length(MathHelper::sub(_gravityPoint->_position, toPosition)) > _gravityPoint->_radius)
+	{
+		_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(toPosition);
+	}
 }
 
 bool Actor::isActionEnd() const noexcept
@@ -663,7 +768,6 @@ const GameObject* Actor::getGameObject(void) const noexcept
 
 PlayerActor::PlayerActor(const SpawnInfo& spawnInfo)
 	: Actor(spawnInfo)
-	,_gravityPointIndex(-1)
 	, _isMoving(false)
 {
 }

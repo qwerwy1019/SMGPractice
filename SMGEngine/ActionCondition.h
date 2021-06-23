@@ -61,3 +61,13 @@ private:
 	StickInputType _stickType;
 	StickInputState _stickInputState;
 };
+
+class ActionCondition_IsStop : public ActionCondition
+{
+public:
+	ActionCondition_IsStop(const std::string& args);
+	virtual ~ActionCondition_IsStop() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::IsStop; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+};

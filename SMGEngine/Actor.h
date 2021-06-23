@@ -7,6 +7,7 @@ class ActionChart;
 class ActionState;
 struct SpawnInfo;
 struct GameObject;
+struct GravityPoint;
 
 struct CollisionInfo
 {
@@ -20,7 +21,11 @@ public:
 	Actor(const SpawnInfo& spawnInfo);
 	virtual ~Actor();
 	void rotateOnPlane(const float rotateAngle) noexcept;
+	void rotateUpVector(const DirectX::XMFLOAT3& toUpVector) noexcept;
 	float getRotateAngleDelta(const TickCount64& deltaTick) noexcept;
+	DirectX::XMFLOAT3 applyGravityRotation(const TickCount64& deltaTick) noexcept;
+	float getSpeed() const noexcept;
+	float getVerticalSpeed() const noexcept;
 public:
 	TickCount64 getLocalTickCount(void) const noexcept;
 	DirectX::XMFLOAT3 getPosition(void) const noexcept;
@@ -79,8 +84,7 @@ private:
 	float _rotateAngleOffset;
 	float _rotateSpeed;
 
-	// ม฿ทย
-	uint32_t _terrainIndex;
+	const GravityPoint* _gravityPoint;
 
 	GameObject* _gameObject;
 
@@ -98,7 +102,6 @@ public:
 	PlayerActor(const SpawnInfo& spawnInfo);
 	bool isMoving(void) const noexcept { return _isMoving; }
 private:
-	int _gravityPointIndex;
 	bool _isMoving;
 };
 

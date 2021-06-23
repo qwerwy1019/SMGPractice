@@ -10,6 +10,7 @@
 #include "ActionChart.h"
 #include "FrameEvent.h"
 #include "ActionCondition.h"
+#include <algorithm>
 
 StageManager::StageManager()
 	: _sectorSize(100, 100, 100)
@@ -31,6 +32,7 @@ StageManager::~StageManager()
 
 void StageManager::loadStage(void)
 {	
+	//SMGFramework::getD3DApp()->releaseItemsForStageLoad();
 	SMGFramework::getD3DApp()->prepareCommandQueue();
 	loadStageInfo();
 	createMap();
@@ -83,7 +85,12 @@ bool StageManager::rotateActor(Actor* actor, const TickCount64& deltaTick) const
 
 bool StageManager::applyGravity(Actor* actor, const TickCount64& deltaTick) const noexcept
 {
-	return false;
+	DirectX::XMFLOAT3 gravityDirection = actor->applyGravityRotation(deltaTick);
+	if (MathHelper::equal(MathHelper::lengthSq(gravityDirection), 0))
+	{
+		return false;
+	}
+	return true;
 }
 
 void StageManager::setNextStage(std::string stageName) noexcept
@@ -112,6 +119,17 @@ ActionChart* StageManager::loadActionChartFromXML(const std::string& actionChart
 const PlayerActor* StageManager::getPlayerActor(void) const noexcept
 {
 	return _playerActor;
+}
+
+const GravityPoint* StageManager::getGravityPointAt(const DirectX::XMFLOAT3& position) const noexcept
+{
+	if (_stageInfo == nullptr)
+	{
+		check(false);
+		return nullptr;
+	}
+
+	return _stageInfo->getGravityPointAt(position);
 }
 
 bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcept
@@ -270,7 +288,7 @@ void StageManager::updateCamera() noexcept
 			auto playerUpVector = _playerActor->getUpVector();
 
 			auto cameraFocusPosition = add(playerPosition, mul(playerUpVector, 100));
-			auto cameraPosition = add(playerPosition, mul(sub(playerUpVector, mul(playerDirection, 2.f)), 500));
+			auto cameraPosition = add(playerPosition, mul(sub(mul(playerUpVector, 2.f), playerDirection), 600));
 
 			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector, 10.f, 10.f);
 		}

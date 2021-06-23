@@ -5,6 +5,7 @@
 #include "SMGFramework.h"
 #include "D3DUtil.h"
 #include "StageManager.h"
+#include "MathHelper.h"
 
 ActionCondition_Tick::ActionCondition_Tick(const std::string& args)
 {
@@ -167,9 +168,13 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	{
 		return nullptr;
 	}
+	else if (conditionTypeString == "IsStop")
+	{
+		condition = std::make_unique<ActionCondition_IsStop>(conditionArgs);
+	}
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 3, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 4, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -273,6 +278,20 @@ bool ActionCondition_Stick::checkCondition(const Actor& actor) const noexcept
 	check(&actor == SMGFramework::getStageManager()->getPlayerActor());
 
 	if ((SMGFramework::Get().getStickInputState(_stickType) & _stickInputState) != StickInputState::None)
+	{
+		return true;
+	}
+	return false;
+}
+
+ActionCondition_IsStop::ActionCondition_IsStop(const std::string& args)
+{
+
+}
+
+bool ActionCondition_IsStop::checkCondition(const Actor& actor) const noexcept
+{
+	if (MathHelper::equal(actor.getSpeed(), 0) && MathHelper::equal(actor.getVerticalSpeed(), 0))
 	{
 		return true;
 	}

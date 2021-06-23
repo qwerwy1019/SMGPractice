@@ -9,6 +9,7 @@ class Actor;
 class PlayerActor;
 class ActionChart;
 struct GameObject;
+struct GravityPoint;
 
 class StageManager
 {
@@ -25,6 +26,7 @@ public:
 	void setNextStage(std::string stageName) noexcept;
 	ActionChart* loadActionChartFromXML(const std::string& actionChartName);
 	const PlayerActor* getPlayerActor(void) const noexcept;
+	const GravityPoint* getGravityPointAt(const DirectX::XMFLOAT3& position) const noexcept;
 private:
 	int sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept;
 	std::vector<const GameObject*> _terrainObjects;

@@ -6,6 +6,7 @@ enum class ActionConditionType
 	Tick,
 	Key,
 	End,
+	IsStop,
 
 	Count,
 };
