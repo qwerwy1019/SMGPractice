@@ -124,6 +124,8 @@ void StageInfo::loadXmlTerrainObjectInfo(const XMLReaderNode& node)
 		childNodes[i].loadAttribute("Direction", _terrainObjectInfo[i]._direction);
 		childNodes[i].loadAttribute("UpVector", _terrainObjectInfo[i]._upVector);
 		childNodes[i].loadAttribute("Size", _terrainObjectInfo[i]._size);
+		childNodes[i].loadAttribute("IsGround", _terrainObjectInfo[i]._isGround);
+		childNodes[i].loadAttribute("IsWall", _terrainObjectInfo[i]._isWall);
 	}
 }
 

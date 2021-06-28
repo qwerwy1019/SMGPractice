@@ -28,6 +28,8 @@ struct TerrainObjectInfo
 	DirectX::XMFLOAT3 _direction;
 	DirectX::XMFLOAT3 _upVector;
 	float _size;
+	bool _isGround;
+	bool _isWall;
 };
 
 struct CameraPoint

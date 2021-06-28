@@ -182,6 +182,13 @@ const Vertex* MeshGeometry::getVertexBufferXXX(size_t& bufferSize) const noexcep
 	return reinterpret_cast<Vertex*>(_vertexBufferCPU->GetBufferPointer());
 }
 
+const GeoIndex* MeshGeometry::getIndexBufferXXX(void) const noexcept
+{
+	check(_indexBufferCPU != nullptr);
+	
+	return reinterpret_cast<GeoIndex*>(_indexBufferCPU->GetBufferPointer());
+}
+
 void MeshGeometry::setVertexByteSizeOnlyXXXXX(UINT vertexBufferSize) noexcept
 {
 	_vertexBufferCPU = nullptr;

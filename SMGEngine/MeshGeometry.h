@@ -33,6 +33,7 @@ public:
 
 	D3D12_INDEX_BUFFER_VIEW getIndexBufferView(void) const noexcept;
 	const Vertex* getVertexBufferXXX(size_t& bufferSize) const noexcept;
+	const GeoIndex* getIndexBufferXXX(void) const noexcept;
 	std::string getName(void) const noexcept { return _name; }
 	std::unordered_map<std::string, SubMeshGeometry> _subMeshMap;// todo private¿∏∑Œ [1/14/2021 qwerw]
 	
