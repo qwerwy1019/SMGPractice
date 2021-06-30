@@ -1,6 +1,6 @@
 #pragma once
+#include "stdafx.h"
 #include <math.h>
-#include <DirectXMath.h>
 #include "Exception.h"
 
 namespace MathHelper
@@ -143,5 +143,32 @@ namespace MathHelper
 		XMMATRIX scaling = XMMatrixScaling(size, size, size);
 
 		XMStoreFloat4x4(&outMatrix, scaling * rotation * translation);
+	}
+
+	static DirectX::XMVECTOR XM_CALLCONV triangleIntersectLine(DirectX::FXMVECTOR t0,
+														DirectX::FXMVECTOR t1,
+														DirectX::FXMVECTOR t2,
+														DirectX::CXMVECTOR from,
+														DirectX::CXMVECTOR to,
+														bool checkNormal) noexcept
+	{
+		using namespace DirectX;
+		const auto& plane = XMPlaneFromPoints(t0, t1, t2);
+		if (checkNormal)
+		{
+			if (XMVectorGetX(XMVector3Dot(plane, to - from)) < 0)
+			{
+				return to;
+			}
+		}
+		const auto& intersect = XMPlaneIntersectLine(plane, from, to);
+
+		if (XMVectorGetX(XMVector3Dot(XMVector3Cross((t0 - t1), (t2 - t1)), XMVector3Cross((t0 - t1), (intersect, t1)))) < 0 ||
+			XMVectorGetX(XMVector3Dot(XMVector3Cross((t1 - t2), (t0 - t2)), XMVector3Cross((t1 - t2), (intersect, t2)))) < 0 ||
+			XMVectorGetX(XMVector3Dot(XMVector3Cross((t2 - t0), (t1 - t0)), XMVector3Cross((t2 - t0), (intersect, t0)))) < 0)
+		{
+			return to;
+		}
+		return intersect;
 	}
 };

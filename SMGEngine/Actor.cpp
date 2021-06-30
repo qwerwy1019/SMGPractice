@@ -279,7 +279,11 @@ void Actor::updateActor(const TickCount64& deltaTick) noexcept
 		_speed -= _acceleration * deltaTick;
 		_speed = std::max(_speed, _targetSpeed);
 	}
-	//_verticalSpeed += getGravity() * deltaTick;
+
+	if (_gravityPoint != nullptr)
+	{
+		_verticalSpeed += _gravityPoint->_gravity * deltaTick;
+	}
 }
 
 float Actor::getVerticalSpeed() const noexcept
