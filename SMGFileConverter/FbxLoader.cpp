@@ -51,6 +51,7 @@ void FbxLoader::loadFbxPolygons(FbxMesh* mesh, std::vector<FbxPolygonVertexInfo>
 
 		for (int v = 0; v < VERTEX_PER_POLYGON; ++v)
 		{
+			check(mesh->GetPolygonVertex(p, v) < std::numeric_limits<uint16_t>::max());
 			polygonVertexInfo._controlPointIndex = mesh->GetPolygonVertex(p, v);
 
 			switch (uvIndexType)
@@ -59,10 +60,12 @@ void FbxLoader::loadFbxPolygons(FbxMesh* mesh, std::vector<FbxPolygonVertexInfo>
 					polygonVertexInfo._uvIndex = polygonVertexInfo._controlPointIndex;
 					break;
 				case IndexMappingType::IndexArrayAtControlPoint:
+					check(layerUvs->GetIndexArray().GetAt(polygonVertexInfo._controlPointIndex) < std::numeric_limits<uint16_t>::max());
 					polygonVertexInfo._uvIndex = layerUvs->GetIndexArray().GetAt(polygonVertexInfo._controlPointIndex);
 					break;
 				case IndexMappingType::PolygonVertexIndex:
 				case IndexMappingType::IndexArrayAtPolygonVertex:
+					check(mesh->GetTextureUVIndex(p, v) < std::numeric_limits<uint16_t>::max());
 					polygonVertexInfo._uvIndex = mesh->GetTextureUVIndex(p, v);
 					break;;
 				case IndexMappingType::Undefined:
@@ -174,6 +177,13 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 
 	struct VertexKey
 	{
+		VertexKey(uint16_t materialInput, uint16_t controlPointInput, uint16_t uvInput)
+			: material(materialInput)
+			, controlPoint(controlPointInput)
+			, uv(uvInput)
+		{
+
+		}
 		uint16_t material;
 		uint16_t controlPoint;
 		uint16_t uv;
@@ -188,9 +198,9 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 	{
 		std::size_t operator()(const VertexKey& key) const
 		{
-			return ((key.material & 0xF) << 16)
-				+ ((key.controlPoint & 0xF) << 8)
-				+ (key.uv & 0xF);
+			return ((key.material & 0xFF) << 16)
+				+ ((key.controlPoint & 0xFF) << 8)
+				+ (key.uv & 0xFF);
 		}
 	};
 	unordered_map<VertexKey, std::pair<GeoIndex, int>, VertexKeyHasher> indexMap;
@@ -202,7 +212,7 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 			ThrowErrCode(ErrCode::MaterialNotFound, "pv matIndex: " + std::to_string(pv._materialIndex) +
 						", matInfoSize: " + std::to_string(_materialsInfos.size()));
 		}
-		VertexKey key = { pv._materialIndex, pv._controlPointIndex, pv._uvIndex };
+		const VertexKey key(pv._materialIndex, pv._controlPointIndex, pv._uvIndex);
 		auto it = indexMap.find(key);
 		if (it != indexMap.end())
 		{
@@ -262,8 +272,10 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 			v._textureCoord.y *= -1;
 
 			vector<Vertex>& subMeshVertices = vertices[pv._materialIndex];
+			check(subMeshVertices.size() < std::numeric_limits<GeoIndex>::max());
 			const GeoIndex index = subMeshVertices.size();
 			indices[pv._materialIndex].push_back(index);
+			// emplace return 체크해야함 [7/3/2021 qwerw]
 			indexMap.emplace(make_pair(key, make_pair(index, 1)));
 			subMeshVertices.push_back(v);
 		}

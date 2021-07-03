@@ -24,7 +24,8 @@ struct TerrainAABBNode
 		} _node;
 		struct Leaf
 		{
-			uint16_t _index;
+			int _index;
+			uint8_t _subMeshIndex;
 			//uint8_t _geometryIndex;
 		} _leaf;
 	};
@@ -48,7 +49,7 @@ private:
 	};
 	GameObject* _gameObject;
 	std::vector<TerrainAABBNode> _aabbNodes;
-	const MeshGeometry* _mesh;
+	const MeshGeometry* _meshGeometry;
 	const Vertex* _vertexBuffer;
 	const GeoIndex* _indexBuffer;
 
@@ -58,20 +59,20 @@ private:
 	bool _isWall;
 private:
 	void makeAABBTree(void);
-	uint16_t XM_CALLCONV makeAABBTreeXXX(std::vector<int>& terrainIndexList,
+	uint16_t XM_CALLCONV makeAABBTreeXXX(std::vector<TerrainAABBNode::DataType::Leaf>& terrainIndexList,
 		int begin,
 		int end,
 		DirectX::FXMVECTOR min,
 		DirectX::FXMVECTOR max);
-
-	void sortIndexList(std::vector<int>& terrainIndexList,
+	const Vertex& getVertexFromLeafNode(const TerrainAABBNode::DataType::Leaf& leafNode, const int offset) const noexcept;
+	void sortIndexList(std::vector<TerrainAABBNode::DataType::Leaf>& terrainIndexList,
 		int begin,
 		int end,
 		DivideType divideType) const noexcept;
 
-	inline float sortCompareValue(int index, DivideType type) const noexcept;
+	inline float sortCompareValue(const TerrainAABBNode::DataType::Leaf& index, DivideType type) const noexcept;
 
-	TerrainAABBNode::DataType::Node XM_CALLCONV getAABBRange(std::vector<int>& terrainIndexList,
+	TerrainAABBNode::DataType::Node XM_CALLCONV getAABBRange(std::vector<TerrainAABBNode::DataType::Leaf>& terrainIndexList,
 		int begin,
 		int end,
 		DirectX::FXMVECTOR min,

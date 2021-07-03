@@ -77,16 +77,21 @@ void Terrain::makeAABBTree(void)
 			ThrowErrCode(ErrCode::InvalidXmlData, "다른 mesh를 같은 terrain으로 사용하려면 별도 작업 필요함");
 		}
 		mesh = renderItem->_geometry;
-		totalIndexCount += renderItem->_indexCount;
+		totalIndexCount += renderItem->getSubMesh()._indexCount;
 	}
+	_meshGeometry = mesh;
 
-	std::vector<int> terrainIndexList;
-	terrainIndexList.reserve(totalIndexCount / 3);
+	std::vector<TerrainAABBNode::DataType::Leaf> terrainLeafList(totalIndexCount / 3);
+	int i = 0;
 	for (const auto& renderItem : _gameObject->_renderItems)
 	{
-		for (int i = 0; i < renderItem->_indexCount; i += 3)
+		const auto& subMesh = renderItem->getSubMesh();
+		auto subMeshIndex = renderItem->_subMeshIndex;
+		for (int j = 0; j < subMesh._indexCount; j += 3)
 		{
-			terrainIndexList.push_back(renderItem->_startIndexLocation + i);
+			terrainLeafList[i]._subMeshIndex = subMeshIndex;
+			terrainLeafList[i]._index = j;
+			++i;
 		}
 	}
 
@@ -94,13 +99,14 @@ void Terrain::makeAABBTree(void)
 	_vertexBuffer = mesh->getVertexBufferXXX(vertexCount);
 	_indexBuffer = mesh->getIndexBufferXXX();
 
-	_min = _vertexBuffer[_indexBuffer[terrainIndexList[0]]]._position;
+	const auto& subMesh = _meshGeometry->_subMeshList[terrainLeafList[0]._subMeshIndex];
+	_min = getVertexFromLeafNode(terrainLeafList[0], 0)._position;
 	_max = _min;
-	for (int i = 0; i < terrainIndexList.size(); ++i)
+	for (int i = 0; i < terrainLeafList.size(); ++i)
 	{
 		for (int j = 0; j < 3; ++j)
 		{
-			const Vertex& vertex = _vertexBuffer[_indexBuffer[terrainIndexList[i] + j]];
+			const Vertex& vertex = getVertexFromLeafNode(terrainLeafList[i], j);
 
 			_min.x = std::min(_min.x, vertex._position.x);
 			_min.y = std::min(_min.y, vertex._position.y);
@@ -116,10 +122,10 @@ void Terrain::makeAABBTree(void)
 	XMVECTOR max = XMLoadFloat3(&_max);
 	// reserve 크기 체크해야함 [6/24/2021 qwerw]
 	_aabbNodes.reserve(vertexCount);
-	makeAABBTreeXXX(terrainIndexList, 0, terrainIndexList.size(), min, max);
+	makeAABBTreeXXX(terrainLeafList, 0, terrainLeafList.size(), min, max);
 }
 
-uint16_t XM_CALLCONV Terrain::makeAABBTreeXXX(std::vector<int>& terrainIndexList,
+uint16_t XM_CALLCONV Terrain::makeAABBTreeXXX(std::vector<TerrainAABBNode::DataType::Leaf>& terrainLeafList,
 	int begin,
 	int end,
 	FXMVECTOR min,
@@ -128,19 +134,19 @@ uint16_t XM_CALLCONV Terrain::makeAABBTreeXXX(std::vector<int>& terrainIndexList
 	check(begin < end);
 	check(_vertexBuffer != nullptr);
 	check(_indexBuffer != nullptr);
-	check(0 <= begin && begin < terrainIndexList.size());
-	check(0 < end && end <= terrainIndexList.size());
+	check(0 <= begin && begin < terrainLeafList.size());
+	check(0 < end && end <= terrainLeafList.size());
 
 	TerrainAABBNode node;
 	if (end - begin == 1)
 	{
 		node._children[0] = std::numeric_limits<uint16_t>::max();
 		node._children[1] = std::numeric_limits<uint16_t>::max();
-		node._data._leaf._index = terrainIndexList[begin];
+		node._data._leaf = terrainLeafList[begin];
 	}
 	else
 	{
-		node._data._node = getAABBRange(terrainIndexList, begin, end, min, max);
+		node._data._node = getAABBRange(terrainLeafList, begin, end, min, max);
 
 		XMVECTOR minXyz = DirectX::XMVectorSet(node._data._node._minX,
 			node._data._node._minY,
@@ -182,11 +188,11 @@ uint16_t XM_CALLCONV Terrain::makeAABBTreeXXX(std::vector<int>& terrainIndexList
 			}
 		}
 
-		sortIndexList(terrainIndexList, begin, end, divideType);
+		sortIndexList(terrainLeafList, begin, end, divideType);
 		int mid = (begin + end) / 2;
 
-		node._children[0] = makeAABBTreeXXX(terrainIndexList, begin, mid, nextMin, nextMax);
-		node._children[1] = makeAABBTreeXXX(terrainIndexList, mid, end, nextMin, nextMax);
+		node._children[0] = makeAABBTreeXXX(terrainLeafList, begin, mid, nextMin, nextMax);
+		node._children[1] = makeAABBTreeXXX(terrainLeafList, mid, end, nextMin, nextMax);
 	}
 	_aabbNodes.push_back(node);
 
@@ -197,7 +203,13 @@ uint16_t XM_CALLCONV Terrain::makeAABBTreeXXX(std::vector<int>& terrainIndexList
 	return (_aabbNodes.size() - 1);
 }
 
-void Terrain::sortIndexList(std::vector<int>& terrainIndexList, int begin, int end, DivideType divideType) const noexcept
+const Vertex& Terrain::getVertexFromLeafNode(const TerrainAABBNode::DataType::Leaf& leafNode, const int offset) const noexcept
+{
+	const auto& subMesh = _meshGeometry->_subMeshList[leafNode._subMeshIndex];
+	return _vertexBuffer[subMesh._baseVertexLoaction + _indexBuffer[subMesh._baseIndexLoacation + leafNode._index + offset]];
+}
+
+void Terrain::sortIndexList(std::vector<TerrainAABBNode::DataType::Leaf>& terrainIndexList, int begin, int end, DivideType divideType) const noexcept
 {
 	check(begin <= end);
 	check(_vertexBuffer != nullptr);
@@ -242,7 +254,7 @@ void Terrain::sortIndexList(std::vector<int>& terrainIndexList, int begin, int e
 	sortIndexList(terrainIndexList, j + 1, end, divideType);
 }
 
-float Terrain::sortCompareValue(int index, DivideType type) const noexcept
+float Terrain::sortCompareValue(const TerrainAABBNode::DataType::Leaf& index, DivideType type) const noexcept
 {
 	check(_vertexBuffer != nullptr);
 	check(_indexBuffer != nullptr);
@@ -250,19 +262,19 @@ float Terrain::sortCompareValue(int index, DivideType type) const noexcept
 	switch (type)
 	{
 		case DivideType::X:
-			return _vertexBuffer[_indexBuffer[index]]._position.x +
-				_vertexBuffer[_indexBuffer[index + 1]]._position.x +
-				_vertexBuffer[_indexBuffer[index + 2]]._position.x;
+			return getVertexFromLeafNode(index, 0)._position.x +
+				getVertexFromLeafNode(index, 1)._position.x +
+				getVertexFromLeafNode(index, 2)._position.x;
 			break;
 		case DivideType::Y:
-			return _vertexBuffer[_indexBuffer[index]]._position.y +
-				_vertexBuffer[_indexBuffer[index + 1]]._position.y +
-				_vertexBuffer[_indexBuffer[index + 2]]._position.y;
+			return getVertexFromLeafNode(index, 0)._position.y +
+				getVertexFromLeafNode(index, 1)._position.y +
+				getVertexFromLeafNode(index, 2)._position.y;
 			break;
 		case DivideType::Z:
-			return _vertexBuffer[_indexBuffer[index]]._position.z +
-				_vertexBuffer[_indexBuffer[index + 1]]._position.z +
-				_vertexBuffer[_indexBuffer[index + 2]]._position.z;
+			return getVertexFromLeafNode(index, 0)._position.z +
+				getVertexFromLeafNode(index, 1)._position.z +
+				getVertexFromLeafNode(index, 2)._position.z;
 			break;
 		default:
 			check(false);
@@ -271,7 +283,7 @@ float Terrain::sortCompareValue(int index, DivideType type) const noexcept
 	return 0.f;
 }
 
-TerrainAABBNode::DataType::Node XM_CALLCONV Terrain::getAABBRange(std::vector<int>& terrainIndexList,
+TerrainAABBNode::DataType::Node XM_CALLCONV Terrain::getAABBRange(std::vector<TerrainAABBNode::DataType::Leaf>& terrainIndexList,
 	int begin,
 	int end,
 	FXMVECTOR min,
@@ -295,7 +307,7 @@ TerrainAABBNode::DataType::Node XM_CALLCONV Terrain::getAABBRange(std::vector<in
 	{
 		for (int j = 0; j < 3; ++j)
 		{
-			const Vertex& vertex = _vertexBuffer[_indexBuffer[terrainIndexList[i] + j]];
+			const Vertex& vertex = getVertexFromLeafNode(terrainIndexList[i], j);
 			XMVECTOR position = XMLoadFloat3(&vertex._position);
 			position = (position - min) * std::numeric_limits<uint8_t>::max() / (max - min);
 
@@ -346,6 +358,10 @@ TerrainAABBNode::DataType::Node XM_CALLCONV Terrain::getAABBRange(std::vector<in
 		}
 	}
 
+	check(aabbRange._minX < aabbRange._maxX);
+	check(aabbRange._minY < aabbRange._maxY);
+	check(aabbRange._minZ < aabbRange._maxZ);
+
 	return aabbRange;
 }
 
@@ -358,11 +374,9 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex, const DirectX::XMFLO
 	if (node._children[0] == std::numeric_limits<uint16_t>::max() &&
 		node._children[1] == std::numeric_limits<uint16_t>::max())
 	{
-		auto index = node._data._leaf._index;
-
-		const auto& v0 = _vertexBuffer[_indexBuffer[index]];
-		const auto& v1 = _vertexBuffer[_indexBuffer[index + 1]];
-		const auto& v2 = _vertexBuffer[_indexBuffer[index + 2]];
+		const auto& v0 = getVertexFromLeafNode(node._data._leaf, 0);
+		const auto& v1 = getVertexFromLeafNode(node._data._leaf, 1);
+		const auto& v2 = getVertexFromLeafNode(node._data._leaf, 2);
 
 		const auto& p0 = XMLoadFloat3(&v0._position);
 		const auto& p1 = XMLoadFloat3(&v1._position);
@@ -371,6 +385,7 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex, const DirectX::XMFLO
 		const auto& fromV = XMLoadFloat3(&from);
 		const auto& toV = XMLoadFloat3(&to);
 
+		// _indexBuffer에 담겨있는 인덱스가 submesh기준임 [7/1/2021 qwerw]
 		const auto& intersect = MathHelper::triangleIntersectLine(p0, p1, p2, fromV, toV, true);
 
 		return XMVectorGetX(XMVector3Length(intersect - fromV) / XMVector3Length(toV - fromV));

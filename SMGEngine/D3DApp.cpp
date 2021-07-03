@@ -949,15 +949,15 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 	MeshGeometry* mesh = loadXMLMeshGeometry(meshFileName);
 
 	GameObject* gameObject = createGameObject(skinnedInstance, skinnedConstantBufferIndex);
-	const auto& subMeshMap = mesh->_subMeshMap;
+	const auto& subMeshList = mesh->_subMeshList;
 	const auto& subMeshNodes = childIter->second.getChildNodes();
 	gameObject->_renderItems.reserve(subMeshNodes.size());
 	for (int j = 0; j < subMeshNodes.size(); ++j)
 	{
 		string subMeshName;
 		subMeshNodes[j].loadAttribute("Name", subMeshName);
-		const auto& subMeshIt = subMeshMap.find(subMeshName);
-		if (subMeshIt == subMeshMap.end())
+		auto subMeshIt = find(subMeshList.begin(), subMeshList.end(), subMeshName);
+		if (subMeshIt == subMeshList.end())
 		{
 			ThrowErrCode(ErrCode::SubMeshNotFound, "SubMeshName : " + subMeshName + "이 " + meshFileName + "에 없습니다.");
 		}
@@ -973,9 +973,7 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		renderItem->_objConstantBufferIndex = gameObject->_objConstantBufferIndex;
 		renderItem->_geometry = mesh;
 		renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		renderItem->_indexCount = subMeshIt->second._indexCount;
-		renderItem->_baseVertexLocation = subMeshIt->second._baseVertexLoaction;
-		renderItem->_startIndexLocation = subMeshIt->second._baseIndexLoacation;
+		renderItem->_subMeshIndex = subMeshIt - subMeshList.begin();
 		renderItem->_material = material;
 		renderItem->_skinnedConstantBufferIndex = skinnedConstantBufferIndex;
 		renderItem->_renderLayer = material->getRenderLayer();
@@ -1030,9 +1028,7 @@ void D3DApp::createGameObjectDev(Actor* actor)
 	renderItem->_objConstantBufferIndex = actor->getGameObject()->_objConstantBufferIndex;
 	renderItem->_geometry = it.first->second.get();
 	renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP;
-	renderItem->_indexCount = meshData._indices.size();
-	renderItem->_baseVertexLocation = 0;
-	renderItem->_startIndexLocation = 0;
+	renderItem->_subMeshIndex = 0;
 	renderItem->_material = loadXmlMaterial("devMat", "green");
 	renderItem->_renderLayer = RenderLayer::GameObjectDev;
 
@@ -1068,9 +1064,7 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 	renderItem->_objConstantBufferIndex = gameObject->_objConstantBufferIndex;
 	renderItem->_geometry = it.first->second.get();
 	renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
-	renderItem->_indexCount = normalLineMeshData._indices.size();
-	renderItem->_baseVertexLocation = 0;
-	renderItem->_startIndexLocation = 0;
+	renderItem->_subMeshIndex = 0;
 	renderItem->_material = loadXmlMaterial("devMat", "blueToRed");
 	renderItem->_renderLayer = RenderLayer::GameObjectDev;
 
@@ -1202,11 +1196,12 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		D3D12_GPU_VIRTUAL_ADDRESS materialCBAddress = materialCBBaseAddress + renderItem->_material->getMaterialCBIndex() * materialCBByteSize;
 		_commandList->SetGraphicsRootConstantBufferView(4, materialCBAddress);
 
+		const auto& subMesh = renderItem->_geometry->_subMeshList[renderItem->_subMeshIndex];
 		_commandList->DrawIndexedInstanced(
-			renderItem->_indexCount,
+			subMesh._indexCount,
 			1,
-			renderItem->_startIndexLocation,
-			renderItem->_baseVertexLocation,
+			subMesh._baseIndexLoacation,
+			subMesh._baseVertexLoaction,
 			0);
 	}
 }
@@ -1561,13 +1556,16 @@ RenderItem::RenderItem() noexcept
 	: _objConstantBufferIndex(std::numeric_limits<uint16_t>::max())
 	, _geometry(nullptr)
 	, _primitive(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST)
-	, _indexCount(0)
-	, _startIndexLocation(0)
-	, _baseVertexLocation(0)
+	, _subMeshIndex(0)
 	, _material(nullptr)
 	, _skinnedConstantBufferIndex(SKINNED_UNDEFINED)
 {
 
+}
+
+const SubMeshGeometry& RenderItem::getSubMesh() const noexcept
+{
+	return _geometry->_subMeshList[_subMeshIndex];
 }
 
 GameObject::GameObject() noexcept

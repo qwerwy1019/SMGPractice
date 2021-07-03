@@ -154,6 +154,11 @@ namespace MathHelper
 	{
 		using namespace DirectX;
 		const auto& plane = XMPlaneFromPoints(t0, t1, t2);
+		if (MathHelper::equal(XMVectorGetX(XMVector3LengthSq(plane)), 0.f))
+		{
+			return to;
+		}
+
 		if (checkNormal)
 		{
 			if (XMVectorGetX(XMVector3Dot(plane, to - from)) < 0)

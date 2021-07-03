@@ -9,6 +9,7 @@ void MeshGeometry::createMeshGeometryXXX(ID3D12Device* device,
 										const void* vb,
 										const void* ib)
 {
+	check(_subMeshList.empty() == false);
 	// cpu buffer가 ID3DBlob이어야 하는 이유가 있는가? 알아보고 바꾸자. [6/9/2021 qwerw]
 	ThrowIfFailed(D3DCreateBlob(_vertexBufferByteSize, &_vertexBufferCPU), "vertexBuffer 할당 실패" );
 	CopyMemory(_vertexBufferCPU->GetBufferPointer(), vb, _vertexBufferByteSize);
@@ -114,13 +115,14 @@ MeshGeometry::MeshGeometry(const XMLReaderNode& rootNode, ID3D12Device* device, 
 			childList[i].loadAttribute("VertexCount", vertexCount);
 			childList[i].loadAttribute("IndexCount", indexCount);
 			SubMeshGeometry subMesh;
+			subMesh._name = name;
 			subMesh._baseVertexLoaction = baseVertexLocation;
 			subMesh._baseIndexLoacation = baseIndexLocation;
 			subMesh._indexCount = indexCount;
 
 			baseVertexLocation += vertexCount;
 			baseIndexLocation += indexCount;
-			_subMeshMap.emplace(name, subMesh);
+			_subMeshList.emplace_back(subMesh);
 
 			const auto& subMeshChildList = childList[i].getChildNodes();
 			for (int j = 0; j < subMeshChildList.size(); ++j)
@@ -168,6 +170,12 @@ MeshGeometry::MeshGeometry(const GeneratedMeshData& meshData, ID3D12Device* devi
 	_vertexBufferByteSize = meshData._vertices.size() * sizeof(Vertex);
 	_vertexByteStride = sizeof(Vertex);
 	_indexBufferByteSize = meshData._indices.size() * sizeof(GeoIndex);
+
+	SubMeshGeometry subMesh;
+	subMesh._baseIndexLoacation = 0;
+	subMesh._baseVertexLoaction = 0;
+	subMesh._indexCount = meshData._indices.size();
+	_subMeshList.push_back(subMesh);
 
 	createMeshGeometryXXX(device, commandList, meshData._vertices.data(), meshData._indices.data());
 }

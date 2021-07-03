@@ -61,15 +61,15 @@ struct RenderItem
 
 	uint16_t _objConstantBufferIndex;
 
-	// submesh pointer로 바꾸는것도 괜찮을지도? [1/17/2021 qwerw]
-	UINT _indexCount;
-	UINT _startIndexLocation;
-	int _baseVertexLocation;
+	uint8_t _subMeshIndex;
 
 	D3D12_PRIMITIVE_TOPOLOGY _primitive;
 
  	uint16_t _skinnedConstantBufferIndex;
 	RenderLayer _renderLayer;
+
+	const SubMeshGeometry& getSubMesh() const noexcept;
+
 };
 
 struct GameObject

@@ -217,13 +217,34 @@ float StageManager::checkGround(Actor* actor, DirectX::XMFLOAT3& moveVector) con
 	using namespace MathHelper;
 	float collisionAt = 1.f;
 	XMFLOAT3 position = actor->getPosition();
+	float actorHalfHeight;
+	switch (actor->getCharacterInfo()->getCollisionShape())
+	{
+		case CollisionShape::Sphere:
+		case CollisionShape::Polygon:
+		{
+			actorHalfHeight = actor->getRadius();
+		}
+		break;
+		case CollisionShape::Box:
+		{
+			actorHalfHeight = actor->getSizeY();
+		}
+		break;
+		case CollisionShape::Count:
+		default:
+		{
+			check(false, "타입 추가시 확인.");
+			static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
+		}
+	}
 	for (const auto& terrain : _terrains)
 	{
 		if (terrain.isGround() == false)
 		{
 			continue;
 		}
-		collisionAt = std::min(collisionAt, terrain.checkCollision(position, moveVector, actor->getSizeY()));
+		collisionAt = std::min(collisionAt, terrain.checkCollision(position, moveVector, actorHalfHeight));
 	}
 	return collisionAt;
 }

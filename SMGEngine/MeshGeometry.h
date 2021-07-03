@@ -7,6 +7,11 @@ class XMLReaderNode;
 
 struct SubMeshGeometry
 {
+	bool operator==(const std::string rhs) const noexcept
+	{
+		return _name == rhs;
+	}
+	std::string _name;
 	UINT _indexCount = 0;
 	UINT _baseIndexLoacation = 0;
 	UINT _baseVertexLoaction = 0;
@@ -35,7 +40,7 @@ public:
 	const Vertex* getVertexBufferXXX(size_t& bufferSize) const noexcept;
 	const GeoIndex* getIndexBufferXXX(void) const noexcept;
 	std::string getName(void) const noexcept { return _name; }
-	std::unordered_map<std::string, SubMeshGeometry> _subMeshMap;// todo private으로 [1/14/2021 qwerw]
+	std::vector<SubMeshGeometry> _subMeshList;// todo private으로 [1/14/2021 qwerw]
 	
 private:
 	void createMeshGeometryXXX(ID3D12Device* device,

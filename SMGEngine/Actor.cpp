@@ -204,6 +204,10 @@ void Actor::applyGravityRotation(const TickCount64& deltaTick, const DirectX::XM
 	if (rotateAngle > maxRotateAngle)
 	{
 		XMVECTOR cross = XMVector3Cross(actorUpVector, -gravityDirectionV);
+		if (MathHelper::equal(XMVectorGetX(XMVector3LengthSq(cross)), 0.f))
+		{
+			cross = XMLoadFloat3(&_direction);
+		}
 		actorUpVector = XMVector3Transform(actorUpVector, XMMatrixRotationAxis(cross, maxRotateAngle));
 	}
 	else
@@ -256,6 +260,7 @@ bool Actor::getGravityDirection(DirectX::XMFLOAT3& gravityDirection) const noexc
 		}
 		break;
 	}
+	return true;
 }
 
 float Actor::getSpeed() const noexcept
