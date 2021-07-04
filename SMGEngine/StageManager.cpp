@@ -177,7 +177,7 @@ const GravityPoint* StageManager::getGravityPointAt(const DirectX::XMFLOAT3& pos
 }
 bool StageManager::checkCollision(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept
 {
-	check(MathHelper::equal(MathHelper::lengthSq(moveVector), 0) == false);
+	check(MathHelper::equal(MathHelper::length(moveVector), 0) == false);
 	check(actor != nullptr);
 
 	XMFLOAT3 position = actor->getPosition();

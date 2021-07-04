@@ -15,7 +15,7 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	: _position(spawnInfo._position)
 	, _direction(spawnInfo._direction)
 	, _upVector(spawnInfo._upVector)
-	, _size(1.f)
+	, _size(spawnInfo._size)
 	, _speed(0.f)
 	, _verticalSpeed(0.f)
 	, _moveDirectionOffset(0.f)
@@ -287,7 +287,7 @@ void Actor::updateActor(const TickCount64& deltaTick) noexcept
 
 	if (_gravityPoint != nullptr)
 	{
-		_verticalSpeed += _gravityPoint->_gravity * deltaTick;
+		_verticalSpeed = _gravityPoint->_gravity;
 	}
 }
 
@@ -534,22 +534,22 @@ bool Actor::checkCollision(const Actor* otherActor, DirectX::FXMVECTOR moveVecto
 
 float Actor::getRadius(void) const noexcept
 {
-	return _size * _characterInfo->getRadius();
+	return _size * _characterInfo->getRadiusXXX();
 }
 
 float Actor::getSizeX(void) const noexcept
 {
-	return _size * _characterInfo->getSizeX();
+	return _size * _characterInfo->getSizeXXXX();
 }
 
 float Actor::getSizeY(void) const noexcept
 {
-	return _size * _characterInfo->getSizeY();
+	return _size * _characterInfo->getSizeYXXX();
 }
 
 float Actor::getSizeZ(void) const noexcept
 {
-	return _size * _characterInfo->getSizeZ();
+	return _size * _characterInfo->getSizeZXXX();
 }
 
 bool XM_CALLCONV Actor::checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept

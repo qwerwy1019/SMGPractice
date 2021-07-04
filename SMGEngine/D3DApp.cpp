@@ -998,20 +998,20 @@ void D3DApp::createGameObjectDev(Actor* actor)
 	{
 		case CollisionShape::Sphere:
 		{
-			meshData = GeometryGenerator::CreateGeosphere(characterInfo->getRadius(), 2);
+			meshData = GeometryGenerator::CreateGeosphere(characterInfo->getRadiusXXX(), 2);
 		}
 		break;
 		case CollisionShape::Box:
 		{
-			meshData = GeometryGenerator::CreateBox(characterInfo->getSizeX() * 2,
-													characterInfo->getSizeY() * 2,
-													characterInfo->getSizeZ() * 2,
+			meshData = GeometryGenerator::CreateBox(characterInfo->getSizeXXXX() * 2,
+													characterInfo->getSizeYXXX() * 2,
+													characterInfo->getSizeZXXX() * 2,
 													0);
 		}
 		break;
 		case CollisionShape::Polygon:
 		{
-			meshData = GeometryGenerator::CreateGeosphere(characterInfo->getRadius(), 2);
+			meshData = GeometryGenerator::CreateGeosphere(characterInfo->getRadiusXXX(), 2);
 		}
 		break;
 		case CollisionShape::Count:

@@ -15,10 +15,10 @@ public:
 	CharacterType getCharacterType(void) const noexcept { return _characterType; }
 	CollisionShape getCollisionShape(void) const noexcept { return _collisionShape; }
 	CollisionType getCollisionType(void) const noexcept { return _collisionType; }
-	float getRadius(void) const noexcept { return _radius; }
-	float getSizeX(void) const noexcept { return _boxSize.x; }
-	float getSizeY(void) const noexcept { return _boxSize.y; }
-	float getSizeZ(void) const noexcept { return _boxSize.z; }
+	float getRadiusXXX(void) const noexcept { return _radius; }
+	float getSizeXXXX(void) const noexcept { return _boxSize.x; }
+	float getSizeYXXX(void) const noexcept { return _boxSize.y; }
+	float getSizeZXXX(void) const noexcept { return _boxSize.z; }
 private:
 	std::string _name;
 	std::string _objectFileName;

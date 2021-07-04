@@ -18,6 +18,7 @@ struct SpawnInfo
 	DirectX::XMFLOAT3 _position;
 	DirectX::XMFLOAT3 _direction;
 	DirectX::XMFLOAT3 _upVector;
+	float _size;
 };
 
 struct TerrainObjectInfo

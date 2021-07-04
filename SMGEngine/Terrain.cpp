@@ -61,7 +61,12 @@ float Terrain::checkCollision(const DirectX::XMFLOAT3& position, const DirectX::
 	XMVECTOR minV = XMLoadFloat3(&_min);
 	XMVECTOR maxV = XMLoadFloat3(&_max);
 
-	return checkCollisionXXX(_aabbNodes.size() - 1, startF, endF, minV, maxV);
+	float collisionTime = checkCollisionXXX(_aabbNodes.size() - 1, startF, endF, minV, maxV);
+	float moveVectorLength = MathHelper::length(moveVector);
+	float adjustedCollisionTime = (collisionTime * (size + moveVectorLength) - size) / moveVectorLength;
+
+	check(adjustedCollisionTime < 1.05);
+	return adjustedCollisionTime;
 }
 
 void Terrain::makeAABBTree(void)

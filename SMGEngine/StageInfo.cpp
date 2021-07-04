@@ -52,6 +52,7 @@ void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
 		childNodes[i].loadAttribute("Position", _spawnInfo[i]._position);
 		childNodes[i].loadAttribute("Direction", _spawnInfo[i]._direction);
 		childNodes[i].loadAttribute("UpVector", _spawnInfo[i]._upVector);
+		childNodes[i].loadAttribute("Size", _spawnInfo[i]._size);
 	}
 }
 

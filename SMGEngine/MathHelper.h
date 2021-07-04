@@ -161,19 +161,32 @@ namespace MathHelper
 
 		if (checkNormal)
 		{
-			if (XMVectorGetX(XMVector3Dot(plane, to - from)) < 0)
+			if (XMVectorGetX(XMVector3Dot(plane, to - from)) > 0)
 			{
 				return to;
 			}
 		}
 		const auto& intersect = XMPlaneIntersectLine(plane, from, to);
 
-		if (XMVectorGetX(XMVector3Dot(XMVector3Cross((t0 - t1), (t2 - t1)), XMVector3Cross((t0 - t1), (intersect, t1)))) < 0 ||
-			XMVectorGetX(XMVector3Dot(XMVector3Cross((t1 - t2), (t0 - t2)), XMVector3Cross((t1 - t2), (intersect, t2)))) < 0 ||
-			XMVectorGetX(XMVector3Dot(XMVector3Cross((t2 - t0), (t1 - t0)), XMVector3Cross((t2 - t0), (intersect, t0)))) < 0)
-		{
-			return to;
-		}
+		
+
+		// normalize를 정확도를 위해 해야할지 고민이다. [7/4/2021 qwerw]
+// 		XMVECTOR cross00 = XMVector3Normalize(XMVector3Cross((t0 - t1), (t2 - t1)));
+// 		XMVECTOR cross01 = XMVector3Normalize(XMVector3Cross((t0 - t1), (intersect, t1)));
+// 		XMVECTOR cross10 = XMVector3Normalize(XMVector3Cross((t1 - t2), (t0 - t2)));
+// 		XMVECTOR cross11 = XMVector3Normalize(XMVector3Cross((t1 - t2), (intersect, t2)));
+// 		XMVECTOR cross20 = XMVector3Normalize(XMVector3Cross((t2 - t0), (t1 - t0)));
+// 		XMVECTOR cross21 = XMVector3Normalize(XMVector3Cross((t2 - t0), (intersect, t0)));
+// 
+// 		float c0 = XMVectorGetX(XMVector3Dot(cross00, cross01));
+// 		float c1 = XMVectorGetX(XMVector3Dot(cross10, cross11));
+// 		float c2 = XMVectorGetX(XMVector3Dot(cross20, cross21));
+// 		if (c0 > 0 ||
+// 			c1 > 0 ||
+// 			c2 > 0)
+// 		{
+// 			return to;
+// 		}
 		return intersect;
 	}
 };
