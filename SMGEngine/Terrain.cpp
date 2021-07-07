@@ -373,7 +373,7 @@ TerrainAABBNode::DataType::Node XM_CALLCONV Terrain::getAABBRange(std::vector<Te
 float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex, const DirectX::XMFLOAT3& from, const DirectX::XMFLOAT3& to, DirectX::FXMVECTOR min, DirectX::FXMVECTOR max) const noexcept
 {
 	check(nodeIndex < _aabbNodes.size());
-	check(0 < nodeIndex);
+	check(0 <= nodeIndex);
 
 	const auto& node = _aabbNodes[nodeIndex];
 	if (node._children[0] == std::numeric_limits<uint16_t>::max() &&
@@ -390,7 +390,6 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex, const DirectX::XMFLO
 		const auto& fromV = XMLoadFloat3(&from);
 		const auto& toV = XMLoadFloat3(&to);
 
-		// _indexBuffer에 담겨있는 인덱스가 submesh기준임 [7/1/2021 qwerw]
 		const auto& intersect = MathHelper::triangleIntersectLine(p0, p1, p2, fromV, toV, true);
 
 		return XMVectorGetX(XMVector3Length(intersect - fromV) / XMVector3Length(toV - fromV));
