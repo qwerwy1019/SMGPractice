@@ -3,6 +3,7 @@
 #include "StageInfo.h"
 #include "Actor.h"
 #include "FileHelper.h"
+#include "MathHelper.h"
 
 CharacterInfoManager::CharacterInfoManager()
 {
@@ -105,19 +106,33 @@ CharacterInfo::CharacterInfo(const XMLReaderNode& node)
 		ThrowErrCode(ErrCode::UndefinedType, "collisionShape Error : " + stringBuffer);
 	}
 
-	node.loadAttribute("Radius", _radius);
-	if (_collisionShape == CollisionShape::Box)
+	switch (_collisionShape)
 	{
-		node.loadAttribute("BoxSize", _boxSize);
-	}
-	else
-	{
-		_boxSize = { 0.f, 0.f, 0.f };
-	}
-
-	float boxRadiusSq = _boxSize.x * _boxSize.x + _boxSize.y * _boxSize.y + _boxSize.z * _boxSize.z;
-	if (_radius * _radius < boxRadiusSq)
-	{
-		ThrowErrCode(ErrCode::InvalidXmlData, "radius는 boxSize보다 커야합니다.");
+		case CollisionShape::Sphere:
+		{
+			_boxSize = { 0.f, 0.f, 0.f };
+			node.loadAttribute("Radius", _radius);
+		}
+		break;
+		case CollisionShape::Box:
+		{
+			node.loadAttribute("BoxSize", _boxSize);
+			_radius = MathHelper::length(_boxSize);
+		}
+		break;
+		case CollisionShape::Polygon:
+		{
+			check(false, "미구현");
+			_boxSize = { 0.f, 0.f, 0.f };
+			_radius = 0.f;
+		}
+		break;
+		case CollisionShape::Count:
+		default:
+		{
+			ThrowErrCode(ErrCode::UndefinedType, std::to_string(static_cast<int>(_collisionShape)));
+			static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
+		}
+		break;
 	}
 }

@@ -6,8 +6,8 @@ class CharacterInfo;
 class ActionChart;
 class ActionState;
 struct SpawnInfo;
-struct GameObject;
 struct GravityPoint;
+class GameObject;
 
 struct CollisionInfo
 {

@@ -17,12 +17,13 @@
 StageManager::StageManager()
 	: _sectorSize(100, 100, 100)
 	, _sectorUnitNumber(9, 9, 9)
-	, _stageInfo(nullptr)
-	, _isLoading(false)
-	, _nextStageName("stage00")
 	, _actorsBySector(9 * 9 * 9)
+	, _playerActor(nullptr)
+	, _nextStageName("stage00")
+	, _isLoading(false)
+	, _cameraCount(0)
+	, _cameraIndex(-1)
 {
-	//loadStage();
 }
 
 StageManager::~StageManager()
@@ -212,12 +213,19 @@ bool StageManager::checkCollision(Actor* actor, const DirectX::XMFLOAT3& moveVec
 	return false;
 }
 
-float StageManager::checkGround(Actor* actor, DirectX::XMFLOAT3& moveVector) const noexcept
+float StageManager::checkWall(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept
 {
-	using namespace MathHelper;
 	float collisionAt = 1.f;
 	XMFLOAT3 position = actor->getPosition();
-	float actorHalfHeight;
+	float actorHalfWidth = 0.f;
+
+	return collisionAt;
+}
+float StageManager::checkGround(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept
+{
+	float collisionAt = 1.f;
+	XMFLOAT3 position = actor->getPosition();
+	float actorHalfHeight = 0.f;
 	switch (actor->getCharacterInfo()->getCollisionShape())
 	{
 		case CollisionShape::Sphere:
@@ -257,11 +265,11 @@ bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcep
 	{
 		return false;
 	}
-
-// 	if (checkWall(actor, moveVector))
-// 	{
-// 		return false;
-// 	}
+	float t = checkWall(actor, moveVector);
+	if (MathHelper::equal(t, 0))
+	{
+		return true;
+	}
 
 	if (checkCollision(actor, moveVector))
 	{
@@ -435,6 +443,8 @@ void StageManager::createMap(void)
 {
 	_sectorSize = _stageInfo->getSectorSize();
 	_sectorUnitNumber = _stageInfo->getSectorUnitNumber();
+	_actorsBySector.resize(static_cast<size_t>(_sectorUnitNumber.x) * _sectorUnitNumber.y * _sectorUnitNumber.z);
+
 	const auto& terrainObjectInfos = _stageInfo->getTerrainObjectInfos();
 	_terrains.reserve(terrainObjectInfos.size());
 	for (const auto& terrainObjectInfo : terrainObjectInfos)

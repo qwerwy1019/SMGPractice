@@ -106,7 +106,8 @@ FrameEvent_Speed::FrameEvent_Speed(const XMLReaderNode& node)
 {
 	node.loadAttribute("TargetSpeed", _targetSpeed);
 	node.loadAttribute("Acceleration", _acceleration);
-	_acceleration *= 0.001;
+	_acceleration *= ACCELERATION_UNIT;
+
 	std::string typeString;
 	node.loadAttribute("MoveType", typeString);
 	if (typeString == "CharacterDirection")

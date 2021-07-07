@@ -3,10 +3,10 @@
 
 using TickCount64 = int64_t;
 
-static constexpr int FRAME_TO_TICKCOUNT = 20;
+static constexpr TickCount64 FRAME_TO_TICKCOUNT = 20;
 static constexpr double TICKCOUNT_TO_FRAME = 1.f / FRAME_TO_TICKCOUNT;
 
-enum class ButtonInputType
+enum class ButtonInputType : uint8_t
 {
 	AB,
 	XY,
@@ -20,7 +20,7 @@ enum class ButtonInputType
 	Count,
 };
 
-enum class ButtonState
+enum class ButtonState : uint8_t
 {
 	Down,
 	Press,
@@ -29,7 +29,7 @@ enum class ButtonState
 	None,
 };
 
-enum class StickInputType
+enum class StickInputType : uint8_t
 {
 	LStick,
 	RStick,
@@ -38,7 +38,7 @@ enum class StickInputType
 	Count,
 };
 
-enum class StickInputState
+enum class StickInputState : int
 {
 	None			= 0,
 	FrontLong		= 1 << 0,
@@ -65,7 +65,7 @@ enum class StickInputState
 DEFINE_ENUM_FLAG_OPERATORS(StickInputState);
 
 using CharacterKey = uint16_t;
-enum class CharacterType
+enum class CharacterType : uint8_t
 {
 	Player,
 	Monster,

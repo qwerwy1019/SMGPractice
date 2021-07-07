@@ -98,7 +98,7 @@ struct Texture
 	std::string _name;
 	std::wstring _fileName;
 
-	uint16_t _index;
+	uint16_t _index = 0;
 	WComPtr<ID3D12Resource> _resource;
 	WComPtr<ID3D12Resource> _uploader;
 };

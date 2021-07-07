@@ -19,6 +19,7 @@ struct IDXGIOutput;
 class Material;
 class UIManager;
 class Actor;
+class GameObject;
 
 // 정점 관련
 static constexpr size_t VERTEX_INPUT_DESC_SIZE = 3;
@@ -54,7 +55,13 @@ enum class PSOType : uint8_t
 
 struct RenderItem
 {
-	RenderItem() noexcept;
+	RenderItem(MeshGeometry* mesh,
+				Material* material,
+				uint16_t objConstantBufferIndex,
+				uint8_t subMeshIndex,
+				D3D12_PRIMITIVE_TOPOLOGY primitive,
+				uint16_t skinnedConstantBufferIndex,
+				RenderLayer renderLayer) noexcept;
 
 	MeshGeometry* _geometry;
 	Material* _material;
@@ -70,21 +77,6 @@ struct RenderItem
 
 	const SubMeshGeometry& getSubMesh() const noexcept;
 
-};
-
-struct GameObject
-{
-	GameObject() noexcept;
-
-	DirectX::XMFLOAT4X4 _worldMatrix;
-	DirectX::XMFLOAT4X4 _textureTransform;
-	uint16_t _objConstantBufferIndex;
-	int _dirtyFrames;
-
-	uint16_t _skinnedConstantBufferIndex;
-	SkinnedModelInstance* _skinnedModelInstance;
-
-	std::vector<RenderItem*> _renderItems;
 };
 
 class D3DApp
@@ -103,10 +95,6 @@ public:
 
 	GameObject* createObjectFromXML(const std::string& fileName);
 
-#if defined DEBUG | defined _DEBUG
-	void createGameObjectDev(Actor* actor);
-	void createGameObjectDev(GameObject* gameObject);
-#endif
 	uint16_t loadTexture(const string& textureName, const wstring& fileName);
 
 	// 업데이트
@@ -136,7 +124,6 @@ private:
 	void logAdapterOutput(IDXGIAdapter* adapter) noexcept;
 	void logOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format) noexcept;
 	void checkFeatureSupport(void) noexcept;
-	float aspectRatio(void) const;
 
 	// Direct3D 초기화
 	void initDirect3D();
@@ -229,7 +216,6 @@ private:
 	unordered_map<PSOType, WComPtr<ID3D12PipelineState>> _pipelineStateObjectMap;
 
 	std::vector<std::unique_ptr<RenderItem>> _renderItems[static_cast<int>(RenderLayer::Count)];
-	//std::vector<unique_ptr<RenderItem>> _renderItemsUniquePtrXXX;
 	std::vector<std::unique_ptr<GameObject>> _gameObjects;
 
 	std::vector<std::unique_ptr<Texture>> _textures;
@@ -279,15 +265,19 @@ private:
 	//UpdateCamera
 
 	// infoManager를 만들기전까지는 임시로 이렇게 쓴다. [1/26/2021 qwerw]
-public:
-	//unordered_map<string, unique_ptr<StageInfo>> _stageInfoMap;
-	//unordered_map<CharacterKey, unique_ptr<CharacterInfo>> _characterInfoMap;
+
 	unordered_map<string, unique_ptr<BoneInfo>> _boneInfoMap;
 	unordered_map<string, unique_ptr<AnimationInfo>> _animationInfoMap;
 	vector<unique_ptr<SkinnedModelInstance>> _skinnedInstance;
 
+#if defined DEBUG | defined _DEBUG
+public:
+	void createGameObjectDev(Actor* actor);
+	void createGameObjectDev(GameObject* gameObject);
+	const std::vector<unique_ptr<SkinnedModelInstance>>& getSkinnedInstanceXXX(void) const noexcept { return _skinnedInstance; }
 	vector<string> _animationNameListDev;
 	int _animationNameIndexDev = 0;
-
+private:
+#endif
 };
 

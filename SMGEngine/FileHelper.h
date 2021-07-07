@@ -209,7 +209,7 @@ public:
 		{
 			for (int j = 0; j < 4; ++j)
 			{
-				outValue.m[i][j] = std::stof(tokenized[4 * i + j]);
+				outValue.m[i][j] = std::stof(tokenized[static_cast<size_t>(4) * i + j]);
 			}
 		}
 	}

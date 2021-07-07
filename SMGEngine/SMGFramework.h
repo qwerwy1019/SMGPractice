@@ -20,7 +20,6 @@ public:
 	static StageManager* getStageManager(void) noexcept;
 
 	int Run(void);
-	// 꼭 이렇게 호출해야하나? 확인필요 [2/24/2021 qwerwy]
 	LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 	uint32_t getClientWidth(void) const noexcept { return _clientWidth; };
@@ -67,13 +66,7 @@ private:
 
 	// 타이머
 	GameTimer _timer;
-
-	// 플레이어
-	DirectX::XMFLOAT3 _playerPos;
-	DirectX::XMFLOAT4 _playerUpVector;
-	float _playerRotation;
-
-	
+		
 	enum class DevStringMode
 	{
 		Fps,
@@ -93,6 +86,7 @@ public:
 private:
 	void setButtonInput(const ButtonInputType type, bool pressed) noexcept;
 	ButtonState _buttonInput[static_cast<int>(ButtonInputType::Count)];
+
 	void setStickInput(const StickInputType type, float dx, float dy) noexcept;
 	void resetStickInput(const StickInputType type) noexcept;
 	DirectX::XMFLOAT2 _stickInput[static_cast<int>(StickInputType::Count)];

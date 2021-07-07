@@ -19,45 +19,61 @@ public:
 	StageManager();
 	~StageManager();
 public:
-	void loadStage(void);
 	void update();
+private:
+	void updateCamera() noexcept;
+
+	// 스테이지 이동
+public:
+	void loadStage(void);
+	bool isLoading(void) const noexcept { return _isLoading; };
+	void setNextStage(std::string stageName) noexcept;
+	ActionChart* loadActionChartFromXML(const std::string& actionChartName);
+private:
+	void spawnActors();
+	void loadStageInfo();
+	void createMap(void);
+
+	// 캐릭터 이동
+public:
 	void moveActorXXX(Actor* actor, const DirectX::XMFLOAT3& moveVector) noexcept;
 	bool moveActor(Actor* actor, const TickCount64& deltaTick) noexcept;
 	bool rotateActor(Actor* actor, const TickCount64& deltaTick) const noexcept;
 	bool applyGravity(Actor* actor, const TickCount64& deltaTick) noexcept;
-	bool isLoading(void) const noexcept { return _isLoading; };
-	void setNextStage(std::string stageName) noexcept;
-	ActionChart* loadActionChartFromXML(const std::string& actionChartName);
+	bool checkCollision(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept;
+	float checkWall(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept;
+	float checkGround(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept;
+
 	const PlayerActor* getPlayerActor(void) const noexcept;
 	const GravityPoint* getGravityPointAt(const DirectX::XMFLOAT3& position) const noexcept;
-	bool checkCollision(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept;
-	float checkGround(Actor* actor, DirectX::XMFLOAT3& moveVector) const noexcept;
+
 private:
 	int sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept;
+	DirectX::XMINT3 getSectorCoord(const DirectX::XMFLOAT3& position) const noexcept;
+
+	//카메라
+private:
+	void setCameraCount(const int count) noexcept;
+	int getCameraCount() const noexcept;
+	int getCameraIndex() const noexcept;
+
+private:
 	std::vector<Terrain> _terrains;
 	DirectX::XMINT3 _sectorSize;
 	DirectX::XMINT3 _sectorUnitNumber;
 	std::vector<std::unordered_set<Actor*>> _actorsBySector;
-	//std::unordered_map<uint32_t, std::vector<uint32_t>> _terrain; // sectorIndex, vector<meshIndexBufferIndex>
+
 	std::vector<std::unique_ptr<Actor>> _actors;
 	PlayerActor* _playerActor;
 	std::unique_ptr<StageInfo> _stageInfo;
-	DirectX::XMINT3 getSectorCoord(const DirectX::XMFLOAT3& position) const noexcept;
 	
 	std::string _nextStageName;
 	bool _isLoading;
 	std::unordered_map<std::string, std::unique_ptr<ActionChart>> _actionchartMap;
-	void spawnActors();
-	void loadStageInfo();
-	void updateCamera() noexcept;
 
 	std::string _fixedCameraName;
 
 	int _cameraCount;
 	int _cameraIndex;
-	void setCameraCount(const int count) noexcept;
-	int getCameraCount() const noexcept;
-	int getCameraIndex() const noexcept;
-	void createMap(void);
 };
 

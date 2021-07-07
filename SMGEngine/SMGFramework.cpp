@@ -8,15 +8,25 @@
 #include "CharacterInfoManager.h"
 
 SMGFramework::SMGFramework(HINSTANCE hInstance)
-	: _hInstance(hInstance)
-	, _hMainWnd(nullptr)
-	, _clientWidth(1280)
+	: _clientWidth(1280)
 	, _clientHeight(1024)
 	, _minimized(false)
 	, _maximized(false)
 	, _resizing(false)
+	, _hInstance(hInstance)
+	, _hMainWnd(nullptr)
+	, _mousePos{ 0, 0 }
 {
 	check(hInstance != nullptr, "hInstance is null");
+	for (int i = 0; i < static_cast<int>(ButtonInputType::Count); ++i)
+	{
+		_buttonInput[i] = ButtonState::None;
+	}
+	for (int i = 0; i < static_cast<int>(StickInputType::Count); ++i)
+	{
+		_stickInput[i] = DirectX::XMFLOAT2(0, 0);
+		_stickInputState[i] = StickInputState::None;
+	}
 }
 
 SMGFramework* SMGFramework::_instance = nullptr;
@@ -389,7 +399,7 @@ void SMGFramework::initMainWindow()
 		ThrowErrCode(ErrCode::InitFail, "RegisterClass Failed.");
 	}
 
-	RECT R = { 0, 0, _clientWidth, _clientHeight };
+	RECT R = { 0, 0, static_cast<LONG>(_clientWidth), static_cast<LONG>(_clientHeight) };
 	AdjustWindowRect(&R, WS_OVERLAPPEDWINDOW, false);
 	int width = R.right - R.left;
 	int height = R.bottom - R.top;
@@ -426,14 +436,20 @@ void SMGFramework::calculateFrameStats(void) noexcept
 
 		std::wstring timePosStr = L"";
 		std::wstring animString = L"";
-		if (!_d3dApp->_skinnedInstance.empty())
+
+#if defined DEBUG | defined _DEBUG
+		timePosStr += L"animTime: ";
+		animString += L" name: ";
+		const auto& skinnedInstanceList = _d3dApp->getSkinnedInstanceXXX();
+		if (!skinnedInstanceList.empty())
 		{
-			timePosStr = std::to_wstring(_d3dApp->_skinnedInstance[0]->getLocalTickCount());
+			timePosStr = std::to_wstring(skinnedInstanceList[0]->getLocalTickCount());
 			USES_CONVERSION;
 			animString = A2W(_d3dApp->_animationNameListDev[_d3dApp->_animationNameIndexDev].c_str());
 		}
+#endif
 
-		std::wstring windowText = WINDOW_CAPTION + L"animTime: " + timePosStr + L" name: " + animString + L" fps: " + fpsStr + L" mspf: " + mspfStr;
+		std::wstring windowText = WINDOW_CAPTION + timePosStr + animString + L" fps: " + fpsStr + L" mspf: " + mspfStr;
 		SetWindowText(_hMainWnd, windowText.c_str());
 
 		frameCnt = 0;

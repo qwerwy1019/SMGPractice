@@ -10,6 +10,7 @@
 #include "SMGFramework.h"
 #include "StageManager.h"
 #include <algorithm>
+#include "GameObject.h"
 
 Actor::Actor(const SpawnInfo& spawnInfo)
 	: _position(spawnInfo._position)
@@ -18,12 +19,14 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _size(spawnInfo._size)
 	, _speed(0.f)
 	, _verticalSpeed(0.f)
+	, _moveType(MoveType::CharacterDirection)
 	, _moveDirectionOffset(0.f)
 	, _acceleration(0.f)
 	, _targetSpeed(0.f)
 	, _rotateType(RotateType::Fixed)
 	, _rotateAngleOffset(0.f)
 	, _rotateSpeed(0.f)
+	, _gravityPoint(nullptr)
 	, _localTickCount(0)
 {
 	_characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo._key);
@@ -34,6 +37,10 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	}
 	_actionChart = SMGFramework::getStageManager()->loadActionChartFromXML(_characterInfo->getActionChartFileName());
 	_currentActionState = _actionChart->getActionState("IDLE");
+	if (nullptr == _currentActionState)
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData, _characterInfo->getActionChartFileName() + " : IDLE 이 없습니다.");
+	}
 	
 	_gameObject = SMGFramework::getD3DApp()->createObjectFromXML(_characterInfo->getObjectFileName());
 
@@ -200,7 +207,7 @@ void Actor::applyGravityRotation(const TickCount64& deltaTick, const DirectX::XM
 
 	double rotateAngle = acos(std::clamp(XMVectorGetX(XMVector3Dot(-gravityDirectionV, actorUpVector)), -1.f, 1.f));
 	// gravity 회전 속도에 대한 다른 기준을 찾을때까진 일단 gravity에 비례하게 쓴다. [6/24/2021 qwerw]
-	double maxRotateAngle = _gravityPoint->_gravity * deltaTick * 0.01;
+	double maxRotateAngle = static_cast<double>(_gravityPoint->_gravity) * deltaTick * 0.01;
 	if (rotateAngle > maxRotateAngle)
 	{
 		XMVECTOR cross = XMVector3Cross(actorUpVector, -gravityDirectionV);
@@ -648,7 +655,7 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 {
 	using namespace DirectX;
 
-	XMVECTOR direction;
+	XMVECTOR direction = XMVectorSet(0, 0, 0, 0);
 
 	switch (_moveType)
 	{
@@ -708,11 +715,11 @@ void Actor::setPosition(const DirectX::XMFLOAT3& toPosition) noexcept
 
 bool Actor::isActionEnd() const noexcept
 {
-	if (nullptr == _gameObject->_skinnedModelInstance)
+	if (_gameObject->isSkinnedAnimationObject() == false)
 	{
 		return false;
 	}
-	return _gameObject->_skinnedModelInstance->isAnimationEnd();
+	return _gameObject->isAnimationEnd();
 }
 
 void Actor::updateActionChart(const TickCount64& deltaTick) noexcept
@@ -732,9 +739,9 @@ void Actor::updateActionChart(const TickCount64& deltaTick) noexcept
 void Actor::setActionState(const ActionState* nextState) noexcept
 {
 	_localTickCount = 0;
-	if (_gameObject->_skinnedModelInstance != nullptr)
+	if (_gameObject->isSkinnedAnimationObject())
 	{
-		_gameObject->_skinnedModelInstance->setAnimation(nextState->getAnimationName(), nextState->getBlendTick());
+		_gameObject->setAnimation(nextState->getAnimationName(), nextState->getBlendTick());
 	}
 	_currentActionState = nextState;
 
@@ -745,9 +752,7 @@ void Actor::setActionState(const ActionState* nextState) noexcept
 
 void Actor::updateObjectWorldMatrix() noexcept
 {
-	MathHelper::getWorldMatrix(_position, _direction, _upVector, _size, _gameObject->_worldMatrix);
-
-	_gameObject->_dirtyFrames = FRAME_RESOURCE_COUNT;
+	_gameObject->setWorldMatrix(_position, _direction, _upVector, _size);
 }
 
 void Actor::setRotateType(const RotateType rotateType, const float rotateAngleOffset, const float speed) noexcept

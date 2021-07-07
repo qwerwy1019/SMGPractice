@@ -5,6 +5,7 @@
 #include "SMGFramework.h"
 #include "D3DApp.h"
 #include "MathHelper.h"
+#include "GameObject.h"
 
 
 bool Terrain::isGround(void) const noexcept
@@ -18,18 +19,21 @@ bool Terrain::isWall(void) const noexcept
 }
 
 Terrain::Terrain(const TerrainObjectInfo& terrainInfo)
+	: _meshGeometry(nullptr)
+	, _vertexBuffer(nullptr)
+	, _indexBuffer(nullptr)
+	, _max(0, 0, 0)
+	, _min(0, 0, 0)
 {
 	_isGround = terrainInfo._isGround;
 	_isWall = terrainInfo._isWall;
 
 	_gameObject = SMGFramework::getD3DApp()->createObjectFromXML(terrainInfo._objectFileName);
 
-	MathHelper::getWorldMatrix(terrainInfo._position,
+	_gameObject->setWorldMatrix(terrainInfo._position,
 		terrainInfo._direction,
 		terrainInfo._upVector,
-		terrainInfo._size,
-		_gameObject->_worldMatrix);
-	_gameObject->_dirtyFrames = FRAME_RESOURCE_COUNT;
+		terrainInfo._size);
 #if defined DEBUG | defined _DEBUG
 	SMGFramework::getD3DApp()->createGameObjectDev(_gameObject);
 #endif
@@ -49,7 +53,7 @@ float Terrain::checkCollision(const DirectX::XMFLOAT3& position, const DirectX::
 	XMVECTOR end = XMLoadFloat3(&moveVector);
 	end += XMVector3Normalize(end) * size + start;
 
-	XMMATRIX inverseMatrix = XMLoadFloat4x4(&_gameObject->_worldMatrix);
+	XMMATRIX inverseMatrix = XMLoadFloat4x4(&_gameObject->getWorldMatrix());
 	inverseMatrix = XMMatrixInverse(nullptr, inverseMatrix);
 	start = XMVector3Transform(start, inverseMatrix);
 	end = XMVector3Transform(end, inverseMatrix);
@@ -75,7 +79,9 @@ void Terrain::makeAABBTree(void)
 
 	const MeshGeometry* mesh = nullptr;
 	int totalIndexCount = 0;
-	for (const auto& renderItem : _gameObject->_renderItems)
+	const auto& renderItems = _gameObject->getRenderItems();
+
+	for (const auto& renderItem : renderItems)
 	{
 		if (mesh != nullptr && mesh != renderItem->_geometry)
 		{
@@ -84,11 +90,13 @@ void Terrain::makeAABBTree(void)
 		mesh = renderItem->_geometry;
 		totalIndexCount += renderItem->getSubMesh()._indexCount;
 	}
+	check(mesh != nullptr);
 	_meshGeometry = mesh;
 
 	std::vector<TerrainAABBNode::DataType::Leaf> terrainLeafList(totalIndexCount / 3);
 	int i = 0;
-	for (const auto& renderItem : _gameObject->_renderItems)
+
+	for (const auto& renderItem : renderItems)
 	{
 		const auto& subMesh = renderItem->getSubMesh();
 		auto subMeshIndex = renderItem->_subMeshIndex;

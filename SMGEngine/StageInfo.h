@@ -14,6 +14,7 @@ enum class LandscapeType
 
 struct SpawnInfo
 {
+	SpawnInfo() noexcept;
 	CharacterKey _key;
 	DirectX::XMFLOAT3 _position;
 	DirectX::XMFLOAT3 _direction;
@@ -23,6 +24,7 @@ struct SpawnInfo
 
 struct TerrainObjectInfo
 {
+	TerrainObjectInfo() noexcept;
 	std::string _objectFileName;
 	DirectX::XMFLOAT3 _position;
 	DirectX::XMFLOAT3 _direction;
@@ -34,12 +36,14 @@ struct TerrainObjectInfo
 
 struct CameraPoint
 {
+	CameraPoint() noexcept;
 	DirectX::XMFLOAT3 _position;
 	DirectX::XMFLOAT3 _upVector;
 	float _radius;
 };
 struct FixedCameraPoint
 {
+	FixedCameraPoint() noexcept;
 	DirectX::XMFLOAT3 _position;
 	DirectX::XMFLOAT3 _upVector;
 	DirectX::XMFLOAT3 _focusPosition;
@@ -59,6 +63,7 @@ enum class GravityPointType
 
 struct GravityPoint
 {
+	GravityPoint() noexcept;
 	int _key;
 	GravityPointType _type;
 
@@ -71,12 +76,13 @@ struct GravityPoint
 class StageInfo
 {
 public:
+	StageInfo(void) noexcept;
 	void loadXml(const XMLReaderNode& rootNode);
 	void loadXmlSpawnInfo(const XMLReaderNode& node);
 	void loadXmlTerrainObjectInfo(const XMLReaderNode& node);
 	void loadXmlGravityPointInfo(const XMLReaderNode& node);
 
-	std::vector<CameraPoint*> getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept;
+	std::vector<const CameraPoint*> getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept;
 	const FixedCameraPoint& getFixedCameraPoint(const std::string& name) const noexcept;
 	const std::vector<SpawnInfo>& getSpawnInfos(void) const noexcept;
 	const std::vector<TerrainObjectInfo>& getTerrainObjectInfos(void) const noexcept;

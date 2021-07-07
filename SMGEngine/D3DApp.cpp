@@ -26,6 +26,7 @@
 #include "CharacterInfoManager.h"
 #include <algorithm>
 #include <corecrt_math.h>
+#include "GameObject.h"
 
 void D3DApp::buildShaderResourceViews()
 {
@@ -53,27 +54,12 @@ void D3DApp::buildShaderResourceViews()
 }
 
 D3DApp::D3DApp()
-	: _factory(nullptr)
-	, _swapChain(nullptr)
-	, _deviceD3d12(nullptr)
-	, _fence(nullptr)
-	, _currentFence(0)
-	, _commandQueue(nullptr)
-	, _commandAlloc(nullptr)
-	, _commandList(nullptr)
+	: _currentFence(0)
 	, _rtvDescriptorSize(0)
 	, _dsvDescriptorSize(0)
 	, _cbvSrcUavDescriptorSize(0)
-	, _swapChainBuffer()
-	, _depthStencilBuffer(nullptr)
 	, _frameIndex(0)
-	, _rtvHeap(nullptr)
-	, _dsvHeap(nullptr)
 	, _currentBackBuffer(0)
-	, _rootSignature(nullptr)
-	, _vertexShader(nullptr)
-	, _skinnedVertexShader(nullptr)
-	, _pixelShader(nullptr)
 	, _textureLoadedCount(0)
 	, _cameraInputPosition(100, 0, 0)
 	, _cameraInputUpVector(0, 1, 0)
@@ -504,7 +490,10 @@ void D3DApp::Update(void)
 	if (currentFrameFence != 0 && _fence->GetCompletedValue() < currentFrameFence)
 	{
 		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
-		check(eventHandle != nullptr, "createEvent Fail");
+		if (eventHandle == nullptr)
+		{
+			ThrowErrCode(ErrCode::CreateD3dBufferFail, "createEvent Fail");
+		}
 		ThrowIfFailed(_fence->SetEventOnCompletion(currentFrameFence, eventHandle), "fence set fail : " + std::to_string(currentFrameFence));
 		WaitForSingleObject(eventHandle, INFINITE);
 		CloseHandle(eventHandle);
@@ -697,18 +686,17 @@ void D3DApp::updateObjectConstantBuffer()
 	auto& currentFrameResource = _frameResources[_frameIndex];
 	for (const auto& e : _gameObjects)
 	{
-		if (e->_dirtyFrames > 0)
+		if (e->popDirtyFrame())
 		{
 			ObjectConstants objectConstants;
 
-			XMMATRIX world = XMLoadFloat4x4(&e->_worldMatrix);
+			XMMATRIX world = XMLoadFloat4x4(&e->getWorldMatrix());
 			XMStoreFloat4x4(&objectConstants._world, XMMatrixTranspose(world));
 
-			XMMATRIX textureTransform = XMLoadFloat4x4(&e->_textureTransform);
+			XMMATRIX textureTransform = XMLoadFloat4x4(&e->getTextrueTransformMatrix());
 			XMStoreFloat4x4(&objectConstants._textureTransform, XMMatrixTranspose(textureTransform));
 
-			currentFrameResource->setObjectCB(e->_objConstantBufferIndex, objectConstants);
-			--e->_dirtyFrames;
+			currentFrameResource->setObjectCB(e->getObjectConstantBufferIndex(), objectConstants);
 		}
 	}
 }
@@ -889,12 +877,8 @@ AnimationInfo* D3DApp::loadXMLAnimationInfo(const std::string& fileName)
 GameObject* D3DApp::createGameObject(SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept
 {
 	const uint16_t objCBIndex = _gameObjects.size();
-	std::unique_ptr<GameObject> gameObject(new GameObject);
-	gameObject->_skinnedModelInstance = skinnedInstance;
-	gameObject->_skinnedConstantBufferIndex = skinnedBufferIndex;
-	gameObject->_objConstantBufferIndex = objCBIndex;
 
-	_gameObjects.push_back(std::move(gameObject));
+	_gameObjects.emplace_back(std::make_unique<GameObject>(objCBIndex, skinnedBufferIndex, skinnedInstance));
 	return _gameObjects.back().get();
 }
 
@@ -908,7 +892,7 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 	bool isSkinned;
 	xmlObject.getRootNode().loadAttribute("IsSkinned", isSkinned);
 	auto childIter = childNodes.end();
-	uint16_t skinnedConstantBufferIndex = std::numeric_limits<uint16_t>::max();
+	uint16_t skinnedConstantBufferIndex = SKINNED_UNDEFINED;
 	SkinnedModelInstance* skinnedInstance = nullptr;
 
 	if (isSkinned)
@@ -931,9 +915,17 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		string animationInfoName;
 		childIter->second.loadAttribute("FileName", animationInfoName);
 		AnimationInfo* animationInfo = loadXMLAnimationInfo(animationInfoName);
-		_animationNameListDev = animationInfo->getAnimationNameListDev();
 
+#if defined DEBUG | defined _DEBUG
+		_animationNameListDev = animationInfo->getAnimationNameListDev();
+#endif
+
+		if (_skinnedInstance.size() >= SKINNED_UNDEFINED)
+		{
+			ThrowErrCode(ErrCode::Overflow, std::to_string(_skinnedInstance.size()) + ": SkinnedInstance list가 최대 갯수를 넘어갔습니다. ");
+		}
 		skinnedConstantBufferIndex = _skinnedInstance.size();
+
 		unique_ptr<SkinnedModelInstance> newSkinnedInstance(new SkinnedModelInstance(skinnedConstantBufferIndex, boneInfo, animationInfo));
 		skinnedInstance = newSkinnedInstance.get();
 		_skinnedInstance.emplace_back(move(newSkinnedInstance));
@@ -951,7 +943,14 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 	GameObject* gameObject = createGameObject(skinnedInstance, skinnedConstantBufferIndex);
 	const auto& subMeshList = mesh->_subMeshList;
 	const auto& subMeshNodes = childIter->second.getChildNodes();
-	gameObject->_renderItems.reserve(subMeshNodes.size());
+
+	std::vector<RenderItem*> renderItems;
+	if (subMeshList.size() > std::numeric_limits<uint8_t>::max())
+	{
+		ThrowErrCode(ErrCode::Overflow, "subMesh 갯수가 255개를 넘음");
+	}
+	renderItems.reserve(subMeshNodes.size());
+
 	for (int j = 0; j < subMeshNodes.size(); ++j)
 	{
 		string subMeshName;
@@ -969,18 +968,23 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		{
 			ThrowErrCode(ErrCode::NotSkinnedMaterial, materialFile + "/" + materialName + "in " + fileName);
 		}
-		auto renderItem = make_unique<RenderItem>();
-		renderItem->_objConstantBufferIndex = gameObject->_objConstantBufferIndex;
-		renderItem->_geometry = mesh;
-		renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		renderItem->_subMeshIndex = subMeshIt - subMeshList.begin();
-		renderItem->_material = material;
-		renderItem->_skinnedConstantBufferIndex = skinnedConstantBufferIndex;
-		renderItem->_renderLayer = material->getRenderLayer();
-		
-		gameObject->_renderItems.push_back(renderItem.get());
-		_renderItems[static_cast<int>(material->getRenderLayer())].emplace_back(std::move(renderItem));
+
+		RenderLayer renderLayer = material->getRenderLayer();
+		uint8_t subMeshIndex = subMeshIt - subMeshList.begin();
+		auto renderItem = make_unique<RenderItem>(
+			mesh,
+			material,
+			gameObject->getObjectConstantBufferIndex(),
+			subMeshIndex,
+			D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+			skinnedConstantBufferIndex,
+			renderLayer);
+
+		renderItems.push_back(renderItem.get());
+		_renderItems[static_cast<int>(renderLayer)].emplace_back(std::move(renderItem));
 	}
+
+	gameObject->setRenderItemsXXX(std::move(renderItems));
 	return gameObject;
 }
 
@@ -1024,13 +1028,14 @@ void D3DApp::createGameObjectDev(Actor* actor)
 	auto it = _geometries.emplace(actor->getCharacterInfo()->getName() + "_CollisionBox",
 		new MeshGeometry(meshData, _deviceD3d12.Get(), _commandList.Get()));
 
-	auto renderItem = make_unique<RenderItem>();
-	renderItem->_objConstantBufferIndex = actor->getGameObject()->_objConstantBufferIndex;
-	renderItem->_geometry = it.first->second.get();
-	renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP;
-	renderItem->_subMeshIndex = 0;
-	renderItem->_material = loadXmlMaterial("devMat", "green");
-	renderItem->_renderLayer = RenderLayer::GameObjectDev;
+	auto renderItem = make_unique<RenderItem>(
+		it.first->second.get(),
+		loadXmlMaterial("devMat", "green"),
+		actor->getGameObject()->getObjectConstantBufferIndex(),
+		0,
+		D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP,
+		SKINNED_UNDEFINED,
+		RenderLayer::GameObjectDev);
 
 	_renderItems[static_cast<int>(RenderLayer::GameObjectDev)].emplace_back(std::move(renderItem));
 }
@@ -1041,7 +1046,7 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 	GeneratedMeshData normalLineMeshData;
 	
 	size_t bufferSize = 0;
-	const Vertex* bufferPointer = gameObject->_renderItems[0]->_geometry->getVertexBufferXXX(bufferSize);
+	const Vertex* bufferPointer = gameObject->getRenderItems()[0]->_geometry->getVertexBufferXXX(bufferSize);
 	normalLineMeshData._vertices.reserve(bufferSize * 2);
 	normalLineMeshData._indices.reserve(bufferSize * 2);
 	for (int i = 0; i < bufferSize; ++i)
@@ -1057,18 +1062,19 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 		normalLineMeshData._indices.push_back(2 * i + 1);
 	}
 
-	auto it = _geometries.emplace("NormalVector" + std::to_string(gameObject->_objConstantBufferIndex),
+	auto it = _geometries.emplace("NormalVector" + std::to_string(gameObject->getObjectConstantBufferIndex()),
 		new MeshGeometry(normalLineMeshData, _deviceD3d12.Get(), _commandList.Get()));
 
-	auto renderItem = make_unique<RenderItem>();
-	renderItem->_objConstantBufferIndex = gameObject->_objConstantBufferIndex;
-	renderItem->_geometry = it.first->second.get();
-	renderItem->_primitive = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
-	renderItem->_subMeshIndex = 0;
-	renderItem->_material = loadXmlMaterial("devMat", "blueToRed");
-	renderItem->_renderLayer = RenderLayer::GameObjectDev;
+	auto renderItem = make_unique<RenderItem>(
+		it.first->second.get(),
+		loadXmlMaterial("devMat", "blueToRed"),
+		gameObject->getObjectConstantBufferIndex(),
+		0,
+		D3D11_PRIMITIVE_TOPOLOGY_LINELIST,
+		SKINNED_UNDEFINED,
+		RenderLayer::GameObjectDev);
 
-	_renderItems[static_cast<int>(RenderLayer::GameObjectDev)].emplace_back(std::move(renderItem));
+	_renderItems[static_cast<int>(renderItem->_renderLayer)].emplace_back(std::move(renderItem));
 }
 
 #endif
@@ -1184,16 +1190,16 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		textureHandle.Offset(renderItem->_material->getDiffuseSRVHeapIndex(), _cbvSrcUavDescriptorSize);
 		_commandList->SetGraphicsRootDescriptorTable(0, textureHandle);
 
-		D3D12_GPU_VIRTUAL_ADDRESS objectCBaddress = objectCBBaseAddress + renderItem->_objConstantBufferIndex * objectCBByteSize;
+		D3D12_GPU_VIRTUAL_ADDRESS objectCBaddress = objectCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_objConstantBufferIndex) * objectCBByteSize;
 		_commandList->SetGraphicsRootConstantBufferView(1, objectCBaddress);
 
 		if (renderItem->_skinnedConstantBufferIndex != SKINNED_UNDEFINED)
 		{
-			D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCBBaseAddress + renderItem->_skinnedConstantBufferIndex * skinnedCBByteSize;
+			D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_skinnedConstantBufferIndex) * skinnedCBByteSize;
 			_commandList->SetGraphicsRootConstantBufferView(2, skinnedCBAdress);
 		}
 		
-		D3D12_GPU_VIRTUAL_ADDRESS materialCBAddress = materialCBBaseAddress + renderItem->_material->getMaterialCBIndex() * materialCBByteSize;
+		D3D12_GPU_VIRTUAL_ADDRESS materialCBAddress = materialCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_material->getMaterialCBIndex()) * materialCBByteSize;
 		_commandList->SetGraphicsRootConstantBufferView(4, materialCBAddress);
 
 		const auto& subMesh = renderItem->_geometry->_subMeshList[renderItem->_subMeshIndex];
@@ -1552,13 +1558,31 @@ uint16_t D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 	return textureSRVIndex;
 }
 
-RenderItem::RenderItem() noexcept
-	: _objConstantBufferIndex(std::numeric_limits<uint16_t>::max())
-	, _geometry(nullptr)
-	, _primitive(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST)
-	, _subMeshIndex(0)
-	, _material(nullptr)
-	, _skinnedConstantBufferIndex(SKINNED_UNDEFINED)
+// RenderItem::RenderItem() noexcept
+// 	: _objConstantBufferIndex(std::numeric_limits<uint16_t>::max())
+// 	, _geometry(nullptr)
+// 	, _primitive(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST)
+// 	, _subMeshIndex(0)
+// 	, _material(nullptr)
+// 	, _skinnedConstantBufferIndex(SKINNED_UNDEFINED)
+// {
+// 
+// }
+
+RenderItem::RenderItem(MeshGeometry* mesh, 
+						Material* material, 
+						uint16_t objConstantBufferIndex, 
+						uint8_t subMeshIndex,
+						D3D12_PRIMITIVE_TOPOLOGY primitive, 
+						uint16_t skinnedConstantBufferIndex, 
+						RenderLayer renderLayer) noexcept
+	: _geometry(mesh)
+	, _material(material)
+	, _objConstantBufferIndex(objConstantBufferIndex)
+	, _subMeshIndex(subMeshIndex)
+	, _primitive(primitive)
+	, _skinnedConstantBufferIndex(skinnedConstantBufferIndex)
+	, _renderLayer(renderLayer)
 {
 
 }
@@ -1566,15 +1590,4 @@ RenderItem::RenderItem() noexcept
 const SubMeshGeometry& RenderItem::getSubMesh() const noexcept
 {
 	return _geometry->_subMeshList[_subMeshIndex];
-}
-
-GameObject::GameObject() noexcept
-	: _worldMatrix(MathHelper::Identity4x4)
-	, _textureTransform(MathHelper::Identity4x4)
-	, _objConstantBufferIndex(std::numeric_limits<uint16_t>::max())
-	, _dirtyFrames(FRAME_RESOURCE_COUNT)
-	, _skinnedConstantBufferIndex(SKINNED_UNDEFINED)
-	, _skinnedModelInstance(nullptr)
-{
-
 }

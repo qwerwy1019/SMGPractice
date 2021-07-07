@@ -6,6 +6,14 @@
 #include "CharacterInfoManager.h"
 #include "MathHelper.h"
 
+StageInfo::StageInfo(void) noexcept
+	: _landscapeType(LandscapeType::Basic)
+	, _sectorUnitNumber(0, 0, 0)
+	, _sectorSize(0, 0, 0)
+{
+
+}
+
 void StageInfo::loadXml(const XMLReaderNode& rootNode)
 {
 	rootNode.loadAttribute("Name", _name);
@@ -56,9 +64,9 @@ void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
 	}
 }
 
-std::vector<CameraPoint*> StageInfo::getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept
+std::vector<const CameraPoint*> StageInfo::getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept
 {
-	std::vector<CameraPoint*> rv;
+	std::vector<const CameraPoint*> rv;
 	
 	for (const auto& camera : _cameraPoints)
 	{
@@ -165,4 +173,53 @@ void StageInfo::loadXmlGravityPointInfo(const XMLReaderNode& node)
 
 		_gravityPoints.emplace(key, std::move(gravityPoint));
 	}
+}
+
+SpawnInfo::SpawnInfo() noexcept
+	: _key(std::numeric_limits<CharacterKey>::max())
+	, _position(0.f, 0.f, 0.f)
+	, _direction(0.f, 0.f, 0.f)
+	, _upVector(0.f, 0.f, 0.f)
+	, _size(0.f)
+{
+
+}
+
+TerrainObjectInfo::TerrainObjectInfo() noexcept
+	: _position(0.f, 0.f, 0.f)
+	, _direction(0.f, 0.f, 0.f)
+	, _upVector(0.f, 0.f, 0.f)
+	, _size(0.f)
+	, _isGround(false)
+	, _isWall(false)
+{
+
+}
+
+CameraPoint::CameraPoint() noexcept
+	: _position(0.f, 0.f, 0.f)
+	, _upVector(0.f, 0.f, 0.f)
+	, _radius(0.f)
+{
+
+}
+
+FixedCameraPoint::FixedCameraPoint() noexcept
+	: _position(0.f, 0.f, 0.f)
+	, _upVector(0.f, 0.f, 0.f)
+	, _focusPosition(0.f, 0.f, 0.f)
+	, _cameraSpeed(0.f)
+	, _cameraFocusSpeed(0.f)
+{
+
+}
+
+GravityPoint::GravityPoint() noexcept
+	: _key(-1)
+	, _type(GravityPointType::Count)
+	, _gravity(0.f)
+	, _radius(0.f)
+	, _position(0.f, 0.f, 0.f)
+{
+
 }
