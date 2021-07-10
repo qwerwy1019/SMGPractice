@@ -218,7 +218,34 @@ float StageManager::checkWall(Actor* actor, const DirectX::XMFLOAT3& moveVector)
 	float collisionAt = 1.f;
 	XMFLOAT3 position = actor->getPosition();
 	float actorHalfWidth = 0.f;
-
+	switch (actor->getCharacterInfo()->getCollisionShape())
+	{
+		case CollisionShape::Sphere:
+		case CollisionShape::Polygon:
+		{
+			actorHalfWidth = actor->getRadius();
+		}
+		break;
+		case CollisionShape::Box:
+		{
+			actorHalfWidth = std::sqrt(actor->getSizeX() * actor->getSizeX() + actor->getSizeZ() * actor->getSizeZ());
+		}
+		break;
+		case CollisionShape::Count:
+		default:
+		{
+			check(false, "타입 추가시 확인.");
+			static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
+		}
+	}
+	for (const auto& terrain : _terrains)
+	{
+		if (terrain.isWall() == false)
+		{
+			continue;
+		}
+		collisionAt = std::min(collisionAt, terrain.checkCollision(position, moveVector, actorHalfWidth));
+	}
 	return collisionAt;
 }
 float StageManager::checkGround(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept
@@ -270,6 +297,7 @@ bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcep
 	{
 		return true;
 	}
+	moveVector = MathHelper::mul(moveVector, t);
 
 	if (checkCollision(actor, moveVector))
 	{

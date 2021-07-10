@@ -44,35 +44,6 @@ Terrain::Terrain(const TerrainObjectInfo& terrainInfo)
 	}
 }
 
-float Terrain::checkCollision(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& moveVector, float size) const noexcept
-{
-	check(MathHelper::equal(MathHelper::lengthSq(moveVector), 0) == false);
-	check(size >= 0.f);
-	
-	XMVECTOR start = XMLoadFloat3(&position);
-	XMVECTOR end = XMLoadFloat3(&moveVector);
-	end += XMVector3Normalize(end) * size + start;
-
-	XMMATRIX inverseMatrix = XMLoadFloat4x4(&_gameObject->getWorldMatrix());
-	inverseMatrix = XMMatrixInverse(nullptr, inverseMatrix);
-	start = XMVector3Transform(start, inverseMatrix);
-	end = XMVector3Transform(end, inverseMatrix);
-
-	XMFLOAT3 startF, endF;
-	XMStoreFloat3(&startF, start);
-	XMStoreFloat3(&endF, end);
-
-	XMVECTOR minV = XMLoadFloat3(&_min);
-	XMVECTOR maxV = XMLoadFloat3(&_max);
-
-	float collisionTime = checkCollisionXXX(_aabbNodes.size() - 1, startF, endF, minV, maxV);
-	float moveVectorLength = MathHelper::length(moveVector);
-	float adjustedCollisionTime = (collisionTime * (size + moveVectorLength) - size) / moveVectorLength;
-
-	check(adjustedCollisionTime < 1.05);
-	return adjustedCollisionTime;
-}
-
 void Terrain::makeAABBTree(void)
 {
 	check(_gameObject != nullptr);
@@ -434,4 +405,34 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex, const DirectX::XMFLO
 			return 1.f;
 		}
 	}
+}
+
+
+float Terrain::checkCollision(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& moveVector, float size) const noexcept
+{
+	check(MathHelper::equal(MathHelper::lengthSq(moveVector), 0) == false);
+	check(size >= 0.f);
+
+	XMVECTOR start = XMLoadFloat3(&position);
+	XMVECTOR end = XMLoadFloat3(&moveVector);
+	end += XMVector3Normalize(end) * size + start;
+
+	XMMATRIX inverseMatrix = XMLoadFloat4x4(&_gameObject->getWorldMatrix());
+	inverseMatrix = XMMatrixInverse(nullptr, inverseMatrix);
+	start = XMVector3Transform(start, inverseMatrix);
+	end = XMVector3Transform(end, inverseMatrix);
+
+	XMFLOAT3 startF, endF;
+	XMStoreFloat3(&startF, start);
+	XMStoreFloat3(&endF, end);
+
+	XMVECTOR minV = XMLoadFloat3(&_min);
+	XMVECTOR maxV = XMLoadFloat3(&_max);
+
+	float collisionTime = checkCollisionXXX(_aabbNodes.size() - 1, startF, endF, minV, maxV);
+	float moveVectorLength = MathHelper::length(moveVector);
+	float adjustedCollisionTime = (collisionTime * (size + moveVectorLength) - size) / moveVectorLength;
+
+	check(adjustedCollisionTime < 1.05);
+	return adjustedCollisionTime;
 }

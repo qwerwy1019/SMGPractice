@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include <math.h>
 #include "Exception.h"
+#include <DirectXMath.h>
 
 namespace MathHelper
 {
@@ -145,6 +146,78 @@ namespace MathHelper
 		XMStoreFloat4x4(&outMatrix, scaling * rotation * translation);
 	}
 
+
+
+	static bool isPointInTriangle(DirectX::FXMVECTOR t0,
+		DirectX::FXMVECTOR t1,
+		DirectX::FXMVECTOR t2,
+		DirectX::CXMVECTOR p)
+	{
+		using namespace DirectX;
+		XMVECTOR cross0 = XMVector3Normalize(XMVector3Cross((t0 - t1), (p - t1)));
+		XMVECTOR cross1 = XMVector3Normalize(XMVector3Cross((t1 - t2), (p - t2)));
+		XMVECTOR cross2 = XMVector3Normalize(XMVector3Cross((t2 - t0), (p - t0)));
+
+		float d0 = XMVectorGetX(XMVector3Dot(cross0, cross1));
+		float d1 = XMVectorGetX(XMVector3Dot(cross1, cross2));
+		if (d0 < 0 ||
+			d1 < 0)
+		{
+			return false;
+		}
+		return true;
+	}
+	static bool isPointInRectangle(DirectX::FXMVECTOR r0,
+		DirectX::FXMVECTOR width,
+		DirectX::FXMVECTOR height,
+		DirectX::CXMVECTOR p)
+	{
+		using namespace DirectX;
+		XMVECTOR v = p - r0;
+		float dotWidth = XMVectorGetX(XMVector3Dot(width, v));
+		float dotHeight = XMVectorGetX(XMVector3Dot(height, v));
+
+		if (dotWidth < 0 || XMVectorGetX(XMVector3Dot(width, width)) < dotWidth)
+		{
+			return false;
+		}
+		if (dotHeight < 0 || XMVectorGetX(XMVector3Dot(height, height)) < dotWidth)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	static bool isLineIntersectLine(DirectX::FXMVECTOR f0,
+		DirectX::FXMVECTOR t0,
+		DirectX::FXMVECTOR f1,
+		DirectX::FXMVECTOR t1,
+		float& firstLineIntersectTime)
+	{
+		using namespace DirectX;
+		//교차를 먼저 검사
+		XMVECTOR cross0 = XMVector3Cross((f1 - f0), (t0 - f0));
+		XMVECTOR cross1 = XMVector3Cross((t1 - f0), (t0 - f0));
+
+		XMVECTOR cross2 = XMVector3Cross((t0 - f1), (t1 - f1));
+		XMVECTOR cross3 = XMVector3Cross((f0 - f1), (t1 - f1));
+
+		if (XMVectorGetX(XMVector3Dot(cross0, cross1)) >= 0)
+		{
+			return false;
+		}
+		if (XMVectorGetX(XMVector3Dot(cross2, cross3)) >= 0)
+		{
+			return false;
+		}
+
+		firstLineIntersectTime = XMVectorGetX(XMVector3Length(XMVector3Cross((t1 - f1), (t0 - f0)))) /
+			XMVectorGetX(XMVector3Length(cross3));
+		check(0.f < firstLineIntersectTime && firstLineIntersectTime < 1.f);
+		return true;
+	}
+
 	static DirectX::XMVECTOR XM_CALLCONV triangleIntersectLine(DirectX::FXMVECTOR t0,
 														DirectX::FXMVECTOR t1,
 														DirectX::FXMVECTOR t2,
@@ -184,5 +257,77 @@ namespace MathHelper
 			return to;
 		}
 		return intersect;
+	}
+
+	static float triangleIntersectRectangle(DirectX::FXMVECTOR t0,
+											DirectX::FXMVECTOR t1,
+											DirectX::FXMVECTOR t2,
+											DirectX::CXMVECTOR r0,
+											DirectX::CXMVECTOR width,
+											DirectX::CXMVECTOR height,
+											float moveDistance)
+	{
+		using namespace DirectX;
+		// 만약 삼각형 세 점의 정사영이 사각형 안에 있으면, 그 점들을 검사한다.
+		// 4*3개 순서쌍의 직선 사이 거리가 최소가 되면서 선분 사이에 있는 점들을 구한다.
+		XMVECTOR trianglePlane = XMPlaneFromPoints(t0, t1, t2);
+		XMVECTOR rectPlane = XMPlaneFromPointNormal(r0, XMVector3Normalize(XMVector3Cross(width, height)));
+		XMVECTOR r1 = r0 + width;
+		XMVECTOR r2 = r0 + width + height;
+		XMVECTOR r3 = r0 + height;
+
+		float minDistance = moveDistance;
+		std::array<XMVECTOR, 3> triangle = { t0, t1, t2 };
+		std::array<XMVECTOR, 4> rect = { r0, r1, r2, r3 };
+		std::array<XMVECTOR, 3> orthTriangle;
+
+		bool isNearDistance = false;
+		for (int i = 0; i < 3; ++i)
+		{
+			check(MathHelper::equal(XMVectorGetX(triangle[i]), 1));
+			float distance = XMVectorGetX(XMVector4Dot(rectPlane, triangle[i]));
+			orthTriangle[i] = triangle[i] + distance * rectPlane;
+
+			isNearDistance = true;
+			if (distance >= 0 && isPointInRectangle(r0, width, height, orthTriangle[i]))
+			{
+				minDistance = std::min(minDistance, distance);
+			}
+		}
+
+		if (isNearDistance == false)
+		{
+			return false;
+		}
+		
+		for (int i = 0; i < 4; ++i)
+		{
+			if (isPointInTriangle(rect[i], orthTriangle[0], orthTriangle[1], orthTriangle[2]))
+			{
+				float distance = -XMVectorGetX(XMVector4Dot(rect[i], trianglePlane) / XMVector3Dot(trianglePlane, rectPlane));
+				if (distance >= 0)
+				{
+					minDistance = std::min(minDistance, distance);
+				}
+			}
+		}
+		for (int i = 0; i < 4; ++i)
+		{
+			for (int j = 0; j < 3; ++j)
+			{
+				float intersect;
+				if (isLineIntersectLine(rect[i], rect[(i + 1) % 4], orthTriangle[j], orthTriangle[(j + 1) % 3], intersect))
+				{
+					XMVECTOR p = triangle[j] * intersect + triangle[(j + 1) % 3] * (1.f - intersect);
+					float distance = XMVectorGetX(XMVector4Dot(rectPlane, p));
+					if (distance >= 0)
+					{
+						minDistance = std::min(minDistance, distance);
+					}
+				}
+			}
+		}
+
+		return minDistance;
 	}
 };
