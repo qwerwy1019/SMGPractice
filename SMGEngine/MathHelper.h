@@ -330,4 +330,138 @@ namespace MathHelper
 
 		return minDistance;
 	}
+	
+	static bool getRootOfQuadEquation(float a, float b, float c, float& r0, float& r1) noexcept
+	{
+		if (MathHelper::equal(a, 0))
+		{
+			return false;
+		}
+		float determinant = (b * b) - (4.f * a * c);
+		if (determinant < 0)
+		{
+			return false;
+		}
+		float sqrtDet = std::sqrt(determinant);
+
+		r0 = (-b - std::sqrt(determinant)) / (2 * a);
+		r1 = (-b + std::sqrt(determinant)) / (2 * a);
+		if (r1 < r0)
+		{
+			std::swap(r0, r1);
+		}
+		return true;
+	}
+
+	static DirectX::XMVECTOR XM_CALLCONV planeIntersectSphere(DirectX::FXMVECTOR plane,
+		DirectX::FXMVECTOR from,
+		DirectX::FXMVECTOR to,
+		float radius)
+	{
+		return to;
+	}
+	static DirectX::XMVECTOR XM_CALLCONV triangleIntersectSphere(DirectX::FXMVECTOR t0,
+		DirectX::FXMVECTOR t1,
+		DirectX::FXMVECTOR t2,
+		DirectX::CXMVECTOR from,
+		DirectX::CXMVECTOR to,
+		float radius,
+		bool checkNormal) noexcept
+	{
+		using namespace DirectX;
+		std::array<XMVECTOR, 3> triangle = { t0, t1, t2 };
+		const auto& plane = XMPlaneFromPoints(t0, t1, t2);
+		if (MathHelper::equal(XMVectorGetX(XMVector3LengthSq(plane)), 0.f))
+		{
+			return to;
+		}
+
+		if (checkNormal)
+		{
+			if (XMVectorGetX(XMVector3Dot(plane, to - from)) > 0)
+			{
+				return to;
+			}
+		}
+
+		XMVECTOR intersect = planeIntersectSphere(plane, from, to, radius);
+		if (XMVectorGetX(XMVector3Dot(from - intersect, to - intersect)) > 0)
+		{
+			return to;
+		}
+
+		// 교점이 삼각형 내부에 있을 경우
+		std::array<bool, 3> isIntersectionInside = { false, false, false };
+		for (int i = 0; i < 3; ++i)
+		{
+			XMVECTOR cross = XMVector3Cross((triangle[i] - triangle[(i + 1) % 3]), (intersect - triangle[(i + 1) % 3]));
+			float d = XMVectorGetX(XMVector3Dot(cross, plane));
+			if (d >= 0)
+			{
+				isIntersectionInside[i] = true;
+			}
+		}
+
+		if (isIntersectionInside[0] && isIntersectionInside[1] && isIntersectionInside[2])
+		{
+			return intersect;
+		}
+
+		float collisionAt = 1.f;
+		for (int i = 0; i < 3; ++i)
+		{
+			if (isIntersectionInside[i]) // 반대편 꼭짓점 체크
+			{
+				float a = XMVectorGetX(XMVector3LengthSq(to - from));
+				float b = XMVectorGetX(XMVector3Dot(from - triangle[(i+2) % 3], to - from) * 2);
+				float c = XMVectorGetX(XMVector3LengthSq(from - triangle[(i + 2) % 3])) - radius * radius;
+
+				float r0, r1;
+				if (getRootOfQuadEquation(a, b, c, r0, r1))
+				{
+					if (r0 > -radius)
+					{
+						collisionAt = std::min(collisionAt, r0);
+					}
+					else if (r1 > -radius)
+					{
+						collisionAt = std::min(collisionAt, r1);
+					}
+				}
+			}
+			else // 모서리 체크
+			{
+				XMVECTOR edge = triangle[i] - triangle[(i + 1) % 3];
+				XMVECTOR moveVector = to - from;
+				XMVECTOR baseToVertex = triangle[i] - from;
+
+				float edgeSq = XMVectorGetX(XMVector3LengthSq(edge));
+				float moveVectorSq = XMVectorGetX(XMVector3LengthSq(to - from));
+				float a = edgeSq * -moveVectorSq + XMVectorGetX(XMVector3Dot(edge, moveVector));
+				float b = 2.f * (edgeSq * XMVectorGetX(XMVector3Dot(moveVector, baseToVertex)) - XMVectorGetX(XMVector3Dot(edge, moveVector) * XMVector3Dot(edge, baseToVertex)));
+				float c = edgeSq * (1 - XMVectorGetX(XMVector3LengthSq(baseToVertex))) + XMVectorGetX(XMVector3LengthSq(XMVector3Dot(edge, baseToVertex)));
+				
+				float r0, r1;
+				if (getRootOfQuadEquation(a, b, c, r0, r1))
+				{
+					float c = (XMVectorGetX(XMVector3Dot(edge, moveVector))* r0 - XMVectorGetX(XMVector3Dot(edge, baseToVertex))) / edgeSq;
+					if (c < 0)
+					{
+						c = (XMVectorGetX(XMVector3Dot(edge, moveVector)) * r1 - XMVectorGetX(XMVector3Dot(edge, baseToVertex))) / edgeSq;
+						if (c >= 0 && c <= 1.f)
+						{
+							collisionAt = std::min(collisionAt, r1);
+						}						
+					}
+					else if (c <= 1.f)
+					{
+						collisionAt = std::min(collisionAt, r0);
+					}
+				}
+			}
+		}
+
+		return from + collisionAt * (to - from);
+	}
+
 };
