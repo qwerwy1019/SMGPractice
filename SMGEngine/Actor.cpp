@@ -308,17 +308,17 @@ TickCount64 Actor::getLocalTickCount(void) const noexcept
 	return _localTickCount;
 }
 
-DirectX::XMFLOAT3 Actor::getPosition(void) const noexcept
+const DirectX::XMFLOAT3& Actor::getPosition(void) const noexcept
 {
 	return _position;
 }
 
-DirectX::XMFLOAT3 Actor::getDirection(void) const noexcept
+const DirectX::XMFLOAT3& Actor::getDirection(void) const noexcept
 {
 	return _direction;
 }
 
-DirectX::XMFLOAT3 Actor::getUpVector(void) const noexcept
+const DirectX::XMFLOAT3& Actor::getUpVector(void) const noexcept
 {
 	return _upVector;
 }

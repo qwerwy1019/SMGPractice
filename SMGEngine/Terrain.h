@@ -1,9 +1,11 @@
 #pragma once
 #include "TypeGeometry.h"
+#include "TypeAction.h"
 
 struct TerrainObjectInfo;
 class MeshGeometry;
 class GameObject;
+class Actor;
 
 struct TerrainAABBNode
 {
@@ -31,14 +33,32 @@ struct TerrainAABBNode
 	};
 	DataType _data;
 };
+
+// 스택 공간에서만 사용한다면 괜찮을지도? [7/12/2021 qwerw]
+struct TerrainCollisionInfoXXX
+{
+	CollisionShape _shape;
+	DirectX::XMVECTOR _position;
+	DirectX::XMVECTOR _velocity;
+	DirectX::XMVECTOR _boxX;
+	DirectX::XMVECTOR _boxY;
+	DirectX::XMVECTOR _boxZ;
+	DirectX::XMVECTOR _min;
+	DirectX::XMVECTOR _max;
+	float _radius;
+};
+
 class Terrain
 {
 public:
 	bool isGround(void) const noexcept;
 	bool isWall(void) const noexcept;
 	Terrain(const TerrainObjectInfo& terrainInfo);
-	float checkCollision(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& moveVector, float size) const noexcept;
-	float XM_CALLCONV checkCollisionXXX(int nodeIndex, const DirectX::XMFLOAT3& from, const DirectX::XMFLOAT3& to, DirectX::FXMVECTOR min, DirectX::FXMVECTOR max) const noexcept;
+	bool checkCollision(const Actor& actor, const DirectX::XMFLOAT3& velocity, float& collisionTime) const noexcept;
+	float XM_CALLCONV checkCollisionXXX(int nodeIndex, 
+										DirectX::FXMVECTOR min,
+										DirectX::FXMVECTOR max, 
+										const TerrainCollisionInfoXXX& collisionInfo) const noexcept;
 
 private:
 	enum class DivideType

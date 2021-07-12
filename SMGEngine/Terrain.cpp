@@ -6,6 +6,8 @@
 #include "D3DApp.h"
 #include "MathHelper.h"
 #include "GameObject.h"
+#include "Actor.h"
+#include "CharacterInfoManager.h"
 
 
 bool Terrain::isGround(void) const noexcept
@@ -349,7 +351,11 @@ TerrainAABBNode::DataType::Node XM_CALLCONV Terrain::getAABBRange(std::vector<Te
 	return aabbRange;
 }
 
-float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex, const DirectX::XMFLOAT3& from, const DirectX::XMFLOAT3& to, DirectX::FXMVECTOR min, DirectX::FXMVECTOR max) const noexcept
+
+float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex,
+											DirectX::FXMVECTOR min, 
+											DirectX::FXMVECTOR max,
+											const TerrainCollisionInfoXXX& collisionInfo) const noexcept
 {
 	check(nodeIndex < _aabbNodes.size());
 	check(0 <= nodeIndex);
@@ -362,16 +368,98 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex, const DirectX::XMFLO
 		const auto& v1 = getVertexFromLeafNode(node._data._leaf, 1);
 		const auto& v2 = getVertexFromLeafNode(node._data._leaf, 2);
 
-		const auto& p0 = XMLoadFloat3(&v0._position);
-		const auto& p1 = XMLoadFloat3(&v1._position);
-		const auto& p2 = XMLoadFloat3(&v2._position);
+		const auto& t0 = XMLoadFloat3(&v0._position);
+		const auto& t1 = XMLoadFloat3(&v1._position);
+		const auto& t2 = XMLoadFloat3(&v2._position);
 
-		const auto& fromV = XMLoadFloat3(&from);
-		const auto& toV = XMLoadFloat3(&to);
+		switch (collisionInfo._shape)
+		{
+			case CollisionShape::Sphere:
+			{
+				return MathHelper::triangleIntersectSphere(t0, t1, t2,
+													collisionInfo._position, 
+													collisionInfo._velocity, 
+													collisionInfo._radius, true);
+			}
+			break;
+			case CollisionShape::Box:
+			{
+				float xDot = XMVectorGetX(XMVector3Dot(collisionInfo._boxX, collisionInfo._velocity));
+				float yDot = XMVectorGetX(XMVector3Dot(collisionInfo._boxY, collisionInfo._velocity));
+				float zDot = XMVectorGetX(XMVector3Dot(collisionInfo._boxZ, collisionInfo._velocity));
 
-		const auto& intersect = MathHelper::triangleIntersectLine(p0, p1, p2, fromV, toV, true);
+				float rv = MathHelper::NO_INTERSECTION;
+				if (xDot < -0.01)
+				{
+					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
+						t0, t1, t2, 
+						collisionInfo._position - collisionInfo._boxX + collisionInfo._boxY + collisionInfo._boxZ,
+						-2.f * collisionInfo._boxZ,
+						-2.f * collisionInfo._boxY,
+						collisionInfo._velocity));
+										
+				}
+				else if (xDot > 0.01)
+				{
+					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
+						t0, t1, t2,
+						collisionInfo._position + collisionInfo._boxX + collisionInfo._boxY - collisionInfo._boxZ ,
+						+2.f * collisionInfo._boxZ,
+						-2.f * collisionInfo._boxY,
+						collisionInfo._velocity));
 
-		return XMVectorGetX(XMVector3Length(intersect - fromV) / XMVector3Length(toV - fromV));
+				}
+				
+				if (yDot < -0.01)
+				{
+					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
+						t0, t1, t2,
+						collisionInfo._position - collisionInfo._boxX - collisionInfo._boxY + collisionInfo._boxZ,
+						-2.f * collisionInfo._boxZ,
+						+2.f * collisionInfo._boxX,
+						collisionInfo._velocity));
+				}
+				else if (yDot > 0.01)
+				{
+					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
+						t0, t1, t2,
+						collisionInfo._position - collisionInfo._boxX + collisionInfo._boxY - collisionInfo._boxZ,
+						+2.f * collisionInfo._boxZ,
+						+2.f * collisionInfo._boxX,
+						collisionInfo._velocity));
+				}
+
+				if (zDot < -0.01)
+				{
+					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
+						t0, t1, t2,
+						collisionInfo._position - collisionInfo._boxX + collisionInfo._boxY - collisionInfo._boxZ,
+						+2.f * collisionInfo._boxX,
+						-2.f * collisionInfo._boxY,
+						collisionInfo._velocity));
+				}
+				else if (zDot > 0.01)
+				{
+					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
+						t0, t1, t2,
+						collisionInfo._position - collisionInfo._boxX - collisionInfo._boxY + collisionInfo._boxZ,
+						+2.f * collisionInfo._boxX,
+						+2.f * collisionInfo._boxY,
+						collisionInfo._velocity));
+				}
+				return rv;
+			}
+			break;
+			case CollisionShape::Polygon:
+			case CollisionShape::Count:
+			default:
+			{
+				check(false);
+				static_assert(static_cast<int>(CollisionShape::Count) == 3);
+			}
+			break;
+
+		}
 	}
 	else
 	{
@@ -386,53 +474,92 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex, const DirectX::XMFLO
 		XMVECTOR nodeMin = min + (max - min) * nodeMinRate;
 		XMVECTOR nodeMax = min + (max - min) * nodeMaxRate;
 
-		XMFLOAT3 nodeMinF, nodeMaxF;
-		XMStoreFloat3(&nodeMinF, nodeMin);
-		XMStoreFloat3(&nodeMaxF, nodeMax);
 
-		if (nodeMinF.x < std::max(from.x, to.x) &&
-			std::min(from.x, to.x) < nodeMaxF.x &&
-			nodeMinF.y < std::max(from.y, to.y) &&
-			std::min(from.y, to.y) < nodeMaxF.y &&
-			nodeMinF.z < std::max(from.z, to.z) &&
-			std::min(from.z, to.z) < nodeMaxF.z)
+		if (XMVector3Greater(collisionInfo._min, nodeMin) &&
+			XMVector3Greater(nodeMax, collisionInfo._max))
 		{
-			return std::min(checkCollisionXXX(node._children[0], from, to, nodeMin, nodeMax),
-							checkCollisionXXX(node._children[1], from, to, nodeMin, nodeMax));
+			return std::min(checkCollisionXXX(node._children[0], nodeMin, nodeMax, collisionInfo),
+							checkCollisionXXX(node._children[1], nodeMin, nodeMax, collisionInfo));
 		}
 		else
 		{
-			return 1.f;
+			return MathHelper::NO_INTERSECTION;
 		}
 	}
 }
 
-
-float Terrain::checkCollision(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& moveVector, float size) const noexcept
+bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& velocity, float& collisionTime) const noexcept
 {
-	check(MathHelper::equal(MathHelper::lengthSq(moveVector), 0) == false);
-	check(size >= 0.f);
-
-	XMVECTOR start = XMLoadFloat3(&position);
-	XMVECTOR end = XMLoadFloat3(&moveVector);
-	end += XMVector3Normalize(end) * size + start;
+	check(MathHelper::equal(MathHelper::lengthSq(velocity), 0) == false);
 
 	XMMATRIX inverseMatrix = XMLoadFloat4x4(&_gameObject->getWorldMatrix());
 	inverseMatrix = XMMatrixInverse(nullptr, inverseMatrix);
-	start = XMVector3Transform(start, inverseMatrix);
-	end = XMVector3Transform(end, inverseMatrix);
 
-	XMFLOAT3 startF, endF;
-	XMStoreFloat3(&startF, start);
-	XMStoreFloat3(&endF, end);
+	TerrainCollisionInfoXXX collisionInfo;
+	// sliding을 구현하지 않았기 때문에, 겹쳐지는 경우에는 뒤로 보내야해서 미리 반지름만큼 뒤로 보내서 충돌 체크를 할 것임. [7/12/2021 qwerw]
+	float adjustingDistance = actor.getRadius();
+	float speed = MathHelper::length(velocity);
+	switch (actor.getCharacterInfo()->getCollisionShape())
+	{
+		case CollisionShape::Polygon:
+		case CollisionShape::Sphere:
+		{
+			collisionInfo._shape = CollisionShape::Sphere;
+			collisionInfo._velocity = XMVector3Transform(XMLoadFloat3(&velocity), inverseMatrix);
+			collisionInfo._position = XMVector3Transform(XMLoadFloat3(&actor.getPosition()), inverseMatrix);
+			collisionInfo._position -= collisionInfo._velocity * adjustingDistance / speed;
+			
+			collisionInfo._radius = actor.getRadius();
+			collisionInfo._min = XMVectorMin(collisionInfo._position, collisionInfo._position + collisionInfo._velocity);
+			collisionInfo._max = XMVectorMax(collisionInfo._position, collisionInfo._position + collisionInfo._velocity);
+
+			XMVECTOR radiusVector = XMVectorSet(collisionInfo._radius, collisionInfo._radius, collisionInfo._radius, 0.f);
+			collisionInfo._min -= radiusVector;
+			collisionInfo._max += radiusVector;
+		}
+		break;
+		case CollisionShape::Box:
+		{
+			collisionInfo._shape = CollisionShape::Box;
+			collisionInfo._velocity = XMVector3Transform(XMLoadFloat3(&velocity), inverseMatrix);
+			collisionInfo._position = XMVector3Transform(XMLoadFloat3(&actor.getPosition()), inverseMatrix);
+			collisionInfo._position -= collisionInfo._velocity * adjustingDistance / speed;
+
+			collisionInfo._boxX = XMVector3Transform(XMLoadFloat3(&actor.getDirection()), inverseMatrix);
+			collisionInfo._boxY = XMVector3Transform(XMLoadFloat3(&actor.getUpVector()), inverseMatrix);
+			collisionInfo._boxZ = XMVector3Cross(collisionInfo._boxX, collisionInfo._boxY);
+			collisionInfo._boxX *= actor.getSizeX();
+			collisionInfo._boxY *= actor.getSizeY();
+			collisionInfo._boxZ *= actor.getSizeZ();
+
+			collisionInfo._min = XMVectorMin(collisionInfo._position, collisionInfo._position + collisionInfo._velocity);
+			collisionInfo._max = XMVectorMax(collisionInfo._position, collisionInfo._position + collisionInfo._velocity);
+
+			// 맞나...? [7/12/2021 qwerw]
+			XMVECTOR absVector = XMVectorAbs(collisionInfo._boxX) + XMVectorAbs(collisionInfo._boxY) + XMVectorAbs(collisionInfo._boxZ);
+
+			collisionInfo._min -= absVector;
+			collisionInfo._max += absVector;
+		}
+		break;
+		case CollisionShape::Count:
+		default:
+		{
+			check(false);
+			static_assert(static_cast<int>(CollisionShape::Count) == 3);
+		}
+	}
 
 	XMVECTOR minV = XMLoadFloat3(&_min);
 	XMVECTOR maxV = XMLoadFloat3(&_max);
+	
+	float collisionTimeRaw = checkCollisionXXX(_aabbNodes.size() - 1, minV, maxV, collisionInfo);
+	if (false == MathHelper::isColliding(collisionTimeRaw))
+	{
+		return false;
+	}
+	collisionTime = (collisionTimeRaw * (adjustingDistance + speed) - adjustingDistance) / speed;
 
-	float collisionTime = checkCollisionXXX(_aabbNodes.size() - 1, startF, endF, minV, maxV);
-	float moveVectorLength = MathHelper::length(moveVector);
-	float adjustedCollisionTime = (collisionTime * (size + moveVectorLength) - size) / moveVectorLength;
-
-	check(adjustedCollisionTime < 1.05);
-	return adjustedCollisionTime;
+	check(collisionTime < 1.05);
+	return collisionTime;
 }

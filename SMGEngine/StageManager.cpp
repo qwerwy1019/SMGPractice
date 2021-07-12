@@ -215,73 +215,37 @@ bool StageManager::checkCollision(Actor* actor, const DirectX::XMFLOAT3& moveVec
 
 float StageManager::checkWall(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept
 {
-	float collisionAt = 1.f;
-	XMFLOAT3 position = actor->getPosition();
-	float actorHalfWidth = 0.f;
-	switch (actor->getCharacterInfo()->getCollisionShape())
-	{
-		case CollisionShape::Sphere:
-		case CollisionShape::Polygon:
-		{
-			actorHalfWidth = actor->getRadius();
-		}
-		break;
-		case CollisionShape::Box:
-		{
-			actorHalfWidth = std::sqrt(actor->getSizeX() * actor->getSizeX() + actor->getSizeZ() * actor->getSizeZ());
-		}
-		break;
-		case CollisionShape::Count:
-		default:
-		{
-			check(false, "타입 추가시 확인.");
-			static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
-		}
-	}
+	float minCollisionTime = MathHelper::NO_INTERSECTION;
 	for (const auto& terrain : _terrains)
 	{
 		if (terrain.isWall() == false)
 		{
 			continue;
 		}
-		collisionAt = std::min(collisionAt, terrain.checkCollision(position, moveVector, actorHalfWidth));
+		float collisionTime;
+		if (terrain.checkCollision(*actor, moveVector, collisionTime) && collisionTime < minCollisionTime)
+		{
+			minCollisionTime = collisionTime;
+		}
 	}
-	return collisionAt;
+	return minCollisionTime;
 }
 float StageManager::checkGround(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept
 {
-	float collisionAt = 1.f;
-	XMFLOAT3 position = actor->getPosition();
-	float actorHalfHeight = 0.f;
-	switch (actor->getCharacterInfo()->getCollisionShape())
-	{
-		case CollisionShape::Sphere:
-		case CollisionShape::Polygon:
-		{
-			actorHalfHeight = actor->getRadius();
-		}
-		break;
-		case CollisionShape::Box:
-		{
-			actorHalfHeight = actor->getSizeY();
-		}
-		break;
-		case CollisionShape::Count:
-		default:
-		{
-			check(false, "타입 추가시 확인.");
-			static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
-		}
-	}
+	float minCollisionTime = MathHelper::NO_INTERSECTION;
 	for (const auto& terrain : _terrains)
 	{
 		if (terrain.isGround() == false)
 		{
 			continue;
 		}
-		collisionAt = std::min(collisionAt, terrain.checkCollision(position, moveVector, actorHalfHeight));
+		float collisionTime;
+		if (terrain.checkCollision(*actor, moveVector, collisionTime) && collisionTime < minCollisionTime)
+		{
+			minCollisionTime = collisionTime;
+		}
 	}
-	return collisionAt;
+	return minCollisionTime;
 }
 
 bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcept

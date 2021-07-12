@@ -29,9 +29,9 @@ public:
 	float getVerticalSpeed() const noexcept;
 public:
 	TickCount64 getLocalTickCount(void) const noexcept;
-	DirectX::XMFLOAT3 getPosition(void) const noexcept;
-	DirectX::XMFLOAT3 getDirection(void) const noexcept;
-	DirectX::XMFLOAT3 getUpVector(void) const noexcept;
+	const DirectX::XMFLOAT3& getPosition(void) const noexcept;
+	const DirectX::XMFLOAT3& getDirection(void) const noexcept;
+	const DirectX::XMFLOAT3& getUpVector(void) const noexcept;
 	// 위치, 회전 정보를 따로 관리하고 계산하면 renderItem의 _worldMatrix랑 차이가 생길수도 있다. [3/1/2021 qwerwy]
 	// 한쪽을 전체 계산해서 덮어씌우는쪽으로 생각해봐야겠다.
 	bool XM_CALLCONV checkCollision(const Actor* otherActor, DirectX::FXMVECTOR moveVector, CollisionInfo& outCollisionInfo) const noexcept;
