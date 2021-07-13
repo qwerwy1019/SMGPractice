@@ -178,6 +178,8 @@ namespace MathHelper
 		DirectX::CXMVECTOR p)
 	{
 		using namespace DirectX;
+		check(MathHelper::equal(XMVectorGetX(XMVector3Dot(width, height)), 0), "직사각형만 고려되었습니다.");
+
 		XMVECTOR v = p - r0;
 		float dotWidth = XMVectorGetX(XMVector3Dot(width, v));
 		float dotHeight = XMVectorGetX(XMVector3Dot(height, v));
@@ -263,8 +265,7 @@ namespace MathHelper
 		}
 		return intersect;
 	}
-
-	static float triangleIntersectRectangle(DirectX::FXMVECTOR t0,
+	static float XM_CALLCONV triangleIntersectRectangle(DirectX::FXMVECTOR t0,
 											DirectX::FXMVECTOR t1,
 											DirectX::FXMVECTOR t2,
 											DirectX::CXMVECTOR r0,
@@ -277,54 +278,63 @@ namespace MathHelper
 		// 4*3개 순서쌍의 직선 사이 거리가 최소가 되면서 선분 사이에 있는 점들을 구한다.
 		XMVECTOR trianglePlane = XMPlaneFromPoints(t0, t1, t2);
 		XMVECTOR rectPlane = XMPlaneFromPointNormal(r0, XMVector3Normalize(XMVector3Cross(width, height)));
+		float speed = XMVectorGetX(XMVector3Length(velocity));
+		XMVECTOR velocityNormal = velocity / speed;
+
 		XMVECTOR r1 = r0 + width;
 		XMVECTOR r2 = r0 + width + height;
 		XMVECTOR r3 = r0 + height;
 
 		// todo [7/12/2021 qwerw]
-		float minDistance = 0;
+		float minDistance = NO_INTERSECTION;
 		std::array<XMVECTOR, 3> triangle = { t0, t1, t2 };
 		std::array<XMVECTOR, 4> rect = { r0, r1, r2, r3 };
 		std::array<XMVECTOR, 3> orthTriangle;
+		std::array<XMVECTOR, 4> orthRect;
 
-		bool isNearDistance = false;
 		for (int i = 0; i < 3; ++i)
 		{
-			check(MathHelper::equal(XMVectorGetX(triangle[i]), 1));
-			float distance = XMVectorGetX(XMVector4Dot(rectPlane, triangle[i]));
-			orthTriangle[i] = triangle[i] + distance * rectPlane;
-
-			isNearDistance = true;
-			if (distance >= 0 && isPointInRectangle(r0, width, height, orthTriangle[i]))
+			check(MathHelper::equal(XMVectorGetW(triangle[i]), 1));
+			float triangleDistance = XMVectorGetX(XMVector4Dot(velocityNormal, triangle[i]));
+			orthTriangle[i] = triangle[i] + triangleDistance * velocityNormal;
+			float rectDistance = XMVectorGetX(XMVector4Dot(rectPlane, triangle[i])) / XMVectorGetX(XMVector3Dot(rectPlane, velocityNormal));
+			float distance = triangleDistance - rectDistance;
+			if (speed < distance || distance < 0)
+			{
+				continue;
+			}
+			XMVECTOR rectPoint = triangle[i] + rectDistance * velocityNormal;
+			if (isPointInRectangle(r0, width, height, rectPoint))
 			{
 				minDistance = std::min(minDistance, distance);
 			}
 		}
 
-		if (isNearDistance == false)
-		{
-			return false;
-		}
-		
 		for (int i = 0; i < 4; ++i)
 		{
-			if (isPointInTriangle(rect[i], orthTriangle[0], orthTriangle[1], orthTriangle[2]))
+			check(MathHelper::equal(XMVectorGetW(rect[i]), 1));
+			float triangleDistance = XMVectorGetX(XMVector4Dot(rectPlane, rect[i])) / XMVectorGetX(XMVector3Dot(trianglePlane, velocityNormal));;
+			float rectDistance = XMVectorGetX(XMVector4Dot(velocityNormal, rect[i]));
+			orthRect[i] = rect[i] + rectDistance * velocityNormal;
+			float distance = triangleDistance - rectDistance;
+			if (speed < distance || distance < 0)
 			{
-				float distance = -XMVectorGetX(XMVector4Dot(rect[i], trianglePlane) / XMVector3Dot(trianglePlane, rectPlane));
-				if (distance >= 0)
-				{
-					minDistance = std::min(minDistance, distance);
-				}
+				continue;
+			}
+			if (isPointInTriangle(orthTriangle[0], orthTriangle[1], orthTriangle[2], orthRect[i]))
+			{
+				minDistance = std::min(minDistance, distance);
 			}
 		}
+
 		for (int i = 0; i < 4; ++i)
 		{
 			for (int j = 0; j < 3; ++j)
 			{
 				float intersect;
-				if (isLineIntersectLine(rect[i], rect[(i + 1) % 4], orthTriangle[j], orthTriangle[(j + 1) % 3], intersect))
+				if (isLineIntersectLine(orthRect[i], orthRect[(i + 1) % 4], orthTriangle[j], orthTriangle[(j + 1) % 3], intersect))
 				{
-					XMVECTOR p = triangle[j] * intersect + triangle[(j + 1) % 3] * (1.f - intersect);
+					XMVECTOR p = rect[i] * intersect + rect[(j + 1) % 4] * (1.f - intersect);
 					float distance = XMVectorGetX(XMVector4Dot(rectPlane, p));
 					if (distance >= 0)
 					{
@@ -335,6 +345,87 @@ namespace MathHelper
 		}
 
 		return minDistance;
+	}
+
+	static float XM_CALLCONV triangleIntersectBox(DirectX::FXMVECTOR t0,
+		DirectX::FXMVECTOR t1,
+		DirectX::FXMVECTOR t2,
+		DirectX::CXMVECTOR center,
+		DirectX::CXMVECTOR boxX,
+		DirectX::CXMVECTOR boxY,
+		DirectX::CXMVECTOR boxZ,
+		DirectX::CXMVECTOR velocity) noexcept
+	{
+		using namespace DirectX;
+
+		float xDot = XMVectorGetX(XMVector3Dot(boxX, velocity));
+		float yDot = XMVectorGetX(XMVector3Dot(boxY, velocity));
+		float zDot = XMVectorGetX(XMVector3Dot(boxZ, velocity));
+		// box data를 indexing 할수 있는 방법이 없을까? [7/13/2021 qwerw]
+		// orthgonal triangle, velocity vector normalize(minor), edge check duplicated(true/false) [7/13/2021 qwerw]
+
+		std::array<XMVECTOR, 3> orthTriangle;
+		std::array<bool, 12> edgeChecked = { false, };
+		std::array<bool, 8> vertexChecked = { false, };
+		float rv = NO_INTERSECTION;
+		if (xDot < -0.01)
+		{
+			rv = std::min(rv, triangleIntersectRectangle(
+				t0, t1, t2,
+				center - boxX + boxY + boxZ,
+				-2.f * boxZ,
+				-2.f * boxY,
+				velocity));
+
+		}
+		else if (xDot > 0.01)
+		{
+			rv = std::min(rv, triangleIntersectRectangle(
+				t0, t1, t2,
+				center + boxX + boxY - boxZ,
+				+2.f * boxZ,
+				-2.f * boxY,
+				velocity));
+		}
+
+		if (yDot < -0.01)
+		{
+			rv = std::min(rv, triangleIntersectRectangle(
+				t0, t1, t2,
+				center - boxX - boxY + boxZ,
+				-2.f * boxZ,
+				+2.f * boxX,
+				velocity));
+		}
+		else if (yDot > 0.01)
+		{
+			rv = std::min(rv, triangleIntersectRectangle(
+				t0, t1, t2,
+				center - boxX + boxY - boxZ,
+				+2.f * boxZ,
+				+2.f * boxX,
+				velocity));
+		}
+
+		if (zDot < -0.01)
+		{
+			rv = std::min(rv, triangleIntersectRectangle(
+				t0, t1, t2,
+				center - boxX + boxY - boxZ,
+				+2.f * boxX,
+				-2.f * boxY,
+				velocity));
+		}
+		else if (zDot > 0.01)
+		{
+			rv = std::min(rv, triangleIntersectRectangle(
+				t0, t1, t2,
+				center - boxX - boxY + boxZ,
+				+2.f * boxX,
+				+2.f * boxY,
+				velocity));
+		}
+		return rv;
 	}
 
 	static bool getRootOfQuadEquation(float a, float b, float c, float& r0, float& r1) noexcept

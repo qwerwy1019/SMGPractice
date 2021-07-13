@@ -384,70 +384,12 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex,
 			break;
 			case CollisionShape::Box:
 			{
-				float xDot = XMVectorGetX(XMVector3Dot(collisionInfo._boxX, collisionInfo._velocity));
-				float yDot = XMVectorGetX(XMVector3Dot(collisionInfo._boxY, collisionInfo._velocity));
-				float zDot = XMVectorGetX(XMVector3Dot(collisionInfo._boxZ, collisionInfo._velocity));
-
-				float rv = MathHelper::NO_INTERSECTION;
-				if (xDot < -0.01)
-				{
-					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
-						t0, t1, t2, 
-						collisionInfo._position - collisionInfo._boxX + collisionInfo._boxY + collisionInfo._boxZ,
-						-2.f * collisionInfo._boxZ,
-						-2.f * collisionInfo._boxY,
-						collisionInfo._velocity));
-										
-				}
-				else if (xDot > 0.01)
-				{
-					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
-						t0, t1, t2,
-						collisionInfo._position + collisionInfo._boxX + collisionInfo._boxY - collisionInfo._boxZ ,
-						+2.f * collisionInfo._boxZ,
-						-2.f * collisionInfo._boxY,
-						collisionInfo._velocity));
-
-				}
-				
-				if (yDot < -0.01)
-				{
-					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
-						t0, t1, t2,
-						collisionInfo._position - collisionInfo._boxX - collisionInfo._boxY + collisionInfo._boxZ,
-						-2.f * collisionInfo._boxZ,
-						+2.f * collisionInfo._boxX,
-						collisionInfo._velocity));
-				}
-				else if (yDot > 0.01)
-				{
-					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
-						t0, t1, t2,
-						collisionInfo._position - collisionInfo._boxX + collisionInfo._boxY - collisionInfo._boxZ,
-						+2.f * collisionInfo._boxZ,
-						+2.f * collisionInfo._boxX,
-						collisionInfo._velocity));
-				}
-
-				if (zDot < -0.01)
-				{
-					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
-						t0, t1, t2,
-						collisionInfo._position - collisionInfo._boxX + collisionInfo._boxY - collisionInfo._boxZ,
-						+2.f * collisionInfo._boxX,
-						-2.f * collisionInfo._boxY,
-						collisionInfo._velocity));
-				}
-				else if (zDot > 0.01)
-				{
-					rv = std::min(rv, MathHelper::triangleIntersectRectangle(
-						t0, t1, t2,
-						collisionInfo._position - collisionInfo._boxX - collisionInfo._boxY + collisionInfo._boxZ,
-						+2.f * collisionInfo._boxX,
-						+2.f * collisionInfo._boxY,
-						collisionInfo._velocity));
-				}
-				return rv;
+				return MathHelper::triangleIntersectBox(t0, t1, t2,
+													collisionInfo._position,
+													collisionInfo._boxX,
+													collisionInfo._boxY,
+													collisionInfo._boxZ,
+													collisionInfo._velocity);
 			}
 			break;
 			case CollisionShape::Polygon:
@@ -456,9 +398,9 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex,
 			{
 				check(false);
 				static_assert(static_cast<int>(CollisionShape::Count) == 3);
+				return MathHelper::NO_INTERSECTION;
 			}
 			break;
-
 		}
 	}
 	else
