@@ -215,7 +215,7 @@ bool StageManager::checkCollision(Actor* actor, const DirectX::XMFLOAT3& moveVec
 
 float StageManager::checkWall(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept
 {
-	float minCollisionTime = MathHelper::NO_INTERSECTION;
+	float minCollisionTime = 1.f;
 	for (const auto& terrain : _terrains)
 	{
 		if (terrain.isWall() == false)
@@ -232,7 +232,7 @@ float StageManager::checkWall(Actor* actor, const DirectX::XMFLOAT3& moveVector)
 }
 float StageManager::checkGround(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept
 {
-	float minCollisionTime = MathHelper::NO_INTERSECTION;
+	float minCollisionTime = 1.f;
 	for (const auto& terrain : _terrains)
 	{
 		if (terrain.isGround() == false)

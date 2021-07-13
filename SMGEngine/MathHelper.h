@@ -150,7 +150,7 @@ namespace MathHelper
 	static constexpr float NO_INTERSECTION = 10.f;
 	static bool isColliding(float rv)
 	{
-		return rv < 5.f;
+		return 0 <= rv && rv < 5.f;
 	}
 
 	static bool isPointInTriangle(DirectX::FXMVECTOR t0,
@@ -219,8 +219,9 @@ namespace MathHelper
 			return false;
 		}
 
-		firstLineIntersectTime = XMVectorGetX(XMVector3Length(XMVector3Cross((t1 - f1), (t0 - f0)))) /
-			XMVectorGetX(XMVector3Length(cross3));
+		// 모든 점들이 한 평면 위에 있다면(실제로 교차한다면) 외적벡터의 방향은 같을 것이기 떄문에 x성분만 비교해도 될것이다. [7/14/2021 qwerw]
+		firstLineIntersectTime = XMVectorGetX(XMVector3Cross((t1 - f1), (t0 - f0))) /
+			XMVectorGetX(cross3);
 		check(0.f < firstLineIntersectTime && firstLineIntersectTime < 1.f);
 		return true;
 	}
@@ -234,7 +235,7 @@ namespace MathHelper
 	{
 		using namespace DirectX;
 		const auto& plane = XMPlaneFromPoints(t0, t1, t2);
-		if (MathHelper::equal(XMVectorGetX(XMVector3LengthSq(plane)), 0.f))
+		if (XMVector3Equal(plane, XMVectorZero()))
 		{
 			return to;
 		}
@@ -450,21 +451,12 @@ namespace MathHelper
 		return true;
 	}
 
-	static float XM_CALLCONV planeIntersectSphere(DirectX::FXMVECTOR plane,
-		DirectX::FXMVECTOR sphereCenter,
-		DirectX::FXMVECTOR velocity,
-		float radius)
-	{
-		// todo [7/12/2021 qwerw]
-		return 0;
-	}
 	static float XM_CALLCONV triangleIntersectSphere(DirectX::FXMVECTOR t0,
 		DirectX::FXMVECTOR t1,
 		DirectX::FXMVECTOR t2,
 		DirectX::CXMVECTOR sphereCenter,
 		DirectX::CXMVECTOR sphereVelocity,
-		float radius,
-		bool checkNormal) noexcept
+		float radius) noexcept
 	{
 		using namespace DirectX;
 		std::array<XMVECTOR, 3> triangle = { t0, t1, t2 };
@@ -474,16 +466,15 @@ namespace MathHelper
 			return NO_INTERSECTION;
 		}
 
-		if (checkNormal)
+		float planeDotVelocity = XMVectorGetX(XMVector3Dot(plane, sphereVelocity));
+		if (planeDotVelocity > -FLT_EPSILON)
 		{
-			if (XMVectorGetX(XMVector3Dot(plane, sphereVelocity)) > 0)
-			{
-				return NO_INTERSECTION;
-			}
+			return NO_INTERSECTION;
 		}
 
-		float intersectTime = planeIntersectSphere(plane, sphereCenter, sphereVelocity, radius);
-		if (false == isColliding(intersectTime))
+		check(MathHelper::equal(XMVectorGetW(sphereCenter), 1.f));
+		float intersectTime = (radius - XMVectorGetX(XMVector4Dot(plane, sphereCenter))) / planeDotVelocity;
+		if (intersectTime < 0.f || 1.f < intersectTime)
 		{
 			return NO_INTERSECTION;
 		}
@@ -494,7 +485,7 @@ namespace MathHelper
 		std::array<bool, 3> isIntersectionInside = { false, false, false };
 		for (int i = 0; i < 3; ++i)
 		{
-			XMVECTOR cross = XMVector3Cross((triangle[i] - triangle[(i + 1) % 3]), (intersectPoint - triangle[(i + 1) % 3]));
+			XMVECTOR cross = XMVector3Cross((triangle[i] - triangle[(i + 1) % 3]), (triangle[(i + 1) % 3] - intersectPoint));
 			float d = XMVectorGetX(XMVector3Dot(cross, plane));
 			if (d >= 0)
 			{
@@ -533,13 +524,18 @@ namespace MathHelper
 			}
 			else // 모서리 체크
 			{
-				XMVECTOR edge = triangle[i] - triangle[(i + 1) % 3];
+				XMVECTOR edge = triangle[(i + 1) % 3] - triangle[i];
 				XMVECTOR baseToVertex = triangle[i] - sphereCenter;
 
 				float edgeSq = XMVectorGetX(XMVector3LengthSq(edge));
-				float a = edgeSq * -speedSq + XMVectorGetX(XMVector3Dot(edge, sphereVelocity));
-				float b = 2.f * (edgeSq * XMVectorGetX(XMVector3Dot(sphereVelocity, baseToVertex)) - XMVectorGetX(XMVector3Dot(edge, sphereVelocity) * XMVector3Dot(edge, baseToVertex)));
-				float c = edgeSq * (1.f - XMVectorGetX(XMVector3LengthSq(baseToVertex))) + XMVectorGetX(XMVector3LengthSq(XMVector3Dot(edge, baseToVertex)));
+				float edgeDotVelocity = XMVectorGetX(XMVector3Dot(edge, sphereVelocity));
+				float edgeDotBaseToVertex = XMVectorGetX(XMVector3Dot(edge, baseToVertex));
+				float velocityDotBaseToVertex = XMVectorGetX(XMVector3Dot(sphereVelocity, baseToVertex));
+				float baseToVertexSq = XMVectorGetX(XMVector3LengthSq(baseToVertex));
+
+				float a = -speedSq + edgeDotVelocity * edgeDotVelocity / edgeSq;
+				float b = 2.f * (velocityDotBaseToVertex - edgeDotVelocity * edgeDotBaseToVertex / edgeSq);
+				float c = (1.f - baseToVertexSq) + edgeDotBaseToVertex * edgeDotBaseToVertex / edgeSq;
 				
 				float r0, r1;
 				if (getRootOfQuadEquation(a, b, c, r0, r1))
@@ -560,7 +556,6 @@ namespace MathHelper
 				}
 			}
 		}
-
 		return intersectTime;
 	}
 
