@@ -270,7 +270,6 @@ namespace MathHelper
 		// 만약 삼각형 세 점의 정사영이 사각형 안에 있으면, 그 점들을 검사한다.
 		// 4*3개 순서쌍의 직선 사이 거리가 최소가 되면서 선분 사이에 있는 점들을 구한다.
 		XMVECTOR trianglePlane = XMPlaneFromPoints(t0, t1, t2);
-		XMVECTOR rectPlane = XMPlaneFromPointNormal(r0, XMVector3Normalize(XMVector3Cross(height, width)));
 		float speed = XMVectorGetX(XMVector3Length(velocity));
 		XMVECTOR velocityNormal = XMVectorSetW(velocity / speed, 0.f);
 
@@ -278,11 +277,14 @@ namespace MathHelper
 		{
 			return NO_INTERSECTION;
 		}
+
+		XMVECTOR rectPlane = XMPlaneFromPointNormal(r0, XMVector3Normalize(XMVector3Cross(height, width)));
 		if (XMVectorGetX(XMVector3Dot(rectPlane, velocityNormal)) < FLT_EPSILON)
 		{
 			return NO_INTERSECTION;
 		}
-		float minDistance = speed;
+
+		float minDistance = speed * NO_INTERSECTION;
 		std::array<XMVECTOR, 3> triangle = { XMVectorSetW(t0, 1.f), XMVectorSetW(t1, 1.f), XMVectorSetW(t2, 1.f) };
 		std::array<XMVECTOR, 4> rect = { XMVectorSetW(r0, 1.f), XMVectorSetW(r0 + width, 1.f),
 										XMVectorSetW(r0 + width + height, 1.f), XMVectorSetW(r0 + height, 1.f) };
@@ -363,9 +365,6 @@ namespace MathHelper
 	{
 		using namespace DirectX;
 
-		float xDot = XMVectorGetX(XMVector3Dot(boxX, velocity));
-		float yDot = XMVectorGetX(XMVector3Dot(boxY, velocity));
-		float zDot = XMVectorGetX(XMVector3Dot(boxZ, velocity));
 		// box data를 indexing 할수 있는 방법이 없을까? [7/13/2021 qwerw]
 		// orthgonal triangle, velocity vector normalize(minor), edge check duplicated(true/false) [7/13/2021 qwerw]
 
@@ -373,63 +372,50 @@ namespace MathHelper
 		std::array<bool, 12> edgeChecked = { false, };
 		std::array<bool, 8> vertexChecked = { false, };
 		float rv = NO_INTERSECTION;
-		//if (xDot < -0.01)
-		{
-			rv = std::min(rv, triangleIntersectRectangle(
-				t0, t1, t2,
-				center - boxX - boxY - boxZ,
-				+2.f * boxZ,
-				+2.f * boxY,
-				velocity));
+		
+		// -x
+		rv = std::min(rv, triangleIntersectRectangle(
+			t0, t1, t2,
+			center - boxX - boxY - boxZ,
+			+2.f * boxZ,
+			+2.f * boxY,
+			velocity));
+		// +x
+		rv = std::min(rv, triangleIntersectRectangle(
+			t0, t1, t2,
+			center + boxX + boxY + boxZ,
+			-2.f * boxY,
+			-2.f * boxZ,
+			velocity));
+		// -y
+		rv = std::min(rv, triangleIntersectRectangle(
+			t0, t1, t2,
+			center - boxX - boxY - boxZ,
+			+2.f * boxX,
+			+2.f * boxZ,
+			velocity));
+		// +y
+		rv = std::min(rv, triangleIntersectRectangle(
+			t0, t1, t2,
+			center - boxX + boxY + boxZ,
+			-2.f * boxZ,
+			-2.f * boxX,
+			velocity));
+		// -z
+		rv = std::min(rv, triangleIntersectRectangle(
+			t0, t1, t2,
+			center - boxX - boxY - boxZ,
+			+2.f * boxY,
+			+2.f * boxX,
+			velocity));
+		// +z
+		rv = std::min(rv, triangleIntersectRectangle(
+			t0, t1, t2,
+			center + boxX + boxY + boxZ,
+			-2.f * boxX,
+			-2.f * boxY,
+			velocity));
 
-		}
-		//else if (xDot > 0.01)
-		{
-			rv = std::min(rv, triangleIntersectRectangle(
-				t0, t1, t2,
-				center + boxX + boxY + boxZ,
-				-2.f * boxY,
-				-2.f * boxZ,
-				velocity));
-		}
-
-		//if (yDot < -0.01)
-		{
-			rv = std::min(rv, triangleIntersectRectangle(
-				t0, t1, t2,
-				center - boxX - boxY - boxZ,
-				+2.f * boxX,
-				+2.f * boxZ,
-				velocity));
-		}
-		//else if (yDot > 0.01)
-		{
-			rv = std::min(rv, triangleIntersectRectangle(
-				t0, t1, t2,
-				center - boxX + boxY + boxZ,
-				-2.f * boxZ,
-				-2.f * boxX,
-				velocity));
-		}
-
-		//if (zDot < -0.01)
-		{
-			rv = std::min(rv, triangleIntersectRectangle(
-				t0, t1, t2,
-				center - boxX - boxY - boxZ,
-				+2.f * boxY,
-				+2.f * boxX,
-				velocity));
-		}
-		//else if (zDot > 0.01)
-		{
-			rv = std::min(rv, triangleIntersectRectangle(
-				t0, t1, t2,
-				center + boxX + boxY + boxZ,
-				-2.f * boxX,
-				-2.f * boxY,
-				velocity));
-		}
 		return rv;
 	}
 
