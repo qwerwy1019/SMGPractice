@@ -178,7 +178,7 @@ namespace MathHelper
 		DirectX::CXMVECTOR p)
 	{
 		using namespace DirectX;
-		check(MathHelper::equal(XMVectorGetX(XMVector3Dot(width, height)), 0), "직사각형만 고려되었습니다.");
+		check(MathHelper::equal(XMVectorGetX(XMVector3Dot(XMVector3Normalize(width), XMVector3Normalize(height))), 0, 0.0001f), "직사각형만 고려되었습니다.");
 
 		XMVECTOR v = p - r0;
 		float dotWidth = XMVectorGetX(XMVector3Dot(width, v));
@@ -188,7 +188,7 @@ namespace MathHelper
 		{
 			return false;
 		}
-		if (dotHeight < 0 || XMVectorGetX(XMVector3Dot(height, height)) < dotWidth)
+		if (dotHeight < 0 || XMVectorGetX(XMVector3Dot(height, height)) < dotHeight)
 		{
 			return false;
 		}
@@ -218,10 +218,8 @@ namespace MathHelper
 		{
 			return false;
 		}
-
-		// 모든 점들이 한 평면 위에 있다면(실제로 교차한다면) 외적벡터의 방향은 같을 것이기 떄문에 x성분만 비교해도 될것이다. [7/14/2021 qwerw]
-		firstLineIntersectTime = XMVectorGetX(XMVector3Cross((t1 - f1), (t0 - f0))) /
-			XMVectorGetX(cross3);
+		XMVECTOR cross = XMVector3Cross((t1 - f1), (t0 - f0));
+		firstLineIntersectTime = XMVectorGetX(XMVector3Length(cross3)) / XMVectorGetX(XMVector3Length(cross));
 		check(0.f < firstLineIntersectTime && firstLineIntersectTime < 1.f);
 		return true;
 	}
@@ -253,17 +251,11 @@ namespace MathHelper
 			return to;
 		}
 
-		XMVECTOR cross0 = XMVector3Normalize(XMVector3Cross((t0 - t1), (intersect - t1)));
-		XMVECTOR cross1 = XMVector3Normalize(XMVector3Cross((t1 - t2), (intersect - t2)));
-		XMVECTOR cross2 = XMVector3Normalize(XMVector3Cross((t2 - t0), (intersect - t0)));
-
-		float d0 = XMVectorGetX(XMVector3Dot(cross0, cross1));
-		float d1 = XMVectorGetX(XMVector3Dot(cross1, cross2));
-		if (d0 < 0 ||
-			d1 < 0)
+		if (false == isPointInTriangle(t0, t1, t2, intersect))
 		{
 			return to;
 		}
+		
 		return intersect;
 	}
 	static float XM_CALLCONV triangleIntersectRectangle(DirectX::FXMVECTOR t0,
@@ -278,53 +270,65 @@ namespace MathHelper
 		// 만약 삼각형 세 점의 정사영이 사각형 안에 있으면, 그 점들을 검사한다.
 		// 4*3개 순서쌍의 직선 사이 거리가 최소가 되면서 선분 사이에 있는 점들을 구한다.
 		XMVECTOR trianglePlane = XMPlaneFromPoints(t0, t1, t2);
-		XMVECTOR rectPlane = XMPlaneFromPointNormal(r0, XMVector3Normalize(XMVector3Cross(width, height)));
+		XMVECTOR rectPlane = XMPlaneFromPointNormal(r0, XMVector3Normalize(XMVector3Cross(height, width)));
 		float speed = XMVectorGetX(XMVector3Length(velocity));
-		XMVECTOR velocityNormal = velocity / speed;
+		XMVECTOR velocityNormal = XMVectorSetW(velocity / speed, 0.f);
 
-		XMVECTOR r1 = r0 + width;
-		XMVECTOR r2 = r0 + width + height;
-		XMVECTOR r3 = r0 + height;
-
-		// todo [7/12/2021 qwerw]
-		float minDistance = NO_INTERSECTION;
-		std::array<XMVECTOR, 3> triangle = { t0, t1, t2 };
-		std::array<XMVECTOR, 4> rect = { r0, r1, r2, r3 };
+		if (XMVectorGetX(XMVector3Dot(trianglePlane, velocityNormal)) > -FLT_EPSILON)
+		{
+			return NO_INTERSECTION;
+		}
+		if (XMVectorGetX(XMVector3Dot(rectPlane, velocityNormal)) < FLT_EPSILON)
+		{
+			return NO_INTERSECTION;
+		}
+		float minDistance = speed;
+		std::array<XMVECTOR, 3> triangle = { XMVectorSetW(t0, 1.f), XMVectorSetW(t1, 1.f), XMVectorSetW(t2, 1.f) };
+		std::array<XMVECTOR, 4> rect = { XMVectorSetW(r0, 1.f), XMVectorSetW(r0 + width, 1.f),
+										XMVectorSetW(r0 + width + height, 1.f), XMVectorSetW(r0 + height, 1.f) };
 		std::array<XMVECTOR, 3> orthTriangle;
 		std::array<XMVECTOR, 4> orthRect;
-
 		for (int i = 0; i < 3; ++i)
 		{
-			check(MathHelper::equal(XMVectorGetW(triangle[i]), 1));
 			float triangleDistance = XMVectorGetX(XMVector4Dot(velocityNormal, triangle[i]));
-			orthTriangle[i] = triangle[i] + triangleDistance * velocityNormal;
-			float rectDistance = XMVectorGetX(XMVector4Dot(rectPlane, triangle[i])) / XMVectorGetX(XMVector3Dot(rectPlane, velocityNormal));
-			float distance = triangleDistance - rectDistance;
+			orthTriangle[i] = triangle[i] - triangleDistance * velocityNormal;
+		}
+		for (int i = 0; i < 4; ++i)
+		{
+			float rectDistance = XMVectorGetX(XMVector4Dot(velocityNormal, rect[i]));
+			orthRect[i] = rect[i] - rectDistance * velocityNormal;
+		}
+
+		bool isNearDistance = false;
+		for (int i = 0; i < 3; ++i)
+		{
+			float distance = XMVectorGetX(XMVector4Dot(rectPlane, triangle[i])) / XMVectorGetX(XMVector3Dot(rectPlane, velocityNormal));
 			if (speed < distance || distance < 0)
 			{
 				continue;
 			}
-			XMVECTOR rectPoint = triangle[i] + rectDistance * velocityNormal;
-			if (isPointInRectangle(r0, width, height, rectPoint))
+			isNearDistance = true;
+			XMVECTOR rectPoint = triangle[i] - distance * velocityNormal;
+			if (distance < minDistance && isPointInRectangle(r0, width, height, rectPoint))
 			{
-				minDistance = std::min(minDistance, distance);
+				minDistance = distance;
 			}
+		}
+		if (false == isNearDistance)
+		{
+			return NO_INTERSECTION;
 		}
 
 		for (int i = 0; i < 4; ++i)
 		{
-			check(MathHelper::equal(XMVectorGetW(rect[i]), 1));
-			float triangleDistance = XMVectorGetX(XMVector4Dot(rectPlane, rect[i])) / XMVectorGetX(XMVector3Dot(trianglePlane, velocityNormal));;
-			float rectDistance = XMVectorGetX(XMVector4Dot(velocityNormal, rect[i]));
-			orthRect[i] = rect[i] + rectDistance * velocityNormal;
-			float distance = triangleDistance - rectDistance;
+			float distance = XMVectorGetX(XMVector4Dot(trianglePlane, rect[i])) / (-XMVectorGetX(XMVector3Dot(trianglePlane, velocityNormal)));
 			if (speed < distance || distance < 0)
 			{
 				continue;
 			}
-			if (isPointInTriangle(orthTriangle[0], orthTriangle[1], orthTriangle[2], orthRect[i]))
+			if (distance < minDistance && isPointInTriangle(orthTriangle[0], orthTriangle[1], orthTriangle[2], orthRect[i]))
 			{
-				minDistance = std::min(minDistance, distance);
+				minDistance = distance;
 			}
 		}
 
@@ -335,17 +339,17 @@ namespace MathHelper
 				float intersect;
 				if (isLineIntersectLine(orthRect[i], orthRect[(i + 1) % 4], orthTriangle[j], orthTriangle[(j + 1) % 3], intersect))
 				{
-					XMVECTOR p = rect[i] * intersect + rect[(j + 1) % 4] * (1.f - intersect);
-					float distance = XMVectorGetX(XMVector4Dot(rectPlane, p));
-					if (distance >= 0)
+					XMVECTOR p = XMVectorSetW(rect[i] * (1.f - intersect) + rect[(i + 1) % 4] * intersect, 1.f);
+					float distance = XMVectorGetX(XMVector4Dot(trianglePlane, p)) / (-XMVectorGetX(XMVector3Dot(trianglePlane, velocityNormal)));
+					if (0 <= distance && distance < minDistance)
 					{
-						minDistance = std::min(minDistance, distance);
+						minDistance = distance;
 					}
 				}
 			}
 		}
 
-		return minDistance;
+		return minDistance / speed;
 	}
 
 	static float XM_CALLCONV triangleIntersectBox(DirectX::FXMVECTOR t0,
@@ -369,61 +373,61 @@ namespace MathHelper
 		std::array<bool, 12> edgeChecked = { false, };
 		std::array<bool, 8> vertexChecked = { false, };
 		float rv = NO_INTERSECTION;
-		if (xDot < -0.01)
+		//if (xDot < -0.01)
+		{
+			rv = std::min(rv, triangleIntersectRectangle(
+				t0, t1, t2,
+				center - boxX - boxY - boxZ,
+				+2.f * boxZ,
+				+2.f * boxY,
+				velocity));
+
+		}
+		//else if (xDot > 0.01)
+		{
+			rv = std::min(rv, triangleIntersectRectangle(
+				t0, t1, t2,
+				center + boxX + boxY + boxZ,
+				-2.f * boxY,
+				-2.f * boxZ,
+				velocity));
+		}
+
+		//if (yDot < -0.01)
+		{
+			rv = std::min(rv, triangleIntersectRectangle(
+				t0, t1, t2,
+				center - boxX - boxY - boxZ,
+				+2.f * boxX,
+				+2.f * boxZ,
+				velocity));
+		}
+		//else if (yDot > 0.01)
 		{
 			rv = std::min(rv, triangleIntersectRectangle(
 				t0, t1, t2,
 				center - boxX + boxY + boxZ,
 				-2.f * boxZ,
-				-2.f * boxY,
-				velocity));
-
-		}
-		else if (xDot > 0.01)
-		{
-			rv = std::min(rv, triangleIntersectRectangle(
-				t0, t1, t2,
-				center + boxX + boxY - boxZ,
-				+2.f * boxZ,
-				-2.f * boxY,
+				-2.f * boxX,
 				velocity));
 		}
 
-		if (yDot < -0.01)
+		//if (zDot < -0.01)
 		{
 			rv = std::min(rv, triangleIntersectRectangle(
 				t0, t1, t2,
-				center - boxX - boxY + boxZ,
-				-2.f * boxZ,
-				+2.f * boxX,
-				velocity));
-		}
-		else if (yDot > 0.01)
-		{
-			rv = std::min(rv, triangleIntersectRectangle(
-				t0, t1, t2,
-				center - boxX + boxY - boxZ,
-				+2.f * boxZ,
-				+2.f * boxX,
-				velocity));
-		}
-
-		if (zDot < -0.01)
-		{
-			rv = std::min(rv, triangleIntersectRectangle(
-				t0, t1, t2,
-				center - boxX + boxY - boxZ,
-				+2.f * boxX,
-				-2.f * boxY,
-				velocity));
-		}
-		else if (zDot > 0.01)
-		{
-			rv = std::min(rv, triangleIntersectRectangle(
-				t0, t1, t2,
-				center - boxX - boxY + boxZ,
-				+2.f * boxX,
+				center - boxX - boxY - boxZ,
 				+2.f * boxY,
+				+2.f * boxX,
+				velocity));
+		}
+		//else if (zDot > 0.01)
+		{
+			rv = std::min(rv, triangleIntersectRectangle(
+				t0, t1, t2,
+				center + boxX + boxY + boxZ,
+				-2.f * boxX,
+				-2.f * boxY,
 				velocity));
 		}
 		return rv;
@@ -472,8 +476,7 @@ namespace MathHelper
 			return NO_INTERSECTION;
 		}
 
-		check(MathHelper::equal(XMVectorGetW(sphereCenter), 1.f));
-		float intersectTime = (radius - XMVectorGetX(XMVector4Dot(plane, sphereCenter))) / planeDotVelocity;
+		float intersectTime = (radius - XMVectorGetX(XMVector4Dot(plane, XMVectorSetW(sphereCenter, 1.f)))) / planeDotVelocity;
 		if (intersectTime < 0.f || 1.f < intersectTime)
 		{
 			return NO_INTERSECTION;

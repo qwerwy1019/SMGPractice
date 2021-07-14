@@ -446,7 +446,6 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 
 	
 	collisionInfo._position = XMVector3Transform(XMLoadFloat3(&actor.getPosition()), inverseMatrix) - adjustingVelocity;
-	collisionInfo._position = XMVectorSetW(collisionInfo._position, 1.f);
 	collisionInfo._velocity += adjustingVelocity;
 
 	switch (actor.getCharacterInfo()->getCollisionShape())
@@ -481,10 +480,15 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 			collisionInfo._max = XMVectorMax(collisionInfo._position, collisionInfo._position + collisionInfo._velocity);
 
 			// ¸Â³ª...? [7/12/2021 qwerw]
-			XMVECTOR absVector = XMVectorAbs(collisionInfo._boxX) + XMVectorAbs(collisionInfo._boxY) + XMVectorAbs(collisionInfo._boxZ);
+// 			XMVECTOR absVector = XMVectorAbs(collisionInfo._boxX) + XMVectorAbs(collisionInfo._boxY) + XMVectorAbs(collisionInfo._boxZ);
+// 
+// 			collisionInfo._min -= absVector;
+// 			collisionInfo._max += absVector;
 
-			collisionInfo._min -= absVector;
-			collisionInfo._max += absVector;
+			collisionInfo._radius = actor.getRadius();
+			XMVECTOR radiusVector = XMVectorSet(collisionInfo._radius, collisionInfo._radius, collisionInfo._radius, 0.f);
+			collisionInfo._min -= radiusVector;
+			collisionInfo._max += radiusVector;
 		}
 		break;
 		case CollisionShape::Count:
@@ -506,5 +510,5 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 	collisionTime = (collisionTimeRaw * (adjustingDistance + speed) - adjustingDistance) / speed;
 
 	check(collisionTime < 1.05);
-	return collisionTime;
+	return true;
 }
