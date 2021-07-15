@@ -7,6 +7,7 @@
 #include "SMGEngine/MathHelper.h"
 #include "SMGEngine/D3DUtil.h"
 #include "SMGEngine/FileHelper.h"
+#include "SMGEngine/Exception.h"
 
 
 void FbxLoader::loadFbxPolygons(FbxMesh* mesh, std::vector<FbxPolygonVertexInfo>& polygonVertices) const

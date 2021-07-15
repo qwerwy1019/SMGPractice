@@ -1,6 +1,6 @@
 ﻿#include <iostream>
 #include "SMGFileConverter/FbxLoader.h"
-#include "SMGEngine/D3DUtil.h"
+#include "SMGEngine/Exception.h"
 using namespace std;
 
 int main(int argc, char *argv[])
