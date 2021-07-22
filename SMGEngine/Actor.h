@@ -9,12 +9,6 @@ struct SpawnInfo;
 struct GravityPoint;
 class GameObject;
 
-struct CollisionInfo
-{
-	float _collisionTime; // 0 ~ 1
-	DirectX::XMFLOAT3 _collisionPoint; // {-1 ~ 1, -1 ~ 1, -1 ~ 1}
-};
-
 class Actor
 {
 public:
@@ -34,18 +28,18 @@ public:
 	const DirectX::XMFLOAT3& getUpVector(void) const noexcept;
 	// 위치, 회전 정보를 따로 관리하고 계산하면 renderItem의 _worldMatrix랑 차이가 생길수도 있다. [3/1/2021 qwerwy]
 	// 한쪽을 전체 계산해서 덮어씌우는쪽으로 생각해봐야겠다.
-	bool XM_CALLCONV checkCollision(const Actor* otherActor, DirectX::FXMVECTOR moveVector, CollisionInfo& outCollisionInfo) const noexcept;
+	static bool XM_CALLCONV checkCollision(const Actor* lhs, const Actor* rhs) noexcept;
 	float getRadius(void) const noexcept;
 	float getSizeX(void) const noexcept;
 	float getSizeY(void) const noexcept;
 	float getSizeZ(void) const noexcept;
-	static bool XM_CALLCONV checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept;
-	static bool XM_CALLCONV checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept;
+	static bool XM_CALLCONV checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs) noexcept;
+	static bool XM_CALLCONV checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexcept;
 	
 	// 아직 미구현 [3/17/2021 qwerwy]
-	static bool XM_CALLCONV checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept;
-	static bool XM_CALLCONV checkCollideBoxWithPolygon(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept;
-	static bool XM_CALLCONV checkCollidePolygonWithPolygon(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept;
+	static bool XM_CALLCONV checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
+	static bool XM_CALLCONV checkCollideBoxWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
+	static bool XM_CALLCONV checkCollidePolygonWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
 	DirectX::XMFLOAT3 getMoveVector(const TickCount64& deltaTick) const noexcept;
 	void setPosition(const DirectX::XMFLOAT3& toPosition) noexcept;
 	bool isActionEnd() const noexcept;

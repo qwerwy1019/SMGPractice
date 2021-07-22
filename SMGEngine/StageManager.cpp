@@ -201,8 +201,7 @@ bool StageManager::checkCollision(Actor* actor, const DirectX::XMFLOAT3& moveVec
 						continue;
 					}
 
-					CollisionInfo outCollisionInfo;
-					if (actor->checkCollision(otherActor, moveVectorLoaded, outCollisionInfo))
+					if (Actor::checkCollision(actor, otherActor))
 					{
 						return true;
 					}

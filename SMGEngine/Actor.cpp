@@ -323,219 +323,113 @@ const DirectX::XMFLOAT3& Actor::getUpVector(void) const noexcept
 	return _upVector;
 }
 
-bool Actor::checkCollision(const Actor* otherActor, DirectX::FXMVECTOR moveVector, CollisionInfo& outCollisionInfo) const noexcept
+bool Actor::checkCollision(const Actor* lhs, const Actor* rhs) noexcept
 {
+	check(lhs != rhs);
+	check(lhs != nullptr);
+	check(rhs != nullptr);
+
 	using namespace DirectX;
-	// 아직 미구현 [3/17/2021 qwerwy]
-// 	bool checkPathCollision = true;
-// 	if (checkPathCollision && _characterInfo->getCollisionShape() == CollisionShape::Sphere)
-// 	{
-// 		switch (otherActor->_characterInfo->getCollisionShape())
-// 		{
-// 			case CollisionShape::Sphere:
-// 			{
-// 				const float moveLength = XMVectorGetX(XMVector3Length(moveVector));
-// 				const XMVECTOR moveVectorNomalized = moveVector / moveLength;
-// 				const XMVECTOR toCenter = otherActor->getPosition() - getPosition();
-// 				const float dot = XMVectorGetX(XMVector3Dot(moveVectorNomalized, toCenter));
-// 				if (dot < 0)
-// 				{
-// 					return false;
-// 				}
-// 
-// 				const float radiusSum = getRadius() + otherActor->getRadius();
-// 				const float toCenterLengthSq = XMVectorGetX(XMVector3LengthSq(toCenter));
-// 				if ((radiusSum + moveLength) * (radiusSum + moveLength) < toCenterLengthSq)
-// 				{
-// 					return false;
-// 				}
-// 				const float centerToMoveLengthSq = toCenterLengthSq - dot * dot;
-// 				
-// 				if (centerToMoveLengthSq > radiusSum * radiusSum)
-// 				{
-// 					return false;
-// 				}
-// 
-// 				const float resultMoveVectorLength = dot - sqrt(radiusSum * radiusSum - centerToMoveLengthSq);
-// 				if(moveLength < resultMoveVectorLength)
-// 				{
-// 					return false;
-// 				}
-// 
-// 				resultMoveVector = moveVectorNomalized * resultMoveVectorLength;
-// 				return true;
-// 			}
-// 			break;
-// 			case CollisionShape::Box:
-// 			{
-// 				int i = 0, y = 0;
-// 				const float moveLength = XMVectorGetX(XMVector3Length(moveVector));
-// 				const XMVECTOR moveVectorNomalized = moveVector / moveLength;
-// 				const XMVECTOR position = otherActor->getPosition();
-// 				const XMVECTOR direction = XMLoadFloat3(&otherActor->_direction);
-// 				const XMVECTOR upVector = XMLoadFloat3(&otherActor->_upVector);
-// 				const XMVECTOR sideVector = XMVector3Cross(direction, upVector);
-// 
-// 				const XMVECTOR normal[6] = { direction, upVector, sideVector,
-// 						-direction, -upVector, -sideVector };
-// 				
-// 				const float size[6] = { getSizeX(), getSizeY(), getSizeZ(),
-// 									otherActor->getSizeX(), otherActor->getSizeY(), otherActor->getSizeZ() };
-// 
-// 				for (int i = 0; i < 6; ++i)
-// 				{
-// 					float dot = XMVectorGetX(XMVector3Dot(normal[i], moveVectorNomalized));
-// 					if (dot <= 0)
-// 					{
-// 						// 평행할때 충돌 체크를 할지 말지 고민해봐야함 [3/13/2021 qwerwy]
-// 						return false;
-// 					}
-// 					
-// 					const float planeConstant = XMVectorGetX(XMVector3Dot(normal[i] * size[i] + position, normal[i]));
-// 					
-// 					float moveLength = planeConstant + _characterInfo->getRadius() - XMVectorGetX(XMVector3Dot(normal[i], getPosition()));
-// 					moveLength /= XMVectorGetX(XMVector3Dot(normal[i], moveVectorNomalized));
-// 
-// 					
-// 				}
-// 				XMVECTOR intersectPoint = XMPlaneIntersectLine();
-// 				XMVECTOR toIntersectPoint = getPosition() - intersectPoint;
-// 
-// 
-// 			}
-// 			break;
-// 			case CollisionShape::Polygon:
-// 			{
-// 				for (auto p : polygons)
-// 				{
-// 					XMVECTOR plane = XMPlaneFromPoints(p[0], p[1], p[2]);
-// 					
-// 				}
-// 			}
-// 			break;
-// 			default:
-// 			{
-// 				ThrowErrCode(ErrCode::UndefinedType, "타입이 추가되었는지 확인해주세요.");
-// 				static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
-// 			}
-// 		}
-// 		// path check
-// 		currentPosition;
-// 		moveVector;
-// 		planesOfotherActor;
-// 
-// 		for all PLANES
-// 		{
-// 			
-// 		}
-// 		POINT planePoint = _position + direction * sizeZ * _size;
-// 		checkCollision
-// 		XMPlaneFromPointNormal()
-// 		plane dot moveVector
-// 		XMPlaneIntersectLine(plane, currentPosition, moveVector)
-// 	}
-// 	else
-	{
-		XMFLOAT3 distanceVector = MathHelper::sub(otherActor->getPosition(), getPosition());
+	XMFLOAT3 distanceVector = MathHelper::sub(lhs->getPosition(), rhs->getPosition());
 		
-		float radiusSum = getRadius() + otherActor->getRadius();
-		if(radiusSum * radiusSum < MathHelper::lengthSq(distanceVector))
+	float radiusSum = lhs->getRadius() + rhs->getRadius();
+	if(radiusSum * radiusSum < MathHelper::lengthSq(distanceVector))
+	{
+		return false;
+	}
+
+	switch (lhs->_characterInfo->getCollisionShape())
+	{
+		case CollisionShape::Sphere:
 		{
+			switch (rhs->_characterInfo->getCollisionShape())
+			{
+				case CollisionShape::Sphere:
+				{
+					return true;
+				}
+				break;
+				case CollisionShape::Box:
+				{
+					return checkCollideBoxWithSphere(rhs, lhs);
+				}
+				break;
+				case CollisionShape::Polygon:
+				{
+					return checkCollideSphereWithPolygon(lhs, rhs);
+				}
+				break;
+				default:
+				{
+					check(false, "타입이 추가되었는지 확인해주세요.");
+					static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
+					return false;
+				}
+			}
+		}
+		break;
+		case CollisionShape::Box:
+		{
+			switch (lhs->_characterInfo->getCollisionShape())
+			{
+				case CollisionShape::Sphere:
+				{
+					return checkCollideBoxWithSphere(lhs, rhs);
+				}
+				break;
+				case CollisionShape::Box:
+				{
+					return checkCollideBoxWithBox(lhs, rhs);
+				}
+				break;
+				case CollisionShape::Polygon:
+				{
+					return checkCollideBoxWithPolygon(lhs, rhs);
+				}
+				break;
+				default:
+				{
+					check(false, "타입이 추가되었는지 확인해주세요.");
+					static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
+					return false;
+				}
+			}
+		}
+		break;
+		case CollisionShape::Polygon:
+		{
+			switch (rhs->_characterInfo->getCollisionShape())
+			{
+				case CollisionShape::Sphere:
+				{
+					return checkCollideSphereWithPolygon(rhs, lhs);
+				}
+				break;
+				case CollisionShape::Box:
+				{
+					return checkCollideBoxWithPolygon(rhs, lhs);
+				}
+				break;
+				case CollisionShape::Polygon:
+				{
+					return checkCollidePolygonWithPolygon(lhs, rhs);
+				}
+				break;
+				default:
+				{
+					check(false, "타입이 추가되었는지 확인해주세요.");
+					static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
+					return false;
+				}
+			}
+		}
+		break;
+		default:
+		{
+			check(false, "타입이 추가되었는지 확인해주세요.");
+			static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
 			return false;
 		}
-
-		switch (_characterInfo->getCollisionShape())
-		{
-			case CollisionShape::Sphere:
-			{
-				switch (otherActor->_characterInfo->getCollisionShape())
-				{
-					case CollisionShape::Sphere:
-						return true;
-					break;
-					case CollisionShape::Box:
-					{
-						return checkCollideBoxWithSphere(otherActor, this, -moveVector, outCollisionInfo);
-					}
-					break;
-					case CollisionShape::Polygon:
-					{
-						return checkCollideSphereWithPolygon(this, otherActor, moveVector, outCollisionInfo);
-					}
-					break;
-					default:
-					{
-						check(false, "타입이 추가되었는지 확인해주세요.");
-						static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
-						return false;
-					}
-				}
-			}
-			break;
-			case CollisionShape::Box:
-			{
-				switch (otherActor->_characterInfo->getCollisionShape())
-				{
-					case CollisionShape::Sphere:
-					{
-						return checkCollideBoxWithSphere(this, otherActor, moveVector, outCollisionInfo);
-					}
-					break;
-					case CollisionShape::Box:
-					{
-						return checkCollideBoxWithBox(this, otherActor, moveVector, outCollisionInfo);
-					}
-					break;
-					case CollisionShape::Polygon:
-					{
-						return checkCollideBoxWithPolygon(this, otherActor, moveVector, outCollisionInfo);
-					}
-					break;
-					default:
-					{
-						check(false, "타입이 추가되었는지 확인해주세요.");
-						static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
-						return false;
-					}
-				}
-			}
-			break;
-			case CollisionShape::Polygon:
-			{
-				switch (otherActor->_characterInfo->getCollisionShape())
-				{
-					case CollisionShape::Sphere:
-					{
-						return checkCollideSphereWithPolygon(otherActor, this, -moveVector, outCollisionInfo);
-					}
-					break;
-					case CollisionShape::Box:
-					{
-						return checkCollideBoxWithPolygon(otherActor, this, -moveVector, outCollisionInfo);
-					}
-					break;
-					case CollisionShape::Polygon:
-					{
-						return checkCollidePolygonWithPolygon(this, otherActor, moveVector, outCollisionInfo);
-					}
-					break;
-					default:
-					{
-						check(false, "타입이 추가되었는지 확인해주세요.");
-						static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
-						return false;
-					}
-				}
-			}
-			break;
-			default:
-			{
-				check(false, "타입이 추가되었는지 확인해주세요.");
-				static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
-				return false;
-			}
-		}
-		// obb check
 	}
 }
 
@@ -559,10 +453,10 @@ float Actor::getSizeZ(void) const noexcept
 	return _size * _characterInfo->getSizeZXXX();
 }
 
-bool XM_CALLCONV Actor::checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept
+bool XM_CALLCONV Actor::checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs) noexcept
 {
 	using namespace DirectX;
-	XMVECTOR lhsCenter = XMLoadFloat3(&lhs->_position) + lhsMoveVector;
+	XMVECTOR lhsCenter = XMLoadFloat3(&lhs->_position);
 	XMVECTOR rhsCenter = XMLoadFloat3(&rhs->_position);
 
 	XMVECTOR lhsDirection = XMLoadFloat3(&lhs->_direction);
@@ -591,13 +485,13 @@ bool XM_CALLCONV Actor::checkCollideBoxWithBox(const Actor* lhs, const Actor* rh
 	return true;
 }
 
-bool XM_CALLCONV Actor::checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept
+bool XM_CALLCONV Actor::checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexcept
 {
 	check(lhs->_characterInfo->getCollisionShape() == CollisionShape::Box, "타입에러");
 	check(rhs->_characterInfo->getCollisionShape() == CollisionShape::Sphere, "타입에러");
 	using namespace DirectX;
 	XMVECTOR boxPosition = XMLoadFloat3(&lhs->_position);
-	XMVECTOR spherePosition = XMLoadFloat3(&rhs->_position) + lhsMoveVector;
+	XMVECTOR spherePosition = XMLoadFloat3(&rhs->_position);
 	XMVECTOR lhsToRhs = spherePosition - boxPosition;
 
 	XMVECTOR boxDirection = XMLoadFloat3(&lhs->_direction);
@@ -636,17 +530,17 @@ bool XM_CALLCONV Actor::checkCollideBoxWithSphere(const Actor* lhs, const Actor*
 	return true;
 }
 
-bool XM_CALLCONV Actor::checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept
+bool XM_CALLCONV Actor::checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
 {
 	throw std::logic_error("The method or operation is not implemented.");
 }
 
-bool XM_CALLCONV Actor::checkCollideBoxWithPolygon(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept
+bool XM_CALLCONV Actor::checkCollideBoxWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
 {
 	throw std::logic_error("The method or operation is not implemented.");
 }
 
-bool XM_CALLCONV Actor::checkCollidePolygonWithPolygon(const Actor* lhs, const Actor* rhs, DirectX::FXMVECTOR lhsMoveVector, CollisionInfo& outCollisionInfo) noexcept
+bool XM_CALLCONV Actor::checkCollidePolygonWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
 {
 	throw std::logic_error("The method or operation is not implemented.");
 }
