@@ -127,6 +127,15 @@ bool StageManager::applyGravity(Actor* actor, const TickCount64& deltaTick) noex
 		return true;
 	}
 
+	if (t < 1.f)
+	{
+		actor->setActorOnGround(true);
+	}
+	else
+	{
+		actor->setActorOnGround(false);
+	}
+
 	moveVector = MathHelper::mul(moveVector, t);
 	if (checkCollision(actor, moveVector))
 	{

@@ -141,9 +141,11 @@ FrameEvent_Jump::FrameEvent_Jump(const XMLReaderNode& node)
 	: FrameEvent(node)
 {
 	node.loadAttribute("Speed", _speed);
+	node.loadAttribute("TargetFallSpeed", _targetFallSpeed);
 }
 
 void FrameEvent_Jump::process(Actor& actor) const noexcept
 {
 	actor.setVerticalSpeed(_speed);
+	actor.setTargetVerticalSpeed(_targetFallSpeed);
 }

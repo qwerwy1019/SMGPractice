@@ -56,4 +56,5 @@ public:
 	virtual FrameEventType getType() const noexcept override { return FrameEventType::Jump; }
 private:
 	float _speed;
+	float _targetFallSpeed;
 };

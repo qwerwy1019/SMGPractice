@@ -7,6 +7,7 @@ enum class ActionConditionType
 	Key,
 	End,
 	IsStop,
+	OnGround,
 
 	Count,
 };

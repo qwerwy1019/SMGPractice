@@ -21,6 +21,8 @@ public:
 	bool getGravityDirection(DirectX::XMFLOAT3& gravityDirection) const noexcept;
 	float getSpeed() const noexcept;
 	float getVerticalSpeed() const noexcept;
+	void setActorOnGround(bool onGround) noexcept;
+	bool isOnGround(void) const noexcept;
 public:
 	TickCount64 getLocalTickCount(void) const noexcept;
 	const DirectX::XMFLOAT3& getPosition(void) const noexcept;
@@ -55,6 +57,7 @@ public:
 	void setRotateType(const RotateType rotateType, const float rotateAngleOffset, const float speed) noexcept;
 	void setAcceleration(const float acceleration, const float targetSpeed, MoveType moveType) noexcept;
 	void setVerticalSpeed(const float speed) noexcept;
+	void setTargetVerticalSpeed(const float targetVerticalSpeed) noexcept;
 	const CharacterInfo* getCharacterInfo(void) const noexcept;
 	const GameObject* getGameObject(void) const noexcept;
 private:
@@ -73,6 +76,7 @@ private:
 	float _moveDirectionOffset;
 	float _acceleration;
 	float _targetSpeed;
+	float _targetVerticalSpeed;
 
 	// 캐릭터 회전
 	RotateType _rotateType;
@@ -89,6 +93,8 @@ private:
 	const ActionState* _currentActionState;
 	
 	TickCount64 _localTickCount;
+
+	bool _onGround;
 };
 
 class PlayerActor : public Actor

@@ -162,7 +162,7 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	}
 	else if (conditionTypeString == "OnGround")
 	{
-		return nullptr;
+		condition = std::make_unique<ActionCondition_OnGround>(conditionArgs);
 	}
 	else if (conditionTypeString == "GroundEdge")
 	{
@@ -174,7 +174,7 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	}
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 4, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 5, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -296,4 +296,14 @@ bool ActionCondition_IsStop::checkCondition(const Actor& actor) const noexcept
 		return true;
 	}
 	return false;
+}
+
+ActionCondition_OnGround::ActionCondition_OnGround(const std::string& args)
+{
+
+}
+
+bool ActionCondition_OnGround::checkCondition(const Actor& actor) const noexcept
+{
+	return actor.isOnGround();
 }

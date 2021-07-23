@@ -23,11 +23,13 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _moveDirectionOffset(0.f)
 	, _acceleration(0.f)
 	, _targetSpeed(0.f)
+	, _targetVerticalSpeed(10.f)
 	, _rotateType(RotateType::Fixed)
 	, _rotateAngleOffset(0.f)
 	, _rotateSpeed(0.f)
 	, _gravityPoint(nullptr)
 	, _localTickCount(0)
+	, _onGround(false)
 {
 	_characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo._key);
 	// 시작할때 한번 검증하는 부분 만들면 옮겨야함. [5/20/2021 qwerw]
@@ -294,13 +296,38 @@ void Actor::updateActor(const TickCount64& deltaTick) noexcept
 
 	if (_gravityPoint != nullptr)
 	{
-		_verticalSpeed = _gravityPoint->_gravity;
+		if (_verticalSpeed < _targetVerticalSpeed)
+		{
+			_verticalSpeed += _gravityPoint->_gravity * deltaTick;
+			_verticalSpeed = std::min(_verticalSpeed, _targetVerticalSpeed);
+		}
+		else
+		{
+			_verticalSpeed -= _gravityPoint->_gravity * deltaTick;
+			_verticalSpeed = std::max(_verticalSpeed, _targetVerticalSpeed);
+		}
 	}
 }
 
 float Actor::getVerticalSpeed() const noexcept
 {
 	return _verticalSpeed;
+}
+
+void Actor::setActorOnGround(bool onGround) noexcept
+{
+	if (_onGround == false && onGround == true)
+	{
+		_verticalSpeed = 0.f;
+		_targetVerticalSpeed = 10.f;
+	}
+
+	_onGround = onGround;
+}
+
+bool Actor::isOnGround(void) const noexcept
+{
+	return _onGround;
 }
 
 TickCount64 Actor::getLocalTickCount(void) const noexcept
@@ -673,6 +700,11 @@ void Actor::setAcceleration(const float acceleration, const float targetSpeed, M
 void Actor::setVerticalSpeed(const float speed) noexcept
 {
 	_verticalSpeed = speed;
+}
+
+void Actor::setTargetVerticalSpeed(const float targetVerticalSpeed) noexcept
+{
+	_targetVerticalSpeed = targetVerticalSpeed;
 }
 
 const CharacterInfo* Actor::getCharacterInfo(void) const noexcept
