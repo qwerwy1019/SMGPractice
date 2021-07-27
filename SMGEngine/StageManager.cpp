@@ -384,13 +384,13 @@ void StageManager::updateCamera() noexcept
 			auto cameraFocusPosition = add(playerPosition, mul(playerUpVector, 100));
 			auto cameraPosition = add(playerPosition, mul(sub(mul(playerUpVector, 2.f), playerDirection), 600));
 
-			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector, 10.f, 10.f);
+			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector, 2.f, 5.f);
 		}
 		else
 		{
 			int cameraIndex = getCameraIndex();
 			check(cameraIndex < nearCameraList.size());
-			if (cameraIndex != -1)
+			if (cameraIndex == -1)
 			{
 				using namespace MathHelper;
 				float distanceSum = 0.f;

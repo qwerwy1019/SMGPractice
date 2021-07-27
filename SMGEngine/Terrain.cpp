@@ -432,8 +432,6 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex,
 
 bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& velocity, float& collisionTime) const noexcept
 {
-	check(MathHelper::equal(MathHelper::lengthSq(velocity), 0) == false);
-
 	XMMATRIX inverseMatrix = XMLoadFloat4x4(&_gameObject->getWorldMatrix());
 	inverseMatrix = XMMatrixInverse(nullptr, inverseMatrix);
 

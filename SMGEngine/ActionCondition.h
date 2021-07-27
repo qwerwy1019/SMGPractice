@@ -81,3 +81,13 @@ public:
 	virtual bool checkCondition(const Actor& actor) const noexcept override;
 private:
 };
+
+class ActionCondition_Falling : public ActionCondition
+{
+public:
+	ActionCondition_Falling(const std::string& args);
+	virtual ~ActionCondition_Falling() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::Falling; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+};

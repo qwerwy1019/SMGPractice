@@ -172,9 +172,13 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	{
 		condition = std::make_unique<ActionCondition_IsStop>(conditionArgs);
 	}
+	else if (conditionTypeString == "Falling")
+	{
+		condition = std::make_unique<ActionCondition_Falling>(conditionArgs);
+	}
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 5, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 6, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -306,4 +310,18 @@ ActionCondition_OnGround::ActionCondition_OnGround(const std::string& args)
 bool ActionCondition_OnGround::checkCondition(const Actor& actor) const noexcept
 {
 	return actor.isOnGround();
+}
+
+ActionCondition_Falling::ActionCondition_Falling(const std::string& args)
+{
+
+}
+
+bool ActionCondition_Falling::checkCondition(const Actor& actor) const noexcept
+{
+	if (actor.getVerticalSpeed() > 0 && !actor.isOnGround())
+	{
+		return true;
+	}
+	return false;
 }

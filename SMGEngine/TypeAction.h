@@ -8,6 +8,7 @@ enum class ActionConditionType
 	End,
 	IsStop,
 	OnGround,
+	Falling,
 
 	Count,
 };

@@ -209,7 +209,7 @@ void Actor::applyGravityRotation(const TickCount64& deltaTick, const DirectX::XM
 
 	double rotateAngle = acos(std::clamp(XMVectorGetX(XMVector3Dot(-gravityDirectionV, actorUpVector)), -1.f, 1.f));
 	// gravity 회전 속도에 대한 다른 기준을 찾을때까진 일단 gravity에 비례하게 쓴다. [6/24/2021 qwerw]
-	double maxRotateAngle = static_cast<double>(_gravityPoint->_gravity) * deltaTick * 0.01;
+	double maxRotateAngle = static_cast<double>(_gravityPoint->_gravity) * deltaTick;
 	if (rotateAngle > maxRotateAngle)
 	{
 		XMVECTOR cross = XMVector3Cross(actorUpVector, -gravityDirectionV);
@@ -300,6 +300,7 @@ void Actor::updateActor(const TickCount64& deltaTick) noexcept
 		{
 			_verticalSpeed += _gravityPoint->_gravity * deltaTick;
 			_verticalSpeed = std::min(_verticalSpeed, _targetVerticalSpeed);
+			OutputDebugStringA((std::to_string(_verticalSpeed) + "\n").c_str());
 		}
 		else
 		{
@@ -316,7 +317,7 @@ float Actor::getVerticalSpeed() const noexcept
 
 void Actor::setActorOnGround(bool onGround) noexcept
 {
-	if (_onGround == false && onGround == true)
+	if (onGround == true)
 	{
 		_verticalSpeed = 0.f;
 		_targetVerticalSpeed = 10.f;
