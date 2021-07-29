@@ -91,3 +91,38 @@ public:
 	virtual bool checkCondition(const Actor& actor) const noexcept override;
 private:
 };
+
+class ActionCondition_Random : public ActionCondition
+{
+public:
+	ActionCondition_Random(const std::string& args);
+	virtual ~ActionCondition_Random() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::Random; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	uint8_t _probability;
+};
+
+class ActionCondition_CheckPlayerDistance : public ActionCondition
+{
+public:
+	ActionCondition_CheckPlayerDistance(const std::string& args);
+	virtual ~ActionCondition_CheckPlayerDistance() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::CheckPlayerDistance; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	int _min;
+	int _max;
+};
+
+class ActionCondition_CheckPlayerAltitude : public ActionCondition
+{
+public:
+	ActionCondition_CheckPlayerAltitude(const std::string& args);
+	virtual ~ActionCondition_CheckPlayerAltitude() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::CheckPlayerAltitude; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	int _min;
+	int _max;
+};

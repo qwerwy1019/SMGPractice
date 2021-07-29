@@ -176,9 +176,21 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	{
 		condition = std::make_unique<ActionCondition_Falling>(conditionArgs);
 	}
+	else if (conditionTypeString == "Random")
+	{
+		condition = std::make_unique<ActionCondition_Random>(conditionArgs);
+	}
+	else if (conditionTypeString == "CheckPlayerDistance")
+	{
+		condition = std::make_unique<ActionCondition_CheckPlayerDistance>(conditionArgs);
+	}
+	else if (conditionTypeString == "CheckPlayerAltitude")
+	{
+		condition = std::make_unique<ActionCondition_CheckPlayerAltitude>(conditionArgs);
+	}	
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 6, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 9, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -325,3 +337,80 @@ bool ActionCondition_Falling::checkCondition(const Actor& actor) const noexcept
 	}
 	return false;
 }
+
+ActionCondition_Random::ActionCondition_Random(const std::string& args)
+{
+	_probability = std::stoi(args);
+}
+
+bool ActionCondition_Random::checkCondition(const Actor& actor) const noexcept
+{
+	return MathHelper::Rand(0, 99) < _probability;
+}
+
+ActionCondition_CheckPlayerDistance::ActionCondition_CheckPlayerDistance(const std::string& args)
+{
+	const auto& tokenized = D3DUtil::tokenizeString(args, '_');
+	if (tokenized.size() != 2)
+	{
+		ThrowErrCode(ErrCode::ActionChartLoadFail, "ActionCondition_CheckPlayerDistance" + args);
+	}
+	_min = std::stoi(tokenized[0]);
+	_max = std::stoi(tokenized[1]);
+}
+
+bool ActionCondition_CheckPlayerDistance::checkCondition(const Actor& actor) const noexcept
+{
+	check(&actor != SMGFramework::getStageManager()->getPlayerActor());
+	check(nullptr != SMGFramework::getStageManager()->getPlayerActor());
+
+	const PlayerActor* player = SMGFramework::getStageManager()->getPlayerActor();
+	if (player == nullptr)
+	{
+		return false;
+	}
+	const auto& playerPosition = player->getPosition();
+	const auto& actorPosition = actor.getPosition();
+
+	float lengthSq = MathHelper::lengthSq(MathHelper::sub(playerPosition, actorPosition));
+	if (_min * _min < lengthSq && lengthSq < _max * _max)
+	{
+		return true;
+	}
+	return false;
+}
+ActionCondition_CheckPlayerAltitude::ActionCondition_CheckPlayerAltitude(const std::string& args)
+{
+	const auto& tokenized = D3DUtil::tokenizeString(args, '_');
+	if (tokenized.size() != 2)
+	{
+		ThrowErrCode(ErrCode::ActionChartLoadFail, "ActionCondition_CheckPlayerAltitude" + args);
+	}
+	_min = std::stoi(tokenized[0]);
+	_max = std::stoi(tokenized[1]);
+}
+
+bool ActionCondition_CheckPlayerAltitude::checkCondition(const Actor& actor) const noexcept
+{
+	check(&actor != SMGFramework::getStageManager()->getPlayerActor());
+	check(nullptr != SMGFramework::getStageManager()->getPlayerActor());
+
+	const PlayerActor* player = SMGFramework::getStageManager()->getPlayerActor();
+	if (player == nullptr)
+	{
+		return false;
+	}
+	const auto& playerPosition = player->getPosition();
+	const auto& actorPosition = actor.getPosition();
+	const auto& actorUpVector = actor.getUpVector();
+
+	float altitude = MathHelper::dot(MathHelper::sub(playerPosition, actorPosition), actorUpVector);
+
+	if (_min < altitude && altitude < _max)
+	{
+		return true;
+	}
+	return false;
+	
+}
+

@@ -125,9 +125,15 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 			}
 		}
 		break;
-		case RotateType::ToTarget:
+		case RotateType::ToPlayer:
 		{
-			check(false, "¹Ì±¸Çö");
+			check(SMGFramework::getStageManager()->getPlayerActor() != this);
+			const PlayerActor* player = SMGFramework::getStageManager()->getPlayerActor();
+			if (nullptr != player)
+			{
+				XMVECTOR playerPosition = XMLoadFloat3(&player->getPosition());
+				
+			}
 		}
 		break;
 		case RotateType::Path:

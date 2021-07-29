@@ -74,7 +74,7 @@ FrameEvent_Rotate::FrameEvent_Rotate(const XMLReaderNode& node)
 	}
 	else if (typeString == "ToTarget")
 	{
-		_rotateType = RotateType::ToTarget;
+		_rotateType = RotateType::ToPlayer;
 	}
 	else if (typeString == "Path")
 	{

@@ -106,6 +106,10 @@ namespace MathHelper
 	{
 		return DirectX::XMFLOAT3(lhs.x / rhs, lhs.y / rhs, lhs.z / rhs);
 	}
+	static float dot(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs)
+	{
+		return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+	}
 	static float lengthSq(const DirectX::XMFLOAT3& lhs)
 	{
 		return lhs.x * lhs.x + lhs.y * lhs.y + lhs.z * lhs.z;

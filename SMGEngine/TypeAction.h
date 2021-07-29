@@ -9,6 +9,9 @@ enum class ActionConditionType
 	IsStop,
 	OnGround,
 	Falling,
+	Random,
+	CheckPlayerDistance,
+	CheckPlayerAltitude,
 
 	Count,
 };
@@ -43,7 +46,7 @@ enum class MoveType
 enum class RotateType
 {
 	Fixed,
-	ToTarget,
+	ToPlayer,
 	Path,
 	JoystickInput,
 	ToWall,
