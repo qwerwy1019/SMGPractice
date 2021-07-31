@@ -97,7 +97,7 @@ FrameEvent_Rotate::FrameEvent_Rotate(const XMLReaderNode& node)
 
 void FrameEvent_Rotate::process(Actor& actor) const noexcept
 {
-	check(0 <= _offset && _offset < MathHelper::Pi);
+	check(-MathHelper::Pi <= _offset && _offset < MathHelper::Pi);
 	actor.setRotateType(_rotateType, _offset, _rotateSpeed);
 }
 

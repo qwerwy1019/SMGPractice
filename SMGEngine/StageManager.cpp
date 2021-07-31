@@ -70,6 +70,7 @@ void StageManager::update()
 			actor->updateObjectWorldMatrix();
 		}
 	}
+	processActorCollision();
 }
 
 void StageManager::moveActorXXX(Actor* actor, const DirectX::XMFLOAT3& moveVector) noexcept
@@ -137,10 +138,10 @@ bool StageManager::applyGravity(Actor* actor, const TickCount64& deltaTick) noex
 	}
 
 	moveVector = MathHelper::mul(moveVector, t);
-	if (checkCollision(actor, moveVector))
-	{
-		return true;
-	}
+// 	if (checkCollision(actor, moveVector))
+// 	{
+// 		//return true;
+// 	}
 
 	moveActorXXX(actor, moveVector);
 
@@ -184,41 +185,6 @@ const GravityPoint* StageManager::getGravityPointAt(const DirectX::XMFLOAT3& pos
 	}
 
 	return _stageInfo->getGravityPointAt(position);
-}
-bool StageManager::checkCollision(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept
-{
-	check(MathHelper::equal(MathHelper::length(moveVector), 0) == false);
-	check(actor != nullptr);
-
-	XMFLOAT3 position = actor->getPosition();
-	XMINT3 sector = getSectorCoord(actor->getPosition());
-	const int sectorIndex = sectorCoordToIndex(sector);
-	check(sectorIndex < _actorsBySector.size(), "sector ¹üÀ§¸¦ ¹þ¾î³³´Ï´Ù.");
-
-	XMVECTOR moveVectorLoaded = XMLoadFloat3(&moveVector);
-	for (int i = std::max(0, sector.x - 1); i < std::min(_sectorUnitNumber.x, sector.x + 1); ++i)
-	{
-		for (int j = std::max(0, sector.y - 1); j < std::min(_sectorUnitNumber.y, sector.y + 1); ++j)
-		{
-			for (int k = std::max(0, sector.z - 1); k < std::min(_sectorUnitNumber.z, sector.z + 1); ++k)
-			{
-				const auto& actorsInSector = _actorsBySector[sectorCoordToIndex(XMINT3(i, j, k))];
-				for (const auto& otherActor : actorsInSector)
-				{
-					if (otherActor == actor)
-					{
-						continue;
-					}
-
-					if (Actor::checkCollision(actor, otherActor))
-					{
-						return true;
-					}
-				}
-			}
-		}
-	}
-	return false;
 }
 
 float StageManager::checkWall(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept
@@ -271,10 +237,10 @@ bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcep
 	}
 	moveVector = MathHelper::mul(moveVector, t);
 
-	if (checkCollision(actor, moveVector))
-	{
-		return false;
-	}
+// 	if (checkCollision(actor, moveVector))
+// 	{
+// 		//return false;
+// 	}
 
 	moveActorXXX(actor, moveVector);
 	return true;
@@ -282,7 +248,7 @@ bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcep
 
 int StageManager::sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept
 {
-	return sectorCoord.x * _sectorUnitNumber.x + sectorCoord.y * _sectorUnitNumber.y + sectorCoord.z * _sectorUnitNumber.z;
+	return sectorCoord.x * _sectorUnitNumber.y * _sectorUnitNumber.z + sectorCoord.y * _sectorUnitNumber.z + sectorCoord.z;
 }
 
 DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position) const noexcept
@@ -415,6 +381,75 @@ void StageManager::updateCamera() noexcept
 					nearCameraList[cameraIndex]->_position,
 					_playerActor->getPosition(),
 					nearCameraList[cameraIndex]->_upVector, 1.f, 1.f);
+			}
+		}
+	}
+}
+
+void StageManager::processActorCollision(void) noexcept
+{
+	for (int i = 0; i < _sectorUnitNumber.x - 1; ++i)
+	{
+		for (int j = 0; j < _sectorUnitNumber.y - 1; ++j)
+		{
+			for (int k = 0; k < _sectorUnitNumber.z - 1; ++k)
+			{
+				auto sector0Index = sectorCoordToIndex(XMINT3(i, j, k));
+				if (_actorsBySector[sector0Index].empty())
+				{
+					continue;
+				}
+				for (int ii = 0; ii < 2; ++ii)
+				{
+					for (int jj = 0; jj < 2; ++jj)
+					{
+						for (int kk = 0; kk < 2; ++kk)
+						{
+							processActorCollisionXXX(sector0Index, sectorCoordToIndex(XMINT3(i+ii, j+jj, k+kk)));
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void StageManager::processActorCollisionXXX(int sectorCoord0, int sectorCoord1) noexcept
+{
+	check(sectorCoord0 < _actorsBySector.size());
+	check(sectorCoord1 < _actorsBySector.size());
+
+	const auto& actorsInSector0 = _actorsBySector[sectorCoord0];
+	const auto& actorsInSector1 = _actorsBySector[sectorCoord1];
+
+	for (const auto& actor0 : actorsInSector0)
+	{
+		for (const auto& actor1 : actorsInSector1)
+		{
+			if (actor0 == actor1)
+			{
+				continue;
+			}
+			if (sectorCoord0 == sectorCoord1 && actor1 < actor0)
+			{
+				continue;
+			}
+			if (Actor::checkCollision(actor0, actor1))
+			{
+				auto collisionType0 = actor0->getCharacterInfo()->getCollisionType();
+				auto collisionType1 = actor1->getCharacterInfo()->getCollisionType();
+
+				auto moveVector = XMLoadFloat3(&actor0->getPosition()) - XMLoadFloat3(&actor1->getPosition());
+				auto moveLength = XMVectorGetX(XMVector3Length(moveVector));
+				auto radiusSum = actor0->getRadius() + actor1->getRadius();
+				check(moveLength <= radiusSum);
+				
+				moveVector *= (radiusSum - moveLength) / (moveLength * 10.f);
+				
+				XMFLOAT3 moveVector0;
+				XMStoreFloat3(&moveVector0, moveVector);
+				actor0->addMoveVector(moveVector0);
+				actor1->addMoveVector(MathHelper::mul(moveVector0, -1));
 			}
 		}
 	}

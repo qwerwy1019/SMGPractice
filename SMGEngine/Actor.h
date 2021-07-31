@@ -44,6 +44,7 @@ public:
 	static bool XM_CALLCONV checkCollidePolygonWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
 	DirectX::XMFLOAT3 getMoveVector(const TickCount64& deltaTick) const noexcept;
 	void setPosition(const DirectX::XMFLOAT3& toPosition) noexcept;
+	void addMoveVector(const DirectX::XMFLOAT3& moveVector) noexcept;
 	bool isActionEnd() const noexcept;
 	void updateActor(const TickCount64& deltaTick) noexcept;
 
@@ -77,6 +78,8 @@ private:
 	float _acceleration;
 	float _targetSpeed;
 	float _targetVerticalSpeed;
+
+	DirectX::XMFLOAT3 _additionalMoveVector;
 
 	// 캐릭터 회전
 	RotateType _rotateType;

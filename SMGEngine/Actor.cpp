@@ -24,6 +24,7 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _acceleration(0.f)
 	, _targetSpeed(0.f)
 	, _targetVerticalSpeed(10.f)
+	, _additionalMoveVector(0, 0, 0)
 	, _rotateType(RotateType::Fixed)
 	, _rotateAngleOffset(0.f)
 	, _rotateSpeed(0.f)
@@ -628,17 +629,24 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 		direction = XMVector3Transform(direction, rotateMatrix);
 	}
 	XMFLOAT3 resultVector;
-	XMStoreFloat3(&resultVector, direction * _speed);
+	XMStoreFloat3(&resultVector, direction * _speed + XMLoadFloat3(&_additionalMoveVector));
+
 	return resultVector;
 }
 
 void Actor::setPosition(const DirectX::XMFLOAT3& toPosition) noexcept
 {
 	_position = toPosition;
+	_additionalMoveVector = { 0, 0, 0 };
 	if (_gravityPoint == nullptr || MathHelper::length(MathHelper::sub(_gravityPoint->_position, toPosition)) > _gravityPoint->_radius)
 	{
 		_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(toPosition);
 	}
+}
+
+void Actor::addMoveVector(const DirectX::XMFLOAT3& moveVector) noexcept
+{
+	_additionalMoveVector = MathHelper::add(_additionalMoveVector, moveVector);
 }
 
 bool Actor::isActionEnd() const noexcept

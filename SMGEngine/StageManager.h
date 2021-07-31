@@ -23,6 +23,8 @@ public:
 private:
 	void updateCamera() noexcept;
 
+	void processActorCollision(void) noexcept;
+	void processActorCollisionXXX(int sectorCoord0, int sectorCoord1) noexcept;
 	// 스테이지 이동
 public:
 	void loadStage(void);
@@ -40,7 +42,6 @@ public:
 	bool moveActor(Actor* actor, const TickCount64& deltaTick) noexcept;
 	bool rotateActor(Actor* actor, const TickCount64& deltaTick) const noexcept;
 	bool applyGravity(Actor* actor, const TickCount64& deltaTick) noexcept;
-	bool checkCollision(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept;
 	float checkWall(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept;
 	float checkGround(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept;
 
