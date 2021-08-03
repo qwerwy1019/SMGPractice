@@ -5,6 +5,8 @@
 #include "Exception.h"
 #include "MathHelper.h"
 #include "FileHelper.h"
+#include "SMGFramework.h"
+#include "StageManager.h"
 
 FrameEvent::FrameEvent(const XMLReaderNode& node)
 {
@@ -53,9 +55,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_Jump>(node);
 	}
+	else if (typeString == "Die")
+	{
+		return std::make_unique<FrameEvent_Die>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 3, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 4, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -148,4 +154,17 @@ void FrameEvent_Jump::process(Actor& actor) const noexcept
 {
 	actor.setVerticalSpeed(_speed);
 	actor.setTargetVerticalSpeed(_targetFallSpeed);
+}
+
+FrameEvent_Die::FrameEvent_Die(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+
+}
+
+void FrameEvent_Die::process(Actor& actor) const noexcept
+{
+	check(SMGFramework::getStageManager() != nullptr);
+
+	SMGFramework::getStageManager()->killActor(&actor);
 }

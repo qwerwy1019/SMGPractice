@@ -11,6 +11,7 @@ public:
 	GameObject(uint16_t objConstantBufferIndex,
 				uint16_t skinnedConstantBufferIndex, 
 				SkinnedModelInstance* skinnedModelInstance) noexcept;
+	~GameObject();
 	void setRenderItemsXXX(std::vector<RenderItem*>&& renderItems) noexcept;
 
 	void setWorldMatrix(const DirectX::XMFLOAT3& position,

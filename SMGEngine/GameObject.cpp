@@ -3,6 +3,7 @@
 #include "MathHelper.h"
 #include "SkinnedData.h"
 #include "D3DApp.h"
+#include "SMGFramework.h"
 
 GameObject::GameObject(uint16_t objConstantBufferIndex,
 						uint16_t skinnedConstantBufferIndex, 
@@ -15,6 +16,19 @@ GameObject::GameObject(uint16_t objConstantBufferIndex,
 	, _skinnedModelInstance(skinnedModelInstance)
 {
 	check(_skinnedModelInstance != nullptr || _skinnedConstantBufferIndex == std::numeric_limits<uint16_t>::max());
+}
+
+GameObject::~GameObject()
+{
+	if (_skinnedModelInstance != nullptr)
+	{
+		delete _skinnedModelInstance;
+	}
+	for (auto renderItem : _renderItems)
+	{
+		SMGFramework::getD3DApp()->removeRenderItem(renderItem->_renderLayer, renderItem);
+	}
+	SMGFramework::getD3DApp()->removeSkinnedInstance(_skinnedModelInstance);
 }
 
 void GameObject::setWorldMatrix(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& direction, const DirectX::XMFLOAT3& upVector, float size) noexcept

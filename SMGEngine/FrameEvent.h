@@ -58,3 +58,13 @@ private:
 	float _speed;
 	float _targetFallSpeed;
 };
+
+class FrameEvent_Die : public FrameEvent
+{
+public:
+	FrameEvent_Die(const XMLReaderNode& node);
+	virtual ~FrameEvent_Die() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::Die; }
+private:
+};

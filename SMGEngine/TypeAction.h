@@ -21,6 +21,7 @@ enum class FrameEventType
 	Rotate,
 	Speed,
 	Jump,
+	Die,
 
 	Count,
 };

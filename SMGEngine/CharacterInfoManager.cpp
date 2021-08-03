@@ -43,6 +43,7 @@ void CharacterInfoManager::loadXML()
 
 CharacterInfo::CharacterInfo(const XMLReaderNode& node)
 {
+	node.loadAttribute("Key", _key);
 	node.loadAttribute("Name", _name);
 	node.loadAttribute("ObjectFile", _objectFileName);
 	node.loadAttribute("ActionChart", _actionChartFileName);

@@ -48,9 +48,11 @@ public:
 	const PlayerActor* getPlayerActor(void) const noexcept;
 	const GravityPoint* getGravityPointAt(const DirectX::XMFLOAT3& position) const noexcept;
 
-private:
-	int sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept;
 	DirectX::XMINT3 getSectorCoord(const DirectX::XMFLOAT3& position) const noexcept;
+	void killActor(Actor* actor) noexcept;
+private:
+	void killActors(void) noexcept;
+	int sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept;
 
 	//Ä«¸Þ¶ó
 private:
@@ -63,6 +65,7 @@ private:
 	DirectX::XMINT3 _sectorSize;
 	DirectX::XMINT3 _sectorUnitNumber;
 	std::vector<std::unordered_set<Actor*>> _actorsBySector;
+	std::unordered_set<Actor*> _deadActors;
 
 	std::vector<std::unique_ptr<Actor>> _actors;
 	PlayerActor* _playerActor;

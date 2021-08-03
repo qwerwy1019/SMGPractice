@@ -9,6 +9,7 @@ class CharacterInfo
 public:
 	CharacterInfo(const XMLReaderNode& node);
 
+	CharacterKey getKey() const noexcept { return _key; }
 	const std::string& getName() const noexcept { return _name; }
 	const std::string& getObjectFileName() const noexcept { return _objectFileName; }
 	const std::string& getActionChartFileName() const noexcept { return _actionChartFileName; }
@@ -20,6 +21,7 @@ public:
 	float getSizeYXXX(void) const noexcept { return _boxSize.y; }
 	float getSizeZXXX(void) const noexcept { return _boxSize.z; }
 private:
+	CharacterKey _key;
 	std::string _name;
 	std::string _objectFileName;
 	std::string _actionChartFileName;

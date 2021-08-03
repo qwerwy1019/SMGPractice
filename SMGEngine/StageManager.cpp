@@ -77,17 +77,16 @@ void StageManager::moveActorXXX(Actor* actor, const DirectX::XMFLOAT3& moveVecto
 {
 	XMFLOAT3 position = actor->getPosition();
 	XMFLOAT3 toPosition = MathHelper::add(position, moveVector);
-	const int toSectorIndex = sectorCoordToIndex(getSectorCoord(toPosition));
-	XMINT3 sector = getSectorCoord(actor->getPosition());
-	const int sectorIndex = sectorCoordToIndex(sector);
+	const int sectorIndex = sectorCoordToIndex(actor->getSectorCoord());
+
+	actor->setPosition(toPosition);
+	const int toSectorIndex = sectorCoordToIndex(actor->getSectorCoord());
 
 	if (sectorIndex != toSectorIndex)
 	{
 		_actorsBySector[sectorIndex].erase(actor);
 		_actorsBySector[toSectorIndex].insert(actor);
 	}
-
-	actor->setPosition(toPosition);
 }
 
 bool StageManager::rotateActor(Actor* actor, const TickCount64& deltaTick) const noexcept
@@ -246,6 +245,26 @@ bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcep
 	return true;
 }
 
+void StageManager::killActors(void) noexcept
+{
+	for (auto actor : _deadActors)
+	{
+		int sectorIndex = sectorCoordToIndex(actor->getSectorCoord());
+		size_t erased = _actorsBySector[sectorIndex].erase(actor);
+		check(erased == 1);
+		
+		for (int i = 0; i < _actors.size(); ++i)
+		{
+			if (_actors[i].get() == actor)
+			{
+				_actors[i] = std::move(_actors.back());
+				_actors.pop_back();
+				break;
+			}
+		}
+	}
+}
+
 int StageManager::sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept
 {
 	return sectorCoord.x * _sectorUnitNumber.y * _sectorUnitNumber.z + sectorCoord.y * _sectorUnitNumber.z + sectorCoord.z;
@@ -264,12 +283,21 @@ DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position) 
 	DirectX::XMINT3 rv = { static_cast<int>(position.x + baseCoord.x) / _sectorSize.x,
 						   static_cast<int>(position.y + baseCoord.y) / _sectorSize.y,
 						   static_cast<int>(position.z + baseCoord.z) / _sectorSize.z };
-	// todo [5/22/2021 qwerwy]
-	check(0 <= rv.x && rv.x < _sectorUnitNumber.x);
-	check(0 <= rv.y && rv.y < _sectorUnitNumber.y);
-	check(0 <= rv.z && rv.z < _sectorUnitNumber.z);
+
+	check(0 <= rv.x && rv.x < _sectorUnitNumber.x, "sector 범위가 작게 설정되지 않았는지 확인해야함");
+	check(0 <= rv.y && rv.y < _sectorUnitNumber.y, "sector 범위가 작게 설정되지 않았는지 확인해야함");
+	check(0 <= rv.z && rv.z < _sectorUnitNumber.z, "sector 범위가 작게 설정되지 않았는지 확인해야함");
+
+	rv.x = std::clamp(rv.x, 0, _sectorUnitNumber.x - 1);
+	rv.y = std::clamp(rv.y, 0, _sectorUnitNumber.y - 1);
+	rv.z = std::clamp(rv.z, 0, _sectorUnitNumber.z - 1);
 
 	return rv;
+}
+
+void StageManager::killActor(Actor* actor) noexcept
+{
+	_deadActors.insert(actor);
 }
 
 void StageManager::spawnActors()
@@ -303,9 +331,9 @@ void StageManager::spawnActors()
 			}
 		}
 		
-		int sectorIndex = sectorCoordToIndex(getSectorCoord(spawnInfo._position));
+		int sectorIndex = sectorCoordToIndex(actor->getSectorCoord());
 		check(sectorIndex < _actorsBySector.size());
-		_actorsBySector[sectorIndex].emplace(actor.get());
+		auto it = _actorsBySector[sectorIndex].emplace(actor.get());
 
 		_actors.emplace_back(std::move(actor));
 	}
@@ -350,7 +378,7 @@ void StageManager::updateCamera() noexcept
 			auto cameraFocusPosition = add(playerPosition, mul(playerUpVector, 100));
 			auto cameraPosition = add(playerPosition, mul(sub(mul(playerUpVector, 2.f), playerDirection), 600));
 
-			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector, 2.f, 5.f);
+			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector, 20.f, 50.f);
 		}
 		else
 		{
@@ -436,6 +464,9 @@ void StageManager::processActorCollisionXXX(int sectorCoord0, int sectorCoord1) 
 			}
 			if (Actor::checkCollision(actor0, actor1))
 			{
+				actor0->processCollision(actor1);
+				actor1->processCollision(actor0);
+
 				auto collisionType0 = actor0->getCharacterInfo()->getCollisionType();
 				auto collisionType1 = actor1->getCharacterInfo()->getCollisionType();
 
@@ -448,6 +479,7 @@ void StageManager::processActorCollisionXXX(int sectorCoord0, int sectorCoord1) 
 				
 				XMFLOAT3 moveVector0;
 				XMStoreFloat3(&moveVector0, moveVector);
+
 				actor0->addMoveVector(moveVector0);
 				actor1->addMoveVector(MathHelper::mul(moveVector0, -1));
 			}

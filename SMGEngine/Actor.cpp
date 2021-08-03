@@ -52,12 +52,14 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 		ThrowErrCode(ErrCode::ActionChartLoadFail, "기본액션 IDLE이 없습니다. " + _characterInfo->getActionChartFileName());
 	}
 
+	_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(_position);
+	_sectorCoord = SMGFramework::getStageManager()->getSectorCoord(_position);
 	updateObjectWorldMatrix();
 }
 
 Actor::~Actor()
 {
-
+	SMGFramework::getD3DApp()->removeGameObject(_gameObject);
 }
 
 void Actor::rotateOnPlane(const float rotateAngle) noexcept
@@ -638,6 +640,7 @@ void Actor::setPosition(const DirectX::XMFLOAT3& toPosition) noexcept
 {
 	_position = toPosition;
 	_additionalMoveVector = { 0, 0, 0 };
+	_sectorCoord = SMGFramework::getStageManager()->getSectorCoord(toPosition);
 	if (_gravityPoint == nullptr || MathHelper::length(MathHelper::sub(_gravityPoint->_position, toPosition)) > _gravityPoint->_radius)
 	{
 		_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(toPosition);
@@ -730,6 +733,109 @@ const CharacterInfo* Actor::getCharacterInfo(void) const noexcept
 const GameObject* Actor::getGameObject(void) const noexcept
 {
 	return _gameObject;
+}
+
+const DirectX::XMINT3& Actor::getSectorCoord(void) const noexcept
+{
+	return _sectorCoord;
+}
+
+void Actor::processCollision(const Actor* collidingActor) noexcept
+{
+	auto collidingActorType = collidingActor->getCharacterInfo()->getCharacterType();
+	switch (_characterInfo->getCharacterType())
+	{
+		case CharacterType::Player:
+		{
+			switch (collidingActorType)
+			{
+				case CharacterType::Player:
+				{
+					check(false);
+				}
+				break;
+				case CharacterType::Monster:
+				{
+					
+				}
+				break;
+				case CharacterType::Object:
+				{
+
+				}
+				break;
+				case CharacterType::Count:
+				default:
+				{
+					check(false);
+					static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
+				}
+			}
+		}
+		break;
+		case CharacterType::Monster:
+		{
+			switch (collidingActorType)
+			{
+				case CharacterType::Player:
+				{
+
+				}
+				break;
+				case CharacterType::Monster:
+				{
+
+				}
+				break;
+				case CharacterType::Object:
+				{
+
+				}
+				break;
+				case CharacterType::Count:
+				default:
+				{
+					check(false);
+					static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
+				}
+			}
+		}
+		break;
+		case CharacterType::Object:
+		{
+			switch (collidingActorType)
+			{
+				case CharacterType::Player:
+				{
+
+				}
+				break;
+				case CharacterType::Monster:
+				{
+
+				}
+				break;
+				case CharacterType::Object:
+				{
+
+				}
+				break;
+				case CharacterType::Count:
+				default:
+				{
+					check(false);
+					static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
+				}
+			}
+		}
+		break;
+		case CharacterType::Count:
+		default:
+		{
+			check(false);
+			static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
+		}
+	}
 }
 
 PlayerActor::PlayerActor(const SpawnInfo& spawnInfo)

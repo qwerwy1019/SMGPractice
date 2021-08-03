@@ -1096,6 +1096,49 @@ void D3DApp::drawUI(void)
 	_immediateContext->Flush();
 }
 
+void D3DApp::removeRenderItem(const RenderLayer renderLayer, const RenderItem* renderItem) noexcept
+{
+	auto& renderItems = _renderItems[static_cast<int>(renderLayer)];
+	for (int i = 0; i < renderItems.size(); ++i)
+	{
+		if (renderItems[i].get() == renderItem)
+		{
+			renderItems[i] = std::move(renderItems.back());
+			renderItems.pop_back();
+			return;
+		}
+	}
+	check(false);
+}
+
+void D3DApp::removeSkinnedInstance(const SkinnedModelInstance* skinnedInstance) noexcept
+{
+	for (int i = 0; i < _skinnedInstance.size(); ++i)
+	{
+		if (_skinnedInstance[i].get() == skinnedInstance)
+		{
+			_skinnedInstance[i] = std::move(_skinnedInstance.back());
+			_skinnedInstance.pop_back();
+			return;
+		}
+	}
+	check(false);
+}
+
+void D3DApp::removeGameObject(const GameObject* gameObject) noexcept
+{
+	for (int i = 0; i < _gameObjects.size(); ++i)
+	{
+		if (_gameObjects[i].get() == gameObject)
+		{
+			_gameObjects[i] = std::move(_gameObjects.back());
+			_gameObjects.pop_back();
+			return;
+		}
+	}
+	check(false);
+}
+
 void D3DApp::updateMaterialConstantBuffer(void)
 {
 	auto& currentFrameResource = _frameResources[_frameIndex];
