@@ -874,11 +874,11 @@ AnimationInfo* D3DApp::loadXMLAnimationInfo(const std::string& fileName)
 	return it.first->second.get();
 }
 
-GameObject* D3DApp::createGameObject(SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept
+GameObject* D3DApp::createGameObject(const MeshGeometry* meshGeometry, SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept
 {
 	const uint16_t objCBIndex = _gameObjects.size();
 
-	_gameObjects.emplace_back(std::make_unique<GameObject>(objCBIndex, skinnedBufferIndex, skinnedInstance));
+	_gameObjects.emplace_back(std::make_unique<GameObject>(meshGeometry, objCBIndex, skinnedBufferIndex, skinnedInstance));
 	return _gameObjects.back().get();
 }
 
@@ -940,7 +940,7 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 	childIter->second.loadAttribute("FileName", meshFileName);
 	MeshGeometry* mesh = loadXMLMeshGeometry(meshFileName);
 
-	GameObject* gameObject = createGameObject(skinnedInstance, skinnedConstantBufferIndex);
+	GameObject* gameObject = createGameObject(mesh, skinnedInstance, skinnedConstantBufferIndex);
 	const auto& subMeshList = mesh->_subMeshList;
 	const auto& subMeshNodes = childIter->second.getChildNodes();
 
@@ -972,12 +972,10 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		RenderLayer renderLayer = material->getRenderLayer();
 		uint8_t subMeshIndex = subMeshIt - subMeshList.begin();
 		auto renderItem = make_unique<RenderItem>(
-			mesh,
+			gameObject,
 			material,
-			gameObject->getObjectConstantBufferIndex(),
-			subMeshIndex,
 			D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-			skinnedConstantBufferIndex,
+			subMeshIndex,
 			renderLayer);
 
 		renderItems.push_back(renderItem.get());
@@ -1025,18 +1023,26 @@ void D3DApp::createGameObjectDev(Actor* actor)
 			static_assert(static_cast<int>(CollisionShape::Count) == 3);
 		}
 	}
-	auto it = _geometries.emplace(actor->getCharacterInfo()->getName() + "_CollisionBox",
+	auto meshIt = _geometries.emplace(actor->getCharacterInfo()->getName() + "_CollisionBox",
 		new MeshGeometry(meshData, _deviceD3d12.Get(), _commandList.Get()));
 
+	auto object = _gameObjects.emplace_back(
+					std::make_unique<GameObject>(
+						meshIt.first->second.get(),
+						actor->getGameObject()->getObjectConstantBufferIndex(),
+						SKINNED_UNDEFINED,
+						nullptr)).get();
+	//GameObject* gameObjectDev = createGameObject(it.first->second.get(), nullptr, SKINNED_UNDEFINED);
 	auto renderItem = make_unique<RenderItem>(
-		it.first->second.get(),
+		object,
 		loadXmlMaterial("devMat", "green"),
-		actor->getGameObject()->getObjectConstantBufferIndex(),
-		0,
 		D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP,
-		SKINNED_UNDEFINED,
+		0,
 		RenderLayer::GameObjectDev);
 
+	std::vector<RenderItem*> renderItems;
+	renderItems.push_back(renderItem.get());
+	object->setRenderItemsXXX(std::move(renderItems));
 	_renderItems[static_cast<int>(RenderLayer::GameObjectDev)].emplace_back(std::move(renderItem));
 }
 
@@ -1046,7 +1052,7 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 	GeneratedMeshData normalLineMeshData;
 	
 	size_t bufferSize = 0;
-	const Vertex* bufferPointer = gameObject->getRenderItems()[0]->_geometry->getVertexBufferXXX(bufferSize);
+	const Vertex* bufferPointer = gameObject->getMeshGeometry()->getVertexBufferXXX(bufferSize);
 	normalLineMeshData._vertices.reserve(bufferSize * 2);
 	normalLineMeshData._indices.reserve(bufferSize * 2);
 	for (int i = 0; i < bufferSize; ++i)
@@ -1062,18 +1068,26 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 		normalLineMeshData._indices.push_back(2 * i + 1);
 	}
 
-	auto it = _geometries.emplace("NormalVector" + std::to_string(gameObject->getObjectConstantBufferIndex()),
+	auto meshIt = _geometries.emplace("NormalVector" + std::to_string(gameObject->getObjectConstantBufferIndex()),
 		new MeshGeometry(normalLineMeshData, _deviceD3d12.Get(), _commandList.Get()));
 
+	auto object = _gameObjects.emplace_back(
+			std::make_unique<GameObject>(
+				meshIt.first->second.get(),
+				gameObject->getObjectConstantBufferIndex(),
+				SKINNED_UNDEFINED,
+				nullptr)).get();
+
 	auto renderItem = make_unique<RenderItem>(
-		it.first->second.get(),
+		object,
 		loadXmlMaterial("devMat", "blueToRed"),
-		gameObject->getObjectConstantBufferIndex(),
-		0,
 		D3D11_PRIMITIVE_TOPOLOGY_LINELIST,
-		SKINNED_UNDEFINED,
+		0,
 		RenderLayer::GameObjectDev);
 
+	std::vector<RenderItem*> renderItems;
+	renderItems.push_back(renderItem.get());
+	object->setRenderItemsXXX(std::move(renderItems));
 	_renderItems[static_cast<int>(renderItem->_renderLayer)].emplace_back(std::move(renderItem));
 }
 
@@ -1223,9 +1237,10 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		auto renderItem = _renderItems[renderLayerIdx][rIdx].get();
 		check(renderItem != nullptr, "비정상입니다.");
 
-		D3D12_VERTEX_BUFFER_VIEW vbv = renderItem->_geometry->getVertexBufferView();
+		auto meshGeometry = renderItem->_parentObject->getMeshGeometry();
+		D3D12_VERTEX_BUFFER_VIEW vbv = meshGeometry->getVertexBufferView();
 		_commandList->IASetVertexBuffers(0, 1, &vbv);
-		D3D12_INDEX_BUFFER_VIEW ibv = renderItem->_geometry->getIndexBufferView();
+		D3D12_INDEX_BUFFER_VIEW ibv = meshGeometry->getIndexBufferView();
 		_commandList->IASetIndexBuffer(&ibv);
 		_commandList->IASetPrimitiveTopology(renderItem->_primitive);
 
@@ -1233,19 +1248,20 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		textureHandle.Offset(renderItem->_material->getDiffuseSRVHeapIndex(), _cbvSrcUavDescriptorSize);
 		_commandList->SetGraphicsRootDescriptorTable(0, textureHandle);
 
-		D3D12_GPU_VIRTUAL_ADDRESS objectCBaddress = objectCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_objConstantBufferIndex) * objectCBByteSize;
+		D3D12_GPU_VIRTUAL_ADDRESS objectCBaddress = objectCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_parentObject->getObjectConstantBufferIndex()) * objectCBByteSize;
 		_commandList->SetGraphicsRootConstantBufferView(1, objectCBaddress);
 
-		if (renderItem->_skinnedConstantBufferIndex != SKINNED_UNDEFINED)
+		auto skinnedIndex = renderItem->_parentObject->getSkinnedConstantBufferIndex();
+		if (skinnedIndex != SKINNED_UNDEFINED)
 		{
-			D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_skinnedConstantBufferIndex) * skinnedCBByteSize;
+			D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(skinnedIndex) * skinnedCBByteSize;
 			_commandList->SetGraphicsRootConstantBufferView(2, skinnedCBAdress);
 		}
 		
 		D3D12_GPU_VIRTUAL_ADDRESS materialCBAddress = materialCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_material->getMaterialCBIndex()) * materialCBByteSize;
 		_commandList->SetGraphicsRootConstantBufferView(4, materialCBAddress);
 
-		const auto& subMesh = renderItem->_geometry->_subMeshList[renderItem->_subMeshIndex];
+		const auto& subMesh = meshGeometry->_subMeshList[renderItem->_subMeshIndex];
 		_commandList->DrawIndexedInstanced(
 			subMesh._indexCount,
 			1,
@@ -1601,36 +1617,21 @@ uint16_t D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 	return textureSRVIndex;
 }
 
-// RenderItem::RenderItem() noexcept
-// 	: _objConstantBufferIndex(std::numeric_limits<uint16_t>::max())
-// 	, _geometry(nullptr)
-// 	, _primitive(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST)
-// 	, _subMeshIndex(0)
-// 	, _material(nullptr)
-// 	, _skinnedConstantBufferIndex(SKINNED_UNDEFINED)
-// {
-// 
-// }
-
-RenderItem::RenderItem(MeshGeometry* mesh, 
-						Material* material, 
-						uint16_t objConstantBufferIndex, 
+RenderItem::RenderItem(const GameObject* parentObject, 
+						const Material* material, 
+						D3D12_PRIMITIVE_TOPOLOGY primitive,
 						uint8_t subMeshIndex,
-						D3D12_PRIMITIVE_TOPOLOGY primitive, 
-						uint16_t skinnedConstantBufferIndex, 
 						RenderLayer renderLayer) noexcept
-	: _geometry(mesh)
+	: _parentObject(parentObject)
 	, _material(material)
-	, _objConstantBufferIndex(objConstantBufferIndex)
-	, _subMeshIndex(subMeshIndex)
 	, _primitive(primitive)
-	, _skinnedConstantBufferIndex(skinnedConstantBufferIndex)
 	, _renderLayer(renderLayer)
+	, _subMeshIndex(subMeshIndex)
+	, _isCulled(false)
 {
-
 }
 
 const SubMeshGeometry& RenderItem::getSubMesh() const noexcept
 {
-	return _geometry->_subMeshList[_subMeshIndex];
+	return _parentObject->getMeshGeometry()->_subMeshList[_subMeshIndex];
 }

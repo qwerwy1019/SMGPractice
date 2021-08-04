@@ -490,7 +490,7 @@ float Actor::getSizeZ(void) const noexcept
 	return _size * _characterInfo->getSizeZXXX();
 }
 
-bool XM_CALLCONV Actor::checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs) noexcept
+bool Actor::checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs) noexcept
 {
 	using namespace DirectX;
 	XMVECTOR lhsCenter = XMLoadFloat3(&lhs->_position);
@@ -522,7 +522,7 @@ bool XM_CALLCONV Actor::checkCollideBoxWithBox(const Actor* lhs, const Actor* rh
 	return true;
 }
 
-bool XM_CALLCONV Actor::checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexcept
+bool Actor::checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexcept
 {
 	check(lhs->_characterInfo->getCollisionShape() == CollisionShape::Box, "타입에러");
 	check(rhs->_characterInfo->getCollisionShape() == CollisionShape::Sphere, "타입에러");
@@ -567,17 +567,17 @@ bool XM_CALLCONV Actor::checkCollideBoxWithSphere(const Actor* lhs, const Actor*
 	return true;
 }
 
-bool XM_CALLCONV Actor::checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
+bool Actor::checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
 {
 	throw std::logic_error("The method or operation is not implemented.");
 }
 
-bool XM_CALLCONV Actor::checkCollideBoxWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
+bool Actor::checkCollideBoxWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
 {
 	throw std::logic_error("The method or operation is not implemented.");
 }
 
-bool XM_CALLCONV Actor::checkCollidePolygonWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
+bool Actor::checkCollidePolygonWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
 {
 	throw std::logic_error("The method or operation is not implemented.");
 }
@@ -836,6 +836,11 @@ void Actor::processCollision(const Actor* collidingActor) noexcept
 			static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
 		}
 	}
+}
+
+void Actor::setCulled(void) noexcept
+{
+	_gameObject->setCulled();
 }
 
 PlayerActor::PlayerActor(const SpawnInfo& spawnInfo)

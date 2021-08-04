@@ -55,28 +55,22 @@ enum class PSOType : uint8_t
 
 struct RenderItem
 {
-	RenderItem(MeshGeometry* mesh,
-				Material* material,
-				uint16_t objConstantBufferIndex,
-				uint8_t subMeshIndex,
+	RenderItem(const GameObject* parentObject,
+				const Material* material,
 				D3D12_PRIMITIVE_TOPOLOGY primitive,
-				uint16_t skinnedConstantBufferIndex,
+				uint8_t subMeshIndex,
 				RenderLayer renderLayer) noexcept;
 
-	MeshGeometry* _geometry;
-	Material* _material;
-
-	uint16_t _objConstantBufferIndex;
-
-	uint8_t _subMeshIndex;
+	const GameObject* _parentObject;
+	const Material* _material;
 
 	D3D12_PRIMITIVE_TOPOLOGY _primitive;
 
- 	uint16_t _skinnedConstantBufferIndex;
 	RenderLayer _renderLayer;
-
+	uint8_t _subMeshIndex;
+	bool _isCulled;
+	
 	const SubMeshGeometry& getSubMesh() const noexcept;
-
 };
 
 class D3DApp
@@ -169,7 +163,7 @@ private:
 	BoneInfo* loadXMLBoneInfo(const std::string& fileName);
 	MeshGeometry* loadXMLMeshGeometry(const std::string& fileName);
 	AnimationInfo* loadXMLAnimationInfo(const std::string& fileName);
-	GameObject* createGameObject(SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept;
+	GameObject* createGameObject(const MeshGeometry* meshGeometry, SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept;
 
 	void drawUI(void);
 private:

@@ -59,7 +59,7 @@ public:
 										DirectX::FXMVECTOR min,
 										DirectX::FXMVECTOR max, 
 										const TerrainCollisionInfoXXX& collisionInfo) const noexcept;
-
+	void setCulled(void) noexcept;
 private:
 	enum class DivideType
 	{
@@ -69,7 +69,6 @@ private:
 	};
 	GameObject* _gameObject;
 	std::vector<TerrainAABBNode> _aabbNodes;
-	const MeshGeometry* _meshGeometry;
 	const Vertex* _vertexBuffer;
 	const GeoIndex* _indexBuffer;
 

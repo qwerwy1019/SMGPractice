@@ -29,18 +29,18 @@ public:
 	const DirectX::XMFLOAT3& getDirection(void) const noexcept;
 	const DirectX::XMFLOAT3& getUpVector(void) const noexcept;
 
-	static bool XM_CALLCONV checkCollision(const Actor* lhs, const Actor* rhs) noexcept;
+	static bool checkCollision(const Actor* lhs, const Actor* rhs) noexcept;
 	float getRadius(void) const noexcept;
 	float getSizeX(void) const noexcept;
 	float getSizeY(void) const noexcept;
 	float getSizeZ(void) const noexcept;
-	static bool XM_CALLCONV checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs) noexcept;
-	static bool XM_CALLCONV checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexcept;
+	static bool checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs) noexcept;
+	static bool checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexcept;
 	
 	// 아직 미구현 [3/17/2021 qwerwy]
-	static bool XM_CALLCONV checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
-	static bool XM_CALLCONV checkCollideBoxWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
-	static bool XM_CALLCONV checkCollidePolygonWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
+	static bool checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
+	static bool checkCollideBoxWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
+	static bool checkCollidePolygonWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
 	DirectX::XMFLOAT3 getMoveVector(const TickCount64& deltaTick) const noexcept;
 	void setPosition(const DirectX::XMFLOAT3& toPosition) noexcept;
 	void addMoveVector(const DirectX::XMFLOAT3& moveVector) noexcept;
@@ -62,6 +62,11 @@ public:
 	const GameObject* getGameObject(void) const noexcept;
 	const DirectX::XMINT3& getSectorCoord(void) const noexcept;
 	void processCollision(const Actor* collidingActor) noexcept;
+	void setCulled(void) noexcept;
+
+#if defined DEBUG | defined _DEBUG
+	std::vector<GameObject*> _devObjects;
+#endif
 private:
 	DirectX::XMFLOAT3 _position;
 	//DirectX::XMFLOAT4 _rotationQuat;

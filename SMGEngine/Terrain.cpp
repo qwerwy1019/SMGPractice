@@ -21,8 +21,7 @@ bool Terrain::isWall(void) const noexcept
 }
 
 Terrain::Terrain(const TerrainObjectInfo& terrainInfo)
-	: _meshGeometry(nullptr)
-	, _vertexBuffer(nullptr)
+	: _vertexBuffer(nullptr)
 	, _indexBuffer(nullptr)
 	, _max(0, 0, 0)
 	, _min(0, 0, 0)
@@ -50,21 +49,14 @@ void Terrain::makeAABBTree(void)
 {
 	check(_gameObject != nullptr);
 
-	const MeshGeometry* mesh = nullptr;
 	int totalIndexCount = 0;
 	const auto& renderItems = _gameObject->getRenderItems();
+	auto mesh = _gameObject->getMeshGeometry();
 
 	for (const auto& renderItem : renderItems)
 	{
-		if (mesh != nullptr && mesh != renderItem->_geometry)
-		{
-			ThrowErrCode(ErrCode::InvalidXmlData, "다른 mesh를 같은 terrain으로 사용하려면 별도 작업 필요함");
-		}
-		mesh = renderItem->_geometry;
 		totalIndexCount += renderItem->getSubMesh()._indexCount;
 	}
-	check(mesh != nullptr);
-	_meshGeometry = mesh;
 
 	std::vector<TerrainAABBNode::DataType::Leaf> terrainLeafList(totalIndexCount / 3);
 	int i = 0;
@@ -85,7 +77,7 @@ void Terrain::makeAABBTree(void)
 	_vertexBuffer = mesh->getVertexBufferXXX(vertexCount);
 	_indexBuffer = mesh->getIndexBufferXXX();
 
-	const auto& subMesh = _meshGeometry->_subMeshList[terrainLeafList[0]._subMeshIndex];
+	const auto& subMesh = mesh->_subMeshList[terrainLeafList[0]._subMeshIndex];
 	_min = getVertexFromLeafNode(terrainLeafList[0], 0)._position;
 	_max = _min;
 	for (int i = 0; i < terrainLeafList.size(); ++i)
@@ -191,7 +183,7 @@ uint16_t XM_CALLCONV Terrain::makeAABBTreeXXX(std::vector<TerrainAABBNode::DataT
 
 const Vertex& Terrain::getVertexFromLeafNode(const TerrainAABBNode::DataType::Leaf& leafNode, const int offset) const noexcept
 {
-	const auto& subMesh = _meshGeometry->_subMeshList[leafNode._subMeshIndex];
+	const auto& subMesh = _gameObject->getMeshGeometry()->_subMeshList[leafNode._subMeshIndex];
 	return _vertexBuffer[subMesh._baseVertexLoaction + _indexBuffer[subMesh._baseIndexLoacation + leafNode._index + offset]];
 }
 
@@ -428,6 +420,11 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex,
 			return MathHelper::NO_INTERSECTION;
 		}
 	}
+}
+
+void Terrain::setCulled(void) noexcept
+{
+	_gameObject->setCulled();
 }
 
 bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& velocity, float& collisionTime) const noexcept

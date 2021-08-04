@@ -60,6 +60,7 @@ private:
 	int getCameraCount() const noexcept;
 	int getCameraIndex() const noexcept;
 
+	void setCulled(void) noexcept;
 private:
 	std::vector<Terrain> _terrains;
 	DirectX::XMINT3 _sectorSize;

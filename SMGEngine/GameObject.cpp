@@ -4,11 +4,14 @@
 #include "SkinnedData.h"
 #include "D3DApp.h"
 #include "SMGFramework.h"
+#include "MeshGeometry.h"
 
-GameObject::GameObject(uint16_t objConstantBufferIndex,
+GameObject::GameObject(const MeshGeometry* meshGeometry,
+						uint16_t objConstantBufferIndex,
 						uint16_t skinnedConstantBufferIndex, 
 						SkinnedModelInstance* skinnedModelInstance) noexcept
-	: _worldMatrix(MathHelper::Identity4x4)
+	: _meshGeometry(meshGeometry)
+	, _worldMatrix(MathHelper::Identity4x4)
 	, _textureTransform(MathHelper::Identity4x4)
 	, _objConstantBufferIndex(objConstantBufferIndex)
 	, _dirtyFrames(FRAME_RESOURCE_COUNT)
@@ -63,6 +66,15 @@ void GameObject::setAnimation(const std::string& animationName, const TickCount6
 	_skinnedModelInstance->setAnimation(animationName, blendTick);
 }
 
+void GameObject::setCulled(void) noexcept
+{
+	XMMATRIX worldMat = XMLoadFloat4x4(&_worldMatrix);
+	for (const auto& r : _renderItems)
+	{
+		
+	}
+}
+
 void GameObject::setRenderItemsXXX(std::vector<RenderItem*>&& renderItems) noexcept
 {
 	check(_renderItems.empty());
@@ -77,6 +89,11 @@ bool GameObject::popDirtyFrame(void) noexcept
 		return true;
 	}
 	return false;
+}
+
+const MeshGeometry* GameObject::getMeshGeometry(void) const noexcept
+{
+	return _meshGeometry;
 }
 
 const std::vector<RenderItem*>& GameObject::getRenderItems(void) const noexcept

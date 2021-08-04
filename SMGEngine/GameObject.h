@@ -4,11 +4,13 @@
 
 class SkinnedModelInstance;
 struct RenderItem;
+class MeshGeometry;
 
 class GameObject
 {
 public:
-	GameObject(uint16_t objConstantBufferIndex,
+	GameObject(const MeshGeometry* meshGeomtry,
+				uint16_t objConstantBufferIndex,
 				uint16_t skinnedConstantBufferIndex, 
 				SkinnedModelInstance* skinnedModelInstance) noexcept;
 	~GameObject();
@@ -22,6 +24,7 @@ public:
 
 	inline uint16_t getObjectConstantBufferIndex(void) const noexcept { return _objConstantBufferIndex; }
 	inline uint16_t getSkinnedConstantBufferIndex(void) const noexcept { return _skinnedConstantBufferIndex; }
+	const MeshGeometry* getMeshGeometry(void) const noexcept;
 	 
 	const std::vector<RenderItem*>& getRenderItems(void) const noexcept;
 	const DirectX::XMFLOAT4X4& getWorldMatrix(void) const noexcept;
@@ -30,6 +33,7 @@ public:
 	inline bool isSkinnedAnimationObject(void) const noexcept { return _skinnedModelInstance != nullptr; }
 	bool isAnimationEnd() const noexcept;
 	void setAnimation(const std::string& animationName, const TickCount64& blendTick) noexcept;
+	void setCulled() noexcept;
 private:
 	DirectX::XMFLOAT4X4 _worldMatrix;
 	DirectX::XMFLOAT4X4 _textureTransform;
@@ -38,6 +42,11 @@ private:
 
 	uint16_t _skinnedConstantBufferIndex;
 	SkinnedModelInstance* _skinnedModelInstance;
+	const MeshGeometry* _meshGeometry;
 
 	std::vector<RenderItem*> _renderItems;
+
+#if defined DEBUG | defined _DEBUG
+	std::vector<GameObject*> _devObjects;
+#endif
 };
