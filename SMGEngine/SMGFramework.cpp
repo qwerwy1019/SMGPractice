@@ -167,26 +167,21 @@ void SMGFramework::setStickInput(const StickInputType type, float dx, float dy) 
 		length = 1.f;
 	}
 
-	std::string stateStr = "";
 	if (y <= x && y <= -x)
 	{
 		_stickInputState[typeIndex] = StickInputState::Front;
-		stateStr += "Front";
 	}
 	else if (y >= x && y <= -x)
 	{
 		_stickInputState[typeIndex] = StickInputState::Left;
-		stateStr += "Left";
 	}
 	else if (y >= x && y >= -x)
 	{
 		_stickInputState[typeIndex] = StickInputState::Back;
-		stateStr += "Back";
 	}
 	else if (y <= x && y >= -x)
 	{
 		_stickInputState[typeIndex] = StickInputState::Right;
-		stateStr += "Right";
 	}
 	else
 	{
@@ -196,21 +191,14 @@ void SMGFramework::setStickInput(const StickInputType type, float dx, float dy) 
 	if (length < 0.5f)
 	{
 		_stickInputState[typeIndex] = _stickInputState[typeIndex] & StickInputState::Short;
-		stateStr += "Short";
 	}
 	else
 	{
 		_stickInputState[typeIndex] = _stickInputState[typeIndex] & StickInputState::Long;
-		stateStr += "Long";
 	}
 
 	_stickInput[typeIndex].x = x;
 	_stickInput[typeIndex].y = y;
-	
-	std::string typeIndexStr = std::to_string(typeIndex) + "\n";
-	std::string positionStr = std::to_string(_stickInput[typeIndex].x) + ", " + std::to_string(_stickInput[typeIndex].y) + "\n";
-	stateStr += "\n";
-	//OutputDebugStringA((typeIndexStr + positionStr + stateStr).c_str());
 }
 
 void SMGFramework::resetStickInput(const StickInputType type) noexcept

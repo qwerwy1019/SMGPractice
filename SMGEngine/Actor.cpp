@@ -173,7 +173,6 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 			}
 			XMVECTOR front = frontRaw / frontRawLength;
 			XMVECTOR right = XMVector3Cross(actorUpVector, front);
-			OutputDebugStringA((std::to_string(XMVectorGetX(front)) + ", " + std::to_string(XMVectorGetY(front)) + ", " + std::to_string(XMVectorGetZ(front)) + "\n").c_str());
 			double currentAngleFromFront = acos(std::clamp(XMVectorGetX(XMVector3Dot(front, actorDirection)), -1.f, 1.f));
 			if (XMVectorGetX(XMVector3Dot(right, actorDirection)) < 0.f)
 			{
@@ -309,7 +308,6 @@ void Actor::updateActor(const TickCount64& deltaTick) noexcept
 		{
 			_verticalSpeed += _gravityPoint->_gravity * deltaTick;
 			_verticalSpeed = std::min(_verticalSpeed, _targetVerticalSpeed);
-			OutputDebugStringA((std::to_string(_verticalSpeed) + "\n").c_str());
 		}
 		else
 		{

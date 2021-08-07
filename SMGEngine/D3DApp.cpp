@@ -69,6 +69,7 @@ D3DApp::D3DApp()
 	, _cameraPosition(100, 0, 0)
 	, _cameraUpVector(0, 1, 0)
 	, _cameraFocusPosition(0, 0, 0)
+	, _invViewMatrix(MathHelper::Identity4x4)
 	, _viewMatrix(MathHelper::Identity4x4)
 	, _projectionMatrix(MathHelper::Identity4x4)
 	, _psoType(PSOType::Normal)
@@ -476,8 +477,10 @@ void D3DApp::OnResize(void)
 	flushCommandQueue();
 
 	double aspectRatio = static_cast<double>(width) / height;
-	XMMATRIX&& proj = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, aspectRatio, 1.f, 500000.0f);
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, aspectRatio, 1.f, 500000.0f);
 	XMStoreFloat4x4(&_projectionMatrix, proj);
+
+	BoundingFrustum::CreateFromMatrix(_viewFrustumLocal, proj);
 }
 
 void D3DApp::Update(void)
@@ -632,11 +635,6 @@ void D3DApp::buildFrameResources(void)
 	}
 }
 
-void D3DApp::buildConstantGeometry(void)
-{
-
-}
-
 void D3DApp::updateCamera(void)
 {
 	TickCount64 deltaTickCount = SMGFramework::Get().getTimer().getDeltaTickCount();
@@ -679,6 +677,8 @@ void D3DApp::updateCamera(void)
 
 	XMMATRIX view = XMMatrixLookAtLH(position, focusPosition, upVector);
 	XMStoreFloat4x4(&_viewMatrix, view);
+	XMVECTOR viewDet = XMMatrixDeterminant(view);
+	XMStoreFloat4x4(&_invViewMatrix, XMMatrixInverse(&viewDet, view));
 }
 
 void D3DApp::updateObjectConstantBuffer()
@@ -1153,6 +1153,22 @@ void D3DApp::removeGameObject(const GameObject* gameObject) noexcept
 	check(false);
 }
 
+bool XM_CALLCONV D3DApp::checkCulled(const DirectX::BoundingBox& box, FXMMATRIX world) const noexcept
+{
+	XMVECTOR worldDet = XMMatrixDeterminant(world);
+	XMMATRIX invWorld = XMMatrixInverse(&worldDet, world);
+	XMMATRIX viewToLocal = XMMatrixMultiply(XMLoadFloat4x4(&_invViewMatrix), invWorld);
+
+	BoundingFrustum localSpaceFrustum;
+	_viewFrustumLocal.Transform(localSpaceFrustum, viewToLocal);
+
+	if (localSpaceFrustum.Contains(box) != DirectX::DISJOINT)
+	{
+		return false;
+	}
+	return true;
+}
+
 void D3DApp::updateMaterialConstantBuffer(void)
 {
 	auto& currentFrameResource = _frameResources[_frameIndex];
@@ -1236,6 +1252,10 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 	{
 		auto renderItem = _renderItems[renderLayerIdx][rIdx].get();
 		check(renderItem != nullptr, "비정상입니다.");
+		if (renderItem->_isCulled)
+		{
+			continue;
+		}
 
 		auto meshGeometry = renderItem->_parentObject->getMeshGeometry();
 		D3D12_VERTEX_BUFFER_VIEW vbv = meshGeometry->getVertexBufferView();

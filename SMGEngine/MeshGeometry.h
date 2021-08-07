@@ -41,6 +41,7 @@ public:
 	const GeoIndex* getIndexBufferXXX(void) const noexcept;
 	std::string getName(void) const noexcept { return _name; }
 	std::vector<SubMeshGeometry> _subMeshList;// todo private¿∏∑Œ [1/14/2021 qwerw]
+	const DirectX::BoundingBox& getBoundingBox(void) const noexcept;
 	
 private:
 	void createMeshGeometryXXX(ID3D12Device* device,
@@ -62,6 +63,8 @@ private:
 
 	WComPtr<ID3D12Resource> _vertexBufferUploader;
 	WComPtr<ID3D12Resource> _indexBufferUploader;
+
+	DirectX::BoundingBox _boundingBox;
 	void loadXmlSkinnedVertices(const  XMLReaderNode& node, std::vector<SkinnedVertex>& skinnedVertices) const;
 	void loadXmlVertices(const  XMLReaderNode& node, std::vector<Vertex>& vertices) const;
 	void loadXmlIndices(const  XMLReaderNode& node, std::vector<GeoIndex>& indices) const;

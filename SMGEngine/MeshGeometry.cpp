@@ -80,6 +80,12 @@ MeshGeometry::MeshGeometry(const XMLReaderNode& rootNode, ID3D12Device* device, 
 	int totalIndexCount;
 	rootNode.loadAttribute("TotalIndexCount", totalIndexCount);
 
+	DirectX::XMFLOAT3 min, max;
+	rootNode.loadAttribute("Min", min);
+	rootNode.loadAttribute("Max", max);
+
+	DirectX::BoundingBox::CreateFromPoints(_boundingBox, XMLoadFloat3(&min), XMLoadFloat3(&max));
+
 	std::vector<SkinnedVertex> skinnedVertices;
 	std::vector<Vertex> vertices;
 	std::vector<GeoIndex> indices;
@@ -195,6 +201,11 @@ const GeoIndex* MeshGeometry::getIndexBufferXXX(void) const noexcept
 	check(_indexBufferCPU != nullptr);
 	
 	return reinterpret_cast<GeoIndex*>(_indexBufferCPU->GetBufferPointer());
+}
+
+const DirectX::BoundingBox& MeshGeometry::getBoundingBox(void) const noexcept
+{
+	return _boundingBox;
 }
 
 void MeshGeometry::setVertexByteSizeOnlyXXXXX(UINT vertexBufferSize) noexcept

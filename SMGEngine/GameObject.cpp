@@ -69,10 +69,21 @@ void GameObject::setAnimation(const std::string& animationName, const TickCount6
 void GameObject::setCulled(void) noexcept
 {
 	XMMATRIX worldMat = XMLoadFloat4x4(&_worldMatrix);
-	for (const auto& r : _renderItems)
+	if (SMGFramework::getD3DApp()->checkCulled(_meshGeometry->getBoundingBox(), worldMat))
 	{
-		
+		for (const auto& r : _renderItems)
+		{
+			r->_isCulled = true;
+		}
 	}
+	else
+	{
+		for (const auto& r : _renderItems)
+		{
+			r->_isCulled = false;
+		}
+	}
+	
 }
 
 void GameObject::setRenderItemsXXX(std::vector<RenderItem*>&& renderItems) noexcept

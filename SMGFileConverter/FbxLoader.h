@@ -59,12 +59,16 @@ private:
 		FbxMeshInfo(string&& name,
 			vector<vector<Vertex>>&& vertices,
 			vector<vector<SkinnedVertex>>&& skinnedVertices,
-			vector<vector<GeoIndex>>&& indices);
+			vector<vector<GeoIndex>>&& indices,
+			const DirectX::XMFLOAT3& min,
+			const DirectX::XMFLOAT3& max);
 
 		string _name;
 		vector<vector<Vertex>> _vertices;
 		vector<vector<SkinnedVertex>> _skinnedVertices;
 		vector<vector<GeoIndex>> _indices;
+		XMFLOAT3 _min;
+		XMFLOAT3 _max;
 	};
 
 	struct FbxMaterialStaticInfo

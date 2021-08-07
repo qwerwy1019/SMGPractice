@@ -132,10 +132,19 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 	const int controlPointCount = mesh->GetControlPointsCount();
 	check(skinningInfos.empty() || controlPointCount == skinningInfos.size(), "skinning info와 controlPoint 데이터가 일치하지 않습니다.");
 
+	XMFLOAT3 min(0, 0, 0), max(0, 0, 0);
 	std::vector<DirectX::XMFLOAT3> controlPoints(controlPointCount);
 	for (int i = 0; i < controlPointCount; ++i)
 	{
 		controlPoints[i] = fbxVector4ToXMFLOAT3(mesh->GetControlPointAt(i));
+
+		min.x = std::min(min.x, controlPoints[i].x);
+		min.y = std::min(min.y, controlPoints[i].y);
+		min.z = std::min(min.z, controlPoints[i].z);
+
+		max.x = std::max(max.x, controlPoints[i].x);
+		max.y = std::max(max.y, controlPoints[i].y);
+		max.z = std::max(max.z, controlPoints[i].z);
 	}
 
 	bool isSkinningMesh = !skinningInfos.empty();
@@ -291,7 +300,7 @@ void FbxLoader::loadFbxOptimizedMesh(const FbxMesh* mesh,
 		ThrowErrCode(ErrCode::InvalidIndexInfo);
 	}
 
-	FbxMeshInfo info(mesh->GetNode()->GetName(), std::move(vertices), std::move(skinnedVertices), std::move(indices));
+	FbxMeshInfo info(mesh->GetNode()->GetName(), std::move(vertices), std::move(skinnedVertices), std::move(indices), min, max);
 
 	_meshInfos.emplace_back(std::move(info));
 }
@@ -564,6 +573,8 @@ void FbxLoader::writeXmlMesh(XMLWriter& xmlMeshGeometry, const FbxMeshInfo& mesh
 	xmlMeshGeometry.addAttribute("Name", meshInfo._name.c_str());
 	bool isSkinned = !meshInfo._skinnedVertices.empty();
 	xmlMeshGeometry.addAttribute("IsSkinned", isSkinned);
+	xmlMeshGeometry.addAttribute("Min", meshInfo._min);
+	xmlMeshGeometry.addAttribute("Max", meshInfo._max);
 
 	int totalVertexCount = 0;
 	int totalIndexCount = 0;
@@ -1209,11 +1220,15 @@ void FbxLoader::FbxVertexSkinningInfo::insert(uint16_t boneIndex, float weight) 
 FbxLoader::FbxMeshInfo::FbxMeshInfo(string&& name,
 	vector<vector<Vertex>>&& vertices,
 	vector<vector<SkinnedVertex>>&& skinnedVertices,
-	vector<vector<GeoIndex>>&& indices)
+	vector<vector<GeoIndex>>&& indices,
+	const DirectX::XMFLOAT3& min,
+	const DirectX::XMFLOAT3& max)
 	: _name(name)
 	, _vertices(vertices)
 	, _skinnedVertices(skinnedVertices)
 	, _indices(indices)
+	, _min(min)
+	, _max(max)
 {
 
 }

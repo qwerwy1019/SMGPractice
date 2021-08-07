@@ -114,6 +114,8 @@ public:
 	void removeRenderItem(const RenderLayer renderLayer, const RenderItem* renderItem) noexcept;
 	void removeSkinnedInstance(const SkinnedModelInstance* skinnedInstance) noexcept;
 	void removeGameObject(const GameObject* gameObject) noexcept;
+	//const DirectX::XMFLOAT4X4& getInverseViewMatrix(void) const noexcept;
+	bool XM_CALLCONV checkCulled(const DirectX::BoundingBox& box, FXMMATRIX world) const noexcept;
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보
@@ -141,9 +143,6 @@ private:
 	void buildRootSignature(void);
 	void buildShaders(void);
 	void buildPipelineStateObject(void);
-
-	// 정점 버퍼 초기화
-	void buildConstantGeometry(void);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> getStaticSampler(void) const;
 	void updateCamera(void);
@@ -229,8 +228,11 @@ private:
 	DirectX::XMFLOAT3 _cameraUpVector;
 	DirectX::XMFLOAT3 _cameraFocusPosition;
 
+	DirectX::BoundingFrustum _viewFrustumLocal;
+
 	// 좌표계 변환
 	XMFLOAT4X4 _viewMatrix;
+	XMFLOAT4X4 _invViewMatrix;
 	XMFLOAT4X4 _projectionMatrix;
 
 	PSOType _psoType;
