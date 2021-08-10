@@ -96,7 +96,7 @@ FrameEvent_Rotate::FrameEvent_Rotate(const XMLReaderNode& node)
 	}
 	else
 	{
-		static_assert(static_cast<int>(RotateType::Count) == 5, "타입 추가시 확인");
+		static_assert(static_cast<int>(RotateType::Count) == 6, "타입 추가시 확인");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }

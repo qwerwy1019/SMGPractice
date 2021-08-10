@@ -6,6 +6,8 @@
 #include "D3DUtil.h"
 #include "StageManager.h"
 #include "MathHelper.h"
+#include "ActionChart.h"
+#include "CharacterInfoManager.h"
 
 ActionCondition_Tick::ActionCondition_Tick(const std::string& args)
 {
@@ -187,10 +189,18 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	else if (conditionTypeString == "CheckPlayerAltitude")
 	{
 		condition = std::make_unique<ActionCondition_CheckPlayerAltitude>(conditionArgs);
-	}	
+	}
+	else if (conditionTypeString == "CheckAction")
+	{
+		condition = std::make_unique<ActionCondition_CheckAction>(conditionArgs);
+	}
+	else if (conditionTypeString == "CharacterType")
+	{
+		condition = std::make_unique<ActionCondition_CharacterType>(conditionArgs);
+	}
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 9, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 11, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -414,3 +424,46 @@ bool ActionCondition_CheckPlayerAltitude::checkCondition(const Actor& actor) con
 	
 }
 
+ActionCondition_CheckAction::ActionCondition_CheckAction(const std::string& args)
+{
+	_actionStateName = args;
+}
+
+bool ActionCondition_CheckAction::checkCondition(const Actor& actor) const noexcept
+{
+	if (actor.getActionChart()->getActionState(_actionStateName) == actor.getCurrentActionState())
+	{
+		return true;
+	}
+	return false;
+}
+
+ActionCondition_CharacterType::ActionCondition_CharacterType(const std::string& args)
+{
+	if (args == "Player")
+	{
+		_characterType = CharacterType::Player;
+	}
+	else if (args == "Monster")
+	{
+		_characterType = CharacterType::Monster;
+	}
+	else if (args == "Object")
+	{
+		_characterType = CharacterType::Object;
+	}
+	else
+	{
+		static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
+		ThrowErrCode(ErrCode::UndefinedType, "characterType Error : " + args);
+	}
+}
+
+bool ActionCondition_CharacterType::checkCondition(const Actor& actor) const noexcept
+{
+	if (actor.getCharacterInfo()->getCharacterType() == _characterType)
+	{
+		return true;
+	}
+	return false;
+}

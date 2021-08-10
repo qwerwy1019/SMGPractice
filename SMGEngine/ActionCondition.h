@@ -126,3 +126,26 @@ private:
 	int _min;
 	int _max;
 };
+
+class ActionCondition_CheckAction : public ActionCondition
+{
+public:
+	ActionCondition_CheckAction(const std::string& args);
+	virtual ~ActionCondition_CheckAction() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::CheckAction; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	std::string _actionStateName;
+};
+
+
+class ActionCondition_CharacterType : public ActionCondition
+{
+public:
+	ActionCondition_CharacterType(const std::string& args);
+	virtual ~ActionCondition_CharacterType() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::CharacterType; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	CharacterType _characterType;
+};

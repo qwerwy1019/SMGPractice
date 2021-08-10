@@ -36,7 +36,7 @@ public:
 	float getSizeZ(void) const noexcept;
 	static bool checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs) noexcept;
 	static bool checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexcept;
-	
+
 	// 아직 미구현 [3/17/2021 qwerwy]
 	static bool checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
 	static bool checkCollideBoxWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
@@ -50,8 +50,9 @@ public:
 	void updateActionChart(const TickCount64& deltaTick) noexcept;
 
 	const ActionState* getCurrentActionState(void) const noexcept { return _currentActionState; }
+	const ActionChart* getActionChart(void) const noexcept { return _actionChart; }
+	void setActionState(const std::string& actionStateName) noexcept;
 
-	void setActionState(const ActionState* nextState) noexcept;
 	void updateObjectWorldMatrix() noexcept;
 
 	void setRotateType(const RotateType rotateType, const float rotateAngleOffset, const float speed) noexcept;

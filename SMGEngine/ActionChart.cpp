@@ -7,6 +7,7 @@
 #include "TypeAction.h"
 #include "ActionCondition.h"
 #include "FrameEvent.h"
+#include "CollisionHandler.h"
 
 ActionBranch::ActionBranch(const XMLReaderNode& node)
 {
@@ -40,11 +41,25 @@ bool ActionBranch::checkBranchCondition(const Actor& actor) const noexcept
 
 ActionChart::ActionChart(const XMLReaderNode& node)
 {
-	const auto& childNodes = node.getChildNodes();
-	for (const auto& childNode : childNodes)
+	const auto& childNodes = node.getChildNodesWithName();
+	auto childIter = childNodes.find("ActionStates");
+	const auto& actionStates = childIter->second.getChildNodes();
+	for (const auto& actionState : actionStates)
 	{
-		_actionStates.emplace(childNode.getNodeName(), new ActionState(childNode));
+		_actionStates.emplace(actionState.getNodeName(), new ActionState(actionState));
 	}
+	childIter = childNodes.find("CollisionHandlers");
+	const auto& collisionHandlers = childIter->second.getChildNodes();
+	for (const auto& collisionHandler : collisionHandlers)
+	{
+		_collisionHandlers.emplace_back(new CollisionHandler(collisionHandler));
+	}
+	checkValid();
+}
+
+ActionChart::~ActionChart()
+{
+
 }
 
 ActionState* ActionChart::getActionState(const std::string& name) const noexcept
@@ -56,6 +71,18 @@ ActionState* ActionChart::getActionState(const std::string& name) const noexcept
 		return nullptr;
 	}
 	return it->second.get();
+}
+
+void ActionChart::checkValid(void) const
+{
+	for (const auto& actionState : _actionStates)
+	{
+		actionState.second->checkValid(this);
+	}
+	for (const auto& collisionHandler : _collisionHandlers)
+	{
+		collisionHandler->checkValid(this);
+	}
 }
 
 ActionState::ActionState(const XMLReaderNode& node)
@@ -124,5 +151,18 @@ std::string ActionState::getAnimationName(void) const noexcept
 TickCount64 ActionState::getBlendTick(void) const noexcept
 {
 	return _blendTick;
+}
+
+void ActionState::checkValid(const ActionChart* actionChart) const
+{
+	check(actionChart != nullptr);
+
+	for (const auto& branch : _branches)
+	{
+		if (nullptr == actionChart->getActionState(branch.getActionState()))
+		{
+			ThrowErrCode(ErrCode::ActionChartLoadFail, branch.getActionState());
+		}
+	}
 }
 

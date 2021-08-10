@@ -113,6 +113,7 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 	switch (_rotateType)
 	{
 		case RotateType::Fixed:
+		case RotateType::ToCollidingTarget:
 		{
 			if (MathHelper::equal(_rotateAngleOffset, 0))
 			{
@@ -135,7 +136,7 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 			if (nullptr != player)
 			{
 				XMVECTOR playerPosition = XMLoadFloat3(&player->getPosition());
-				
+				// 미구현 [8/9/2021 qwerw]
 			}
 		}
 		break;
@@ -198,7 +199,7 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 		case RotateType::Count:
 		default:
 		{
-			static_assert(static_cast<int>(RotateType::Count) == 5, "타입 추가시 확인");
+			static_assert(static_cast<int>(RotateType::Count) == 6, "타입 추가시 확인");
 			check(false, "타입 추가시 확인");
 		}
 		break;
@@ -668,13 +669,15 @@ void Actor::updateActionChart(const TickCount64& deltaTick) noexcept
 	std::string nextStateName;
 	if (_currentActionState->checkBranch(*this, nextStateName))
 	{
-		ActionState* nextState = _actionChart->getActionState(nextStateName);
-		setActionState(nextState);
+		setActionState(nextStateName);
 	}
 }
 
-void Actor::setActionState(const ActionState* nextState) noexcept
+void Actor::setActionState(const std::string& nextStateName) noexcept
 {
+	ActionState* nextState = _actionChart->getActionState(nextStateName);
+	check(nullptr != nextState);
+
 	_localTickCount = 0;
 	if (_gameObject->isSkinnedAnimationObject())
 	{

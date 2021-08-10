@@ -12,6 +12,8 @@ enum class ActionConditionType
 	Random,
 	CheckPlayerDistance,
 	CheckPlayerAltitude,
+	CheckAction,
+	CharacterType,
 
 	Count,
 };
@@ -51,6 +53,7 @@ enum class RotateType
 	Path,
 	JoystickInput,
 	ToWall,
+	ToCollidingTarget,
 
 	Count,
 };
@@ -60,6 +63,20 @@ enum class CollisionShape
 	Sphere,
 	Box,
 	Polygon,
+
+	Count,
+};
+
+enum class CollisionCase
+{
+	Upper,
+	Lower,
+	All,
+};
+enum class CollisionEventType
+{
+	RotateToTarget,
+	SetAction,
 
 	Count,
 };

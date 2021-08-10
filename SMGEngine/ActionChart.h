@@ -5,6 +5,9 @@ class Actor;
 class XMLReaderNode;
 class ActionCondition;
 class FrameEvent;
+class CollisionHandler;
+
+class ActionChart;
 
 class ActionBranch
 {
@@ -25,6 +28,7 @@ public:
 	void processFrameEvents(Actor& actor, const TickCount64& lastProcessedTick, const TickCount64& progressedTick) const noexcept;
 	std::string getAnimationName(void) const noexcept;
 	TickCount64 getBlendTick(void) const noexcept;
+	void checkValid(const ActionChart* actionChart) const;
 private:
 	std::vector<std::unique_ptr<FrameEvent>> _frameEvents;
 	std::vector<ActionBranch> _branches;
@@ -32,13 +36,16 @@ private:
 	std::string _animationName;
 	TickCount64 _blendTick;
 };
+
 class ActionChart
 {
 public:
 	ActionChart(const XMLReaderNode& node);
-	//void updateActionState(Actor& actor, uint32_t deltaFrame) const noexcept;
+	~ActionChart();
+	
 	ActionState* getActionState(const std::string& name) const noexcept;
+	void checkValid(void) const;
 private:
 	std::unordered_map<std::string, std::unique_ptr<ActionState>> _actionStates;
-
+	std::vector<std::unique_ptr<CollisionHandler>> _collisionHandlers;
 };
