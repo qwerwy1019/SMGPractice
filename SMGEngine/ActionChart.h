@@ -1,5 +1,6 @@
 #pragma once
 #include "TypeCommon.h"
+#include "TypeAction.h"
 
 class Actor;
 class XMLReaderNode;
@@ -45,6 +46,7 @@ public:
 	
 	ActionState* getActionState(const std::string& name) const noexcept;
 	void checkValid(void) const;
+	void processCollisionHandlers(Actor& selfActor, const Actor& targetActor, CollisionCase collisionCase) const noexcept;
 private:
 	std::unordered_map<std::string, std::unique_ptr<ActionState>> _actionStates;
 	std::vector<std::unique_ptr<CollisionHandler>> _collisionHandlers;

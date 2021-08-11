@@ -72,9 +72,10 @@ void Actor::rotateOnPlane(const float rotateAngle) noexcept
 	
 	XMStoreFloat3(&_direction, XMVector3Normalize(direction));
 
-	if (_rotateType == RotateType::Fixed)
+	if (_rotateType == RotateType::Fixed || _rotateType == RotateType::ToCollidingTarget)
 	{
 		_rotateAngleOffset -= rotateAngle;
+		static_assert(static_cast<int>(RotateType::Count) == 6, "타입 추가시 확인");
 	}
 }
 
@@ -489,6 +490,38 @@ float Actor::getSizeZ(void) const noexcept
 	return _size * _characterInfo->getSizeZXXX();
 }
 
+float Actor::getHalfHeight(void) const noexcept
+{
+	switch (_characterInfo->getCollisionShape())
+	{
+		case CollisionShape::Sphere:
+		{
+			return getRadius();
+		}
+		break;
+		case CollisionShape::Box:
+		{
+			return getSizeY();
+		}
+		break;
+		case CollisionShape::Polygon:
+		{
+			check(false, "미구현");
+			return 0.f;
+		}
+		break;
+		case CollisionShape::Count:
+		default:
+		{
+			static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
+			check(false);
+			return 0.f;
+		}
+		break;
+
+	}
+}
+
 bool Actor::checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs) noexcept
 {
 	using namespace DirectX;
@@ -741,107 +774,72 @@ const DirectX::XMINT3& Actor::getSectorCoord(void) const noexcept
 	return _sectorCoord;
 }
 
-void Actor::processCollision(const Actor* collidingActor) noexcept
+void Actor::processCollision(const Actor* collidingActor, CollisionCase collisionCase) noexcept
 {
-	auto collidingActorType = collidingActor->getCharacterInfo()->getCharacterType();
-	switch (_characterInfo->getCharacterType())
-	{
-		case CharacterType::Player:
-		{
-			switch (collidingActorType)
-			{
-				case CharacterType::Player:
-				{
-					check(false);
-				}
-				break;
-				case CharacterType::Monster:
-				{
-					
-				}
-				break;
-				case CharacterType::Object:
-				{
+	check(this != nullptr);
+	check(collidingActor != nullptr);
 
-				}
-				break;
-				case CharacterType::Count:
-				default:
-				{
-					check(false);
-					static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
-				}
-			}
-		}
-		break;
-		case CharacterType::Monster:
-		{
-			switch (collidingActorType)
-			{
-				case CharacterType::Player:
-				{
-
-				}
-				break;
-				case CharacterType::Monster:
-				{
-
-				}
-				break;
-				case CharacterType::Object:
-				{
-
-				}
-				break;
-				case CharacterType::Count:
-				default:
-				{
-					check(false);
-					static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
-				}
-			}
-		}
-		break;
-		case CharacterType::Object:
-		{
-			switch (collidingActorType)
-			{
-				case CharacterType::Player:
-				{
-
-				}
-				break;
-				case CharacterType::Monster:
-				{
-
-				}
-				break;
-				case CharacterType::Object:
-				{
-
-				}
-				break;
-				case CharacterType::Count:
-				default:
-				{
-					check(false);
-					static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
-				}
-			}
-		}
-		break;
-		case CharacterType::Count:
-		default:
-		{
-			check(false);
-			static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
-		}
-	}
+	_actionChart->processCollisionHandlers(*this, *collidingActor, collisionCase);
 }
 
 void Actor::setCulled(void) noexcept
 {
 	_gameObject->setCulled();
+}
+
+float Actor::getResistanceDistance(const Actor& selfActor, const Actor& targetActor) noexcept
+{
+	switch (selfActor.getCharacterInfo()->getCollisionType())
+	{
+		case CollisionType::SolidObject:
+		{
+			return 0.f;
+		}
+		break;
+		case CollisionType::Character:
+		{
+			switch (targetActor.getCharacterInfo()->getCollisionType())
+			{
+				case CollisionType::SolidObject:
+				{
+					return 0.05f;
+				}
+				break;
+				case CollisionType::Character:
+				{
+					return 0.025f;
+				}
+				break;
+				case CollisionType::Item:
+				{
+					return 0.f;
+				}
+				break;
+				case CollisionType::Count:
+				default:
+				{
+					static_assert(static_cast<int>(CollisionType::Count) == 3, "타입 추가시 확인");
+					check(false);
+					return 0.f;
+				}
+				break;
+			}
+		}
+		break;
+		case CollisionType::Item:
+		{
+			return 0.f;
+		}
+		break;
+		case CollisionType::Count:
+		default:
+		{
+			static_assert(static_cast<int>(CollisionType::Count) == 3, "타입 추가시 확인");
+			check(false);
+			return 0.f;
+		}
+		break;
+	}
 }
 
 PlayerActor::PlayerActor(const SpawnInfo& spawnInfo)

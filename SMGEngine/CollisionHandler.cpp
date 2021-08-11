@@ -7,12 +7,12 @@
 
 CollisionEvent_RotateToTarget::CollisionEvent_RotateToTarget(const XMLReaderNode& node)
 {
-
+	node.loadAttribute("Speed", _speed);
 }
 
-void CollisionEvent_RotateToTarget::process(Actor& selfActor, const Actor&) const noexcept
+void CollisionEvent_RotateToTarget::process(Actor& selfActor, const Actor& targetActor) const noexcept
 {
-	//selfActor.setRotateType(RotateType::ToCollidingTarget, rotateAngle, )
+	//selfActor.setRotateType(RotateType::ToCollidingTarget, , _speed)
 }
 
 std::unique_ptr<CollisionEvent> CollisionEvent::loadXMLCollisionEvent(const XMLReaderNode& node)
@@ -51,6 +51,25 @@ std::string CollisionEvent_SetAction::getActionState(void) const noexcept
 
 CollisionHandler::CollisionHandler(const XMLReaderNode& node)
 {
+	std::string caseString;
+	node.loadAttribute("Case", caseString);
+	if (caseString == "Upper")
+	{
+		_case = CollisionCase::Upper;
+	}
+	else if (caseString == "Center")
+	{
+		_case = CollisionCase::Center;
+	}
+	else if (caseString == "Lower")
+	{
+		_case = CollisionCase::Lower;
+	}
+	else
+	{
+		static_assert(static_cast<int>(CollisionCase::All) == 3);
+		ThrowErrCode(ErrCode::UndefinedType, caseString);
+	}
 	std::string conditionStrings;
 	node.loadAttribute("SelfCondition", conditionStrings);
 
@@ -105,11 +124,7 @@ void CollisionHandler::checkValid(const ActionChart* actionChart) const
 
 bool CollisionHandler::checkHandler(Actor& selfActor, const Actor& targetActor, CollisionCase collisionCase) const noexcept
 {
-	if (_case == CollisionCase::Lower && collisionCase == CollisionCase::Upper)
-	{
-		return false;
-	}
-	else if (_case == CollisionCase::Upper && collisionCase == CollisionCase::Lower)
+	if (_case != CollisionCase::All && _case != collisionCase)
 	{
 		return false;
 	}
@@ -130,4 +145,12 @@ bool CollisionHandler::checkHandler(Actor& selfActor, const Actor& targetActor, 
 		}
 	}
 	return true;
+}
+
+void CollisionHandler::processEvents(Actor& selfActor, const Actor& targetActor) const noexcept
+{
+	for (const auto& collisionEvent : _collisionEvents)
+	{
+		collisionEvent->process(selfActor, targetActor);
+	}
 }

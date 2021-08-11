@@ -27,7 +27,6 @@ enum class FrameEventType
 
 	Count,
 };
-#define convertStringToFrameEventType(string) convertStringToType<ActionConditionType>(string, actionConditionString);
 
 enum class CollisionType
 {
@@ -70,6 +69,7 @@ enum class CollisionShape
 enum class CollisionCase
 {
 	Upper,
+	Center,
 	Lower,
 	All,
 };

@@ -465,24 +465,54 @@ void StageManager::processActorCollisionXXX(int sectorCoord0, int sectorCoord1) 
 			}
 			if (Actor::checkCollision(actor0, actor1))
 			{
-				actor0->processCollision(actor1);
-				actor1->processCollision(actor0);
+				CollisionCase actor0Case = CollisionCase::Center;
+				CollisionCase actor1Case = CollisionCase::Center;
 
-				auto collisionType0 = actor0->getCharacterInfo()->getCollisionType();
-				auto collisionType1 = actor1->getCharacterInfo()->getCollisionType();
+				XMVECTOR position0 = XMLoadFloat3(&actor0->getPosition());
+				XMVECTOR position1 = XMLoadFloat3(&actor1->getPosition());
+				XMVECTOR upVector0 = XMLoadFloat3(&actor0->getUpVector());
+				XMVECTOR upVector1 = XMLoadFloat3(&actor1->getUpVector());
+
+				float actor0HeightFromActor1 = XMVectorGetX(XMVector3Dot(position0 - position1, upVector0));
+				float actor1HeightFromActor0 = XMVectorGetX(XMVector3Dot(position1 - position0, upVector1));
+				
+				if (std::abs(actor0HeightFromActor1) > actor0->getHalfHeight() &&
+					std::abs(actor1HeightFromActor0) > actor1->getHalfHeight())
+				{
+					check((actor0HeightFromActor1 < 0) != (actor1HeightFromActor0 < 0), 
+						"반대로 서있는 액터들끼리 자주 충돌한다면 수정이 필요함.");
+					if (actor0HeightFromActor1 < 0)
+					{
+						actor0Case = CollisionCase::Lower;
+						actor1Case = CollisionCase::Upper;
+					}
+					else
+					{
+						actor0Case = CollisionCase::Upper;
+						actor1Case = CollisionCase::Lower;
+					}
+				}
+				actor0->processCollision(actor1, actor0Case);
+				actor1->processCollision(actor0, actor1Case);
 
 				auto moveVector = XMLoadFloat3(&actor0->getPosition()) - XMLoadFloat3(&actor1->getPosition());
 				auto moveLength = XMVectorGetX(XMVector3Length(moveVector));
 				auto radiusSum = actor0->getRadius() + actor1->getRadius();
 				check(moveLength <= radiusSum);
-				
-				moveVector *= (radiusSum - moveLength) / (moveLength * 10.f);
+				if (MathHelper::equal(moveLength, 0.f))
+				{
+					moveVector = XMLoadFloat3(&actor0->getDirection()) * -radiusSum;
+				}
+				else
+				{
+					moveVector *= (radiusSum - moveLength) / (moveLength);
+				}
 				
 				XMFLOAT3 moveVector0;
 				XMStoreFloat3(&moveVector0, moveVector);
 
-				actor0->addMoveVector(moveVector0);
-				actor1->addMoveVector(MathHelper::mul(moveVector0, -1));
+				actor0->addMoveVector(MathHelper::mul(moveVector0, Actor::getResistanceDistance(*actor0, *actor1)));
+				actor1->addMoveVector(MathHelper::mul(moveVector0, -Actor::getResistanceDistance(*actor1, *actor0)));
 			}
 		}
 	}

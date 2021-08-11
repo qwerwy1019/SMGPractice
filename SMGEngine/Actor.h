@@ -34,8 +34,10 @@ public:
 	float getSizeX(void) const noexcept;
 	float getSizeY(void) const noexcept;
 	float getSizeZ(void) const noexcept;
+	float getHalfHeight(void) const noexcept;
 	static bool checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs) noexcept;
 	static bool checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexcept;
+	static float getResistanceDistance(const Actor& selfActor, const Actor& targetActor) noexcept;
 
 	// 아직 미구현 [3/17/2021 qwerwy]
 	static bool checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
@@ -62,7 +64,7 @@ public:
 	const CharacterInfo* getCharacterInfo(void) const noexcept;
 	const GameObject* getGameObject(void) const noexcept;
 	const DirectX::XMINT3& getSectorCoord(void) const noexcept;
-	void processCollision(const Actor* collidingActor) noexcept;
+	void processCollision(const Actor* collidingActor, CollisionCase collisionCase) noexcept;
 	void setCulled(void) noexcept;
 
 #if defined DEBUG | defined _DEBUG

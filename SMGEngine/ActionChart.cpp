@@ -85,6 +85,18 @@ void ActionChart::checkValid(void) const
 	}
 }
 
+void ActionChart::processCollisionHandlers(Actor& selfActor, const Actor& targetActor, CollisionCase collisionCase) const noexcept
+{
+	for (const auto& collisionHandler : _collisionHandlers)
+	{
+		if (collisionHandler->checkHandler(selfActor, targetActor, collisionCase))
+		{
+			collisionHandler->processEvents(selfActor, targetActor);
+			break;
+		}
+	}
+}
+
 ActionState::ActionState(const XMLReaderNode& node)
 {
 	node.loadAttribute("Animation", _animationName);
