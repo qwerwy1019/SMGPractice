@@ -67,9 +67,6 @@ public:
 	void processCollision(const Actor* collidingActor, CollisionCase collisionCase) noexcept;
 	void setCulled(void) noexcept;
 
-#if defined DEBUG | defined _DEBUG
-	std::vector<GameObject*> _devObjects;
-#endif
 private:
 	DirectX::XMFLOAT3 _position;
 	//DirectX::XMFLOAT4 _rotationQuat;

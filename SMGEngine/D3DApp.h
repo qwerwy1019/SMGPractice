@@ -111,6 +111,7 @@ public:
 						float cameraSpeed,
 						float cameraFocusSpeed) noexcept;
 	DirectX::XMFLOAT3 getCameraDirection(void) const noexcept;
+	const DirectX::XMFLOAT3& getCameraUpVector(void) const noexcept;
 	void removeRenderItem(const RenderLayer renderLayer, const RenderItem* renderItem) noexcept;
 	void removeSkinnedInstance(const SkinnedModelInstance* skinnedInstance) noexcept;
 	void removeGameObject(const GameObject* gameObject) noexcept;

@@ -71,6 +71,7 @@ void StageManager::update()
 		}
 	}
 	processActorCollision();
+	killActors();
 	setCulled();
 }
 
@@ -264,6 +265,7 @@ void StageManager::killActors(void) noexcept
 			}
 		}
 	}
+	_deadActors.clear();
 }
 
 int StageManager::sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept
@@ -379,7 +381,7 @@ void StageManager::updateCamera() noexcept
 			auto cameraFocusPosition = add(playerPosition, mul(playerUpVector, 100));
 			auto cameraPosition = add(playerPosition, mul(sub(mul(playerUpVector, 2.f), playerDirection), 600));
 
-			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector, 20.f, 50.f);
+			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector, 8.f, 10.f);
 		}
 		else
 		{

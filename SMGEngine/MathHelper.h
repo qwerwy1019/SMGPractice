@@ -3,6 +3,7 @@
 #include <math.h>
 #include "Exception.h"
 #include <DirectXMath.h>
+#include <algorithm>
 
 namespace MathHelper
 {
@@ -552,4 +553,23 @@ namespace MathHelper
 		return intersectTime;
 	}
 
+	static float XM_CALLCONV getDeltaAngleToVector(DirectX::FXMVECTOR planeNormal, DirectX::FXMVECTOR originVectorNormal, DirectX::FXMVECTOR toVector) noexcept
+	{
+		using namespace DirectX;
+		XMVECTOR toVectorOrth = toVector - XMVector3Dot(planeNormal, toVector) * planeNormal;
+		if (XMVector3Equal(toVectorOrth, XMVectorZero()))
+		{
+			return 0.f;
+		}
+		toVectorOrth = XMVector3Normalize(toVectorOrth);
+		float deltaAngle = acos(std::clamp(XMVectorGetX(XMVector3Dot(toVectorOrth, originVectorNormal)), -1.f, 1.f));
+		if (XMVectorGetX(XMVector3Dot(planeNormal, XMVector3Cross(originVectorNormal, toVectorOrth))) > 0)
+		{
+			return deltaAngle;
+		}
+		else
+		{
+			return -deltaAngle;
+		}
+	}
 };

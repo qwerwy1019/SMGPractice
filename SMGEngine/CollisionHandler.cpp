@@ -4,6 +4,7 @@
 #include "Actor.h"
 #include "ActionCondition.h"
 #include "ActionChart.h"
+#include "MathHelper.h"
 
 CollisionEvent_RotateToTarget::CollisionEvent_RotateToTarget(const XMLReaderNode& node)
 {
@@ -12,7 +13,13 @@ CollisionEvent_RotateToTarget::CollisionEvent_RotateToTarget(const XMLReaderNode
 
 void CollisionEvent_RotateToTarget::process(Actor& selfActor, const Actor& targetActor) const noexcept
 {
-	//selfActor.setRotateType(RotateType::ToCollidingTarget, , _speed)
+	using namespace DirectX;
+	XMVECTOR selfUpVector = XMLoadFloat3(&selfActor.getUpVector());
+	XMVECTOR selfDirection = XMLoadFloat3(&selfActor.getDirection());
+	XMVECTOR toTarget = XMLoadFloat3(&targetActor.getPosition()) - XMLoadFloat3(&selfActor.getPosition());
+	float deltaAngle = MathHelper::getDeltaAngleToVector(selfUpVector, selfDirection, toTarget);
+
+	selfActor.setRotateType(RotateType::ToCollidingTarget, deltaAngle, _speed);
 }
 
 std::unique_ptr<CollisionEvent> CollisionEvent::loadXMLCollisionEvent(const XMLReaderNode& node)

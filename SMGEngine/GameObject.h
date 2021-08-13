@@ -47,6 +47,7 @@ private:
 	std::vector<RenderItem*> _renderItems;
 
 #if defined DEBUG | defined _DEBUG
-	std::vector<GameObject*> _devObjects;
+public:
+	std::vector<std::unique_ptr<GameObject>> _devObjects;
 #endif
 };

@@ -108,7 +108,6 @@ void Actor::rotateUpVector(const DirectX::XMFLOAT3& toUpVector) noexcept
 
 float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 {
-	const float maxAngle = _rotateSpeed * deltaTick;
 	float deltaAngle = 0.f;
 	
 	switch (_rotateType)
@@ -116,18 +115,7 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 		case RotateType::Fixed:
 		case RotateType::ToCollidingTarget:
 		{
-			if (MathHelper::equal(_rotateAngleOffset, 0))
-			{
-				__noop;
-			}
-			else if (_rotateAngleOffset < 0)
-			{
-				deltaAngle = std::max(_rotateAngleOffset, -maxAngle);
-			}
-			else if (_rotateAngleOffset > 0)
-			{
-				deltaAngle = std::min(_rotateAngleOffset, maxAngle);
-			}
+			deltaAngle = _rotateAngleOffset;
 		}
 		break;
 		case RotateType::ToPlayer:
@@ -136,8 +124,11 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 			const PlayerActor* player = SMGFramework::getStageManager()->getPlayerActor();
 			if (nullptr != player)
 			{
-				XMVECTOR playerPosition = XMLoadFloat3(&player->getPosition());
-				// 미구현 [8/9/2021 qwerw]
+				XMVECTOR toPlayer = XMLoadFloat3(&player->getPosition()) - XMLoadFloat3(&_position);
+				XMVECTOR upVector = XMLoadFloat3(&_upVector);
+				XMVECTOR direction = XMLoadFloat3(&_direction);
+
+				deltaAngle = MathHelper::getDeltaAngleToVector(upVector, direction, toPlayer);
 			}
 		}
 		break;
@@ -149,47 +140,17 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 		case RotateType::JoystickInput:
 		{
 			XMFLOAT2 stickInput = SMGFramework::Get().getStickInput(StickInputType::LStick);
-			
-			float stickInputLength = sqrt(stickInput.x * stickInput.x + stickInput.y * stickInput.y);
-			if (MathHelper::equal(stickInputLength, 0))
-			{
-				return 0;
-			}
-			double stickAngleFromFront = acos(stickInput.y / stickInputLength);
-			if (stickInput.x < 0.f)
-			{
-				stickAngleFromFront *= -1;
-			}
 
-			const XMFLOAT3& camDirectionFloat = SMGFramework::getD3DApp()->getCameraDirection();
+			XMFLOAT3 camDirectionF = SMGFramework::getD3DApp()->getCameraDirection();
+			XMVECTOR camDirection = XMLoadFloat3(&camDirectionF);
+			XMVECTOR camUpVector = XMLoadFloat3(&SMGFramework::getD3DApp()->getCameraUpVector());
+			XMVECTOR camLeft = XMVector3Cross(camUpVector, camDirection);
 
-			XMVECTOR camDirection = XMLoadFloat3(&camDirectionFloat);
 			XMVECTOR actorDirection = XMLoadFloat3(&_direction);
 			XMVECTOR actorUpVector = XMLoadFloat3(&_upVector);
-			XMVECTOR frontRaw = camDirection - (XMVector3Dot(camDirection, actorUpVector) * actorUpVector);
-			float frontRawLength = XMVectorGetX(XMVector3Length(frontRaw));
-			if (MathHelper::equal(frontRawLength, 0))
-			{
-				check(false, "카메라 방향이 이상하지 않은지 확인해야함.");
-				return 0;
-			}
-			XMVECTOR front = frontRaw / frontRawLength;
-			XMVECTOR right = XMVector3Cross(actorUpVector, front);
-			double currentAngleFromFront = acos(std::clamp(XMVectorGetX(XMVector3Dot(front, actorDirection)), -1.f, 1.f));
-			if (XMVectorGetX(XMVector3Dot(right, actorDirection)) < 0.f)
-			{
-				currentAngleFromFront *= -1;
-			}
 
-			deltaAngle = stickAngleFromFront - currentAngleFromFront + _rotateAngleOffset;
-			if (deltaAngle < -MathHelper::Pi)
-			{
-				deltaAngle += MathHelper::Pi;
-			}
-			else if (deltaAngle >= MathHelper::Pi)
-			{
-				deltaAngle -= MathHelper::Pi;
-			}
+			XMVECTOR stickInputVector = camDirection * stickInput.y + camLeft * stickInput.x;
+			deltaAngle = MathHelper::getDeltaAngleToVector(actorUpVector, actorDirection, stickInputVector);
 		}
 		break;
 		case RotateType::ToWall:
@@ -205,8 +166,9 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 		}
 		break;
 	}
-	deltaAngle = std::clamp(deltaAngle, -maxAngle, maxAngle);
-	return deltaAngle;
+
+	const float maxAngle = _rotateSpeed * deltaTick;
+	return std::clamp(deltaAngle, -maxAngle, maxAngle);
 }
 
 void Actor::applyGravityRotation(const TickCount64& deltaTick, const DirectX::XMFLOAT3& gravityDirection) noexcept

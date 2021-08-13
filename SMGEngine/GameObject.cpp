@@ -23,15 +23,14 @@ GameObject::GameObject(const MeshGeometry* meshGeometry,
 
 GameObject::~GameObject()
 {
-	if (_skinnedModelInstance != nullptr)
-	{
-		delete _skinnedModelInstance;
-	}
 	for (auto renderItem : _renderItems)
 	{
 		SMGFramework::getD3DApp()->removeRenderItem(renderItem->_renderLayer, renderItem);
 	}
-	SMGFramework::getD3DApp()->removeSkinnedInstance(_skinnedModelInstance);
+	if (_skinnedModelInstance != nullptr)
+	{
+		SMGFramework::getD3DApp()->removeSkinnedInstance(_skinnedModelInstance);
+	}
 }
 
 void GameObject::setWorldMatrix(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& direction, const DirectX::XMFLOAT3& upVector, float size) noexcept

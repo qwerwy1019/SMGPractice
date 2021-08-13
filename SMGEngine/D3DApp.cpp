@@ -606,6 +606,11 @@ DirectX::XMFLOAT3 D3DApp::getCameraDirection(void) const noexcept
 	return rv;
 }
 
+const DirectX::XMFLOAT3& D3DApp::getCameraUpVector(void) const noexcept
+{
+	return _cameraUpVector;
+}
+
 ID3D12Resource* D3DApp::getCurrentBackBuffer() const noexcept
 {
 	return _swapChainBuffer[_currentBackBuffer].Get();
@@ -1026,10 +1031,11 @@ void D3DApp::createGameObjectDev(Actor* actor)
 	auto meshIt = _geometries.emplace(actor->getCharacterInfo()->getName() + "_CollisionBox",
 		new MeshGeometry(meshData, _deviceD3d12.Get(), _commandList.Get()));
 
-	auto object = _gameObjects.emplace_back(
+	auto parentObject = const_cast<GameObject*>(actor->getGameObject());
+	auto object = parentObject->_devObjects.emplace_back(
 					std::make_unique<GameObject>(
 						meshIt.first->second.get(),
-						actor->getGameObject()->getObjectConstantBufferIndex(),
+						parentObject->getObjectConstantBufferIndex(),
 						SKINNED_UNDEFINED,
 						nullptr)).get();
 	//GameObject* gameObjectDev = createGameObject(it.first->second.get(), nullptr, SKINNED_UNDEFINED);
@@ -1071,7 +1077,7 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 	auto meshIt = _geometries.emplace("NormalVector" + std::to_string(gameObject->getObjectConstantBufferIndex()),
 		new MeshGeometry(normalLineMeshData, _deviceD3d12.Get(), _commandList.Get()));
 
-	auto object = _gameObjects.emplace_back(
+	auto object = gameObject->_devObjects.emplace_back(
 			std::make_unique<GameObject>(
 				meshIt.first->second.get(),
 				gameObject->getObjectConstantBufferIndex(),
