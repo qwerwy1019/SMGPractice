@@ -44,6 +44,7 @@ enum class ErrCode : uint32_t
 	ActionChartLoadFail,
 	CameraNotFound,
 	NotSkinnedMaterial,
+	MemoryIsFull,
 };
 
 #define ErrCodeSuccess(_val) (_val == ErrCode::Success)

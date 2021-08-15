@@ -73,7 +73,7 @@ public:
 
 	// fbxLoader때문에 만들긴 했는데 다른 방법을 찾으면 좋겠다. [1/26/2021 qwerw]
 	const std::vector<BoneAnimation>& getBoneAnimationXXX(void) const noexcept;
-	void getBlendValue(const TickCount64& currentTick, std::vector<BoneAnimationBlendInstance>& blendInstances) const;
+	void getBlendValue(const TickCount64& currentTick, std::vector<BoneAnimationBlendInstance>& blendInstances) const noexcept;
 private:
 	std::vector<BoneAnimation> _boneAnimations;
 	uint32_t _clipEndFrame;
@@ -84,7 +84,7 @@ class AnimationInfo
 {
 public:
 	AnimationInfo(const XMLReaderNode& rootNode);
-	AnimationClip* getAnimationClip(const std::string& clipName) noexcept;
+	const AnimationClip* getAnimationClip(const std::string& clipName) const noexcept;
 
 	std::vector<std::string> getAnimationNameListDev(void) const noexcept
 	{
@@ -115,24 +115,22 @@ private:
 class SkinnedModelInstance
 {
 public:
-	SkinnedModelInstance(uint16_t index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept;
+	SkinnedModelInstance(uint16_t index, const BoneInfo* boneInfo, const AnimationInfo* animationInfo) noexcept;
 	void updateSkinnedAnimation(const TickCount64& dt) noexcept;
 	const std::vector<DirectX::XMFLOAT4X4>& getTransformMatrixes(void) const noexcept { return _transformMatrixes; }
 	uint16_t getIndex(void) const noexcept { return _index; }
-	uint32_t getLocalTickCount(void) const noexcept { return _currentTick; }
-	//uint32_t getCurrentFrame(void) const noexcept { return _currentFrame; }
+	TickCount64 getLocalTickCount(void) const noexcept { return _currentTick; }
 	void setAnimation(const std::string& animationClipName, const TickCount64& blendTick) noexcept;
 	bool isAnimationEnd(void) const noexcept;
 private:
 	TickCount64 _currentTick;
-	//uint32_t _currentFrame;
 	std::string _animationClipName;
 	uint16_t _index;
 	
-	BoneInfo* _boneInfo;
-	AnimationInfo* _animationInfo;
+	const BoneInfo* _boneInfo;
+	const AnimationInfo* _animationInfo;
 
-	AnimationClip* _currentAnimationClip;
+	const AnimationClip* _currentAnimationClip;
 
 	std::vector<DirectX::XMFLOAT4X4> _transformMatrixes;
 

@@ -9,6 +9,7 @@
 #include "MeshGeometry.h"
 #include "FrameResource.h"
 #include "SkinnedData.h"
+#include <queue>
 
 using namespace std;
 using namespace DirectX;
@@ -37,6 +38,9 @@ const D3D12_INPUT_ELEMENT_DESC SKINNED_VERTEX_INPUT_LAYOUT[SKINNED_VERTEX_INPUT_
 	{"BONEINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 };
 
+static constexpr UINT OBJECT_MAX = 200;
+static constexpr UINT MATERIAL_MAX = 200;
+static constexpr UINT SKINNED_INSTANCE_MAX = 50;
 enum class PSOType : uint8_t
 {
 	Normal,
@@ -148,24 +152,36 @@ private:
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> getStaticSampler(void) const;
 	void updateCamera(void);
 
+private:
 	void updateObjectConstantBuffer(void);
 	void updateSkinnedConstantBuffer(void);
 	void updatePassConstantBuffer(void);
 	void updateMaterialConstantBuffer(void);
+private:
+	UINT popObjectContantBufferIndex(void);
+	uint16_t popSkinnedContantBufferIndex(void);
+public:
+	void pushObjectContantBufferIndex(UINT index) noexcept;
+	void pushSkinnedContantBufferIndex(uint16_t index) noexcept;
+private:
+	UINT _objectCBIndexCount;
+	std::queue<UINT> _objectCBReturned;
+	uint16_t _skinnedCBIndexCount;
+	std::queue<uint16_t> _skinnedCBReturned;
+
+	GameObject* createGameObject(const MeshGeometry* meshGeometry, SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept;
+	SkinnedModelInstance* createSkinnedInstance(uint16_t& skinnedBufferIndex, const BoneInfo* boneInfo, const AnimationInfo* animationInfo) noexcept;
 
 	void drawRenderItems(const RenderLayer renderLayer);
-	void buildConstantBufferViews();
-	
-	UINT getGameObjectCount(void) const noexcept;
+	void drawUI(void);
+
 	void buildShaderResourceViews();
 
 	Material* loadXmlMaterial(const std::string& fileName, const std::string& materialName);
 	BoneInfo* loadXMLBoneInfo(const std::string& fileName);
 	MeshGeometry* loadXMLMeshGeometry(const std::string& fileName);
 	AnimationInfo* loadXMLAnimationInfo(const std::string& fileName);
-	GameObject* createGameObject(const MeshGeometry* meshGeometry, SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept;
-
-	void drawUI(void);
+	
 private:
 	
 	bool _4xMsaaState = false;

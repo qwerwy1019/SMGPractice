@@ -7,6 +7,8 @@
 #include "FileHelper.h"
 #include "SMGFramework.h"
 #include "StageManager.h"
+#include "CharacterInfoManager.h"
+#include "StageInfo.h"
 
 FrameEvent::FrameEvent(const XMLReaderNode& node)
 {
@@ -59,9 +61,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_Die>(node);
 	}
+	else if (typeString == "SpawnCharacter")
+	{
+		return std::make_unique<FrameEvent_SpawnCharacter>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 4, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 5, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -167,4 +173,29 @@ void FrameEvent_Die::process(Actor& actor) const noexcept
 	check(SMGFramework::getStageManager() != nullptr);
 
 	SMGFramework::getStageManager()->killActor(&actor);
+}
+
+FrameEvent_SpawnCharacter::FrameEvent_SpawnCharacter(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("CharacterKey", _characterKey);
+	node.loadAttribute("Position", _position);
+	node.loadAttribute("Size", _size);
+
+	if (nullptr == SMGFramework::getCharacterInfoManager()->getInfo(_characterKey))
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData, std::to_string(_characterKey));
+	}
+}
+
+void FrameEvent_SpawnCharacter::process(Actor& actor) const noexcept
+{
+	SpawnInfo spawnInfo;
+	spawnInfo._key = _characterKey;
+	spawnInfo._position = MathHelper::add(actor.getPosition(), _position);
+	spawnInfo._direction = actor.getDirection();
+	spawnInfo._upVector = actor.getUpVector();
+	spawnInfo._size = _size;
+
+	SMGFramework::getStageManager()->requestSpawn(std::move(spawnInfo));
 }

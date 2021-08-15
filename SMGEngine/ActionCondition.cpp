@@ -22,7 +22,7 @@ ActionCondition_Tick::ActionCondition_Tick(const std::string& args)
 
 bool ActionCondition_Tick::checkCondition(const Actor& actor) const noexcept
 {
-	uint32_t current = actor.getLocalTickCount();
+	TickCount64 current = actor.getLocalTickCount();
 	if (_tickStart <= current && current < _tickEnd)
 	{
 		return true;

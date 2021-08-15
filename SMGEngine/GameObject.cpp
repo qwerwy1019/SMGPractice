@@ -23,6 +23,11 @@ GameObject::GameObject(const MeshGeometry* meshGeometry,
 
 GameObject::~GameObject()
 {
+	SMGFramework::getD3DApp()->pushObjectContantBufferIndex(_objConstantBufferIndex);
+	if (_skinnedConstantBufferIndex != std::numeric_limits<uint16_t>::max())
+	{
+		SMGFramework::getD3DApp()->pushSkinnedContantBufferIndex(_skinnedConstantBufferIndex);
+	}
 	for (auto renderItem : _renderItems)
 	{
 		SMGFramework::getD3DApp()->removeRenderItem(renderItem->_renderLayer, renderItem);

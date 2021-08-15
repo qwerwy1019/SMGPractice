@@ -177,7 +177,7 @@ namespace MathHelper
 		}
 		return true;
 	}
-	static bool isPointInRectangle(DirectX::FXMVECTOR r0,
+	static bool XM_CALLCONV isPointInRectangle(DirectX::FXMVECTOR r0,
 		DirectX::FXMVECTOR width,
 		DirectX::FXMVECTOR height,
 		DirectX::CXMVECTOR p)
@@ -373,7 +373,6 @@ namespace MathHelper
 		// box data를 indexing 할수 있는 방법이 없을까? [7/13/2021 qwerw]
 		// orthgonal triangle, velocity vector normalize(minor), edge check duplicated(true/false) [7/13/2021 qwerw]
 
-		std::array<XMVECTOR, 3> orthTriangle;
 		std::array<bool, 12> edgeChecked = { false, };
 		std::array<bool, 8> vertexChecked = { false, };
 		float rv = NO_INTERSECTION;

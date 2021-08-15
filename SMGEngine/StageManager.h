@@ -11,6 +11,7 @@ class PlayerActor;
 class ActionChart;
 struct GravityPoint;
 class Terrain;
+struct SpawnInfo;
 
 
 class StageManager
@@ -31,8 +32,11 @@ public:
 	bool isLoading(void) const noexcept { return _isLoading; };
 	void setNextStage(std::string stageName) noexcept;
 	ActionChart* loadActionChartFromXML(const std::string& actionChartName);
+	void requestSpawn(SpawnInfo&& spawnInfo) noexcept;
 private:
-	void spawnActors();
+	void spawnStageInfoActors();
+	void spawnRequested();
+	void spawnActor(const SpawnInfo& spawnInfo);
 	void loadStageInfo();
 	void createMap(void);
 
@@ -67,6 +71,7 @@ private:
 	DirectX::XMINT3 _sectorUnitNumber;
 	std::vector<std::unordered_set<Actor*>> _actorsBySector;
 	std::unordered_set<Actor*> _deadActors;
+	std::vector<SpawnInfo> _requestedSpawnInfos;
 
 	std::vector<std::unique_ptr<Actor>> _actors;
 	PlayerActor* _playerActor;

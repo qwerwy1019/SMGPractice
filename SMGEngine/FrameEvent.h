@@ -68,3 +68,16 @@ public:
 	virtual FrameEventType getType() const noexcept override { return FrameEventType::Die; }
 private:
 };
+
+class FrameEvent_SpawnCharacter : public FrameEvent
+{
+public:
+	FrameEvent_SpawnCharacter(const XMLReaderNode& node);
+	virtual ~FrameEvent_SpawnCharacter() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::SpawnCharacter; }
+private:
+	CharacterKey _characterKey;
+	DirectX::XMFLOAT3 _position;
+	float _size;
+};

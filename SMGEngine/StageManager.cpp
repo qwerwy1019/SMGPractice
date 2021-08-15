@@ -38,13 +38,8 @@ void StageManager::loadStage(void)
 	SMGFramework::getD3DApp()->prepareCommandQueue();
 	loadStageInfo();
 	createMap();
-	spawnActors();
-#if defined DEBUG | defined _DEBUG
-	for (const auto& actor : _actors)
-	{
-		SMGFramework::getD3DApp()->createGameObjectDev(actor.get());
-	}
-#endif
+	spawnStageInfoActors();
+
 	SMGFramework::getD3DApp()->executeCommandQueue();
 	_isLoading = false;
 }
@@ -72,6 +67,7 @@ void StageManager::update()
 	}
 	processActorCollision();
 	killActors();
+	spawnRequested();
 	setCulled();
 }
 
@@ -170,6 +166,48 @@ ActionChart* StageManager::loadActionChartFromXML(const std::string& actionChart
 	auto it = _actionchartMap.emplace(actionChartName, new ActionChart(xmlActionChart.getRootNode()));
 	check(it.second == true);
 	return it.first->second.get();
+}
+
+void StageManager::requestSpawn(SpawnInfo&& spawnInfo) noexcept
+{
+	_requestedSpawnInfos.emplace_back(spawnInfo);
+}
+
+void StageManager::spawnActor(const SpawnInfo& spawnInfo)
+{
+	std::unique_ptr<Actor> actor;
+	auto characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo._key);
+	check(characterInfo != nullptr);
+	switch (characterInfo->getCharacterType())
+	{
+		case CharacterType::Player:
+		{
+			actor = std::make_unique<PlayerActor>(spawnInfo);
+			_playerActor = static_cast<PlayerActor*>(actor.get());
+		}
+		break;
+		case CharacterType::Monster:
+		case CharacterType::Object:
+		{
+			actor = std::make_unique<Actor>(spawnInfo);
+		}
+		break;
+		case CharacterType::Count:
+		default:
+		{
+			static_assert(static_cast<int>(CharacterType::Count) == 3);
+			check(false, "spawnInfo" + std::to_string(spawnInfo._key) + " characterType이 이상합니다.");
+		}
+	}
+
+	int sectorIndex = sectorCoordToIndex(actor->getSectorCoord());
+	check(sectorIndex < _actorsBySector.size());
+	auto it = _actorsBySector[sectorIndex].emplace(actor.get());
+
+#if defined DEBUG | defined _DEBUG
+	SMGFramework::getD3DApp()->createGameObjectDev(actor.get());
+#endif
+	_actors.emplace_back(std::move(actor));
 }
 
 const PlayerActor* StageManager::getPlayerActor(void) const noexcept
@@ -303,43 +341,23 @@ void StageManager::killActor(Actor* actor) noexcept
 	_deadActors.insert(actor);
 }
 
-void StageManager::spawnActors()
+void StageManager::spawnStageInfoActors()
 {
 	check(_stageInfo != nullptr);
 	const auto& spawnInfos = _stageInfo->getSpawnInfos();
 	for (const auto& spawnInfo : spawnInfos)
 	{
-		std::unique_ptr<Actor> actor;
-		auto characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo._key);
-		check(characterInfo != nullptr);
-		switch (characterInfo->getCharacterType())
-		{
-			case CharacterType::Player:
-			{
-				actor = std::make_unique<PlayerActor>(spawnInfo);
-				_playerActor = static_cast<PlayerActor*>(actor.get());
-			}
-			break;
-			case CharacterType::Monster:
-			case CharacterType::Object:
-			{
-				actor = std::make_unique<Actor>(spawnInfo);
-			}
-			break;
-			case CharacterType::Count:
-			default:
-			{
-				static_assert(static_cast<int>(CharacterType::Count) == 3);
-				check(false, "spawnInfo" + std::to_string(spawnInfo._key) + " characterType이 이상합니다.");
-			}
-		}
-		
-		int sectorIndex = sectorCoordToIndex(actor->getSectorCoord());
-		check(sectorIndex < _actorsBySector.size());
-		auto it = _actorsBySector[sectorIndex].emplace(actor.get());
-
-		_actors.emplace_back(std::move(actor));
+		spawnActor(spawnInfo);
 	}
+}
+
+void StageManager::spawnRequested()
+{
+	for (const auto& spawnInfo : _requestedSpawnInfos)
+	{
+		spawnActor(spawnInfo);
+	}
+	_requestedSpawnInfos.clear();
 }
 
 void StageManager::loadStageInfo()

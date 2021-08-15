@@ -227,7 +227,7 @@ const std::vector<BoneAnimation>& AnimationClip::getBoneAnimationXXX(void) const
 	return _boneAnimations;
 }
 
-void AnimationClip::getBlendValue(const TickCount64& currentTick, std::vector<BoneAnimationBlendInstance>& blendInstances) const
+void AnimationClip::getBlendValue(const TickCount64& currentTick, std::vector<BoneAnimationBlendInstance>& blendInstances) const noexcept
 {
 	blendInstances.clear();
 	blendInstances.reserve(_boneAnimations.size());
@@ -247,7 +247,7 @@ KeyFrame::KeyFrame() noexcept
 {
 }
 
-SkinnedModelInstance::SkinnedModelInstance(uint16_t index, BoneInfo* boneInfo, AnimationInfo* animationInfo) noexcept
+SkinnedModelInstance::SkinnedModelInstance(uint16_t index, const BoneInfo* boneInfo, const AnimationInfo* animationInfo) noexcept
 	: _currentTick(0)
 	, _animationClipName("IDLE")
 	, _index(index)
@@ -256,7 +256,7 @@ SkinnedModelInstance::SkinnedModelInstance(uint16_t index, BoneInfo* boneInfo, A
 	, _blendTick(0)
 	, _animationSpeed(1.f)
 {
-	AnimationClip* animationClip = _animationInfo->getAnimationClip(_animationClipName);
+	const AnimationClip* animationClip = _animationInfo->getAnimationClip(_animationClipName);
 	check(animationClip != nullptr, "애니메이션을 찾을 수 없습니다. " + _animationClipName);
 	_currentAnimationClip = animationClip;
 
@@ -286,13 +286,13 @@ void SkinnedModelInstance::setAnimation(const std::string& animationClipName, co
 	_blendTick = blendTick;
 	if (blendTick != 0)
 	{
-		AnimationClip* animationClip = _animationInfo->getAnimationClip(_animationClipName);
+		const AnimationClip* animationClip = _animationInfo->getAnimationClip(_animationClipName);
 		check(animationClip != nullptr, "애니메이션을 찾을 수 없습니다. " + _animationClipName);
 
 		animationClip->getBlendValue(_currentTick, _blendInstances);
 	}
 
-	AnimationClip* newAnimationClip = _animationInfo->getAnimationClip(animationClipName);
+	const AnimationClip* newAnimationClip = _animationInfo->getAnimationClip(animationClipName);
 	check(newAnimationClip != nullptr, "애니메이션을 찾을 수 없습니다. " + animationClipName);
 
 	_currentAnimationClip = newAnimationClip;
@@ -311,7 +311,7 @@ bool SkinnedModelInstance::isAnimationEnd(void) const noexcept
 	return false;
 }
 
-AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) noexcept
+const AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) const noexcept
 {
 	auto it = _animations.find(clipName);
 	if (it == _animations.end())

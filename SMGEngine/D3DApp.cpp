@@ -630,12 +630,9 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3DApp::getDepthStencilView() const noexcept
 
 void D3DApp::buildFrameResources(void)
 {
-	UINT objectCount = getGameObjectCount();
-	UINT materialCount = _materials.size();
-	UINT skinnedCount = _skinnedInstance.size();
 	for (int i = 0; i < FRAME_RESOURCE_COUNT; ++i)
 	{
-		auto frameResource = std::make_unique<FrameResource>(_deviceD3d12.Get(), 1, 100, 300, 100);
+		auto frameResource = std::make_unique<FrameResource>(_deviceD3d12.Get(), 1, OBJECT_MAX, MATERIAL_MAX, SKINNED_INSTANCE_MAX);
 		_frameResources.push_back(std::move(frameResource));
 	}
 }
@@ -814,7 +811,10 @@ Material* D3DApp::loadXmlMaterial(const std::string& fileName, const std::string
 		{
 			ThrowErrCode(ErrCode::KeyDuplicated, "material 중복 : " + name);
 		}
-
+		if (_materials.size() >= MATERIAL_MAX - 1)
+		{
+			ThrowErrCode(ErrCode::MemoryIsFull, "MaterialConstantBuffer가 " + std::to_string(MATERIAL_MAX) + "를 넘어갑니다.");
+		}
 		_materials.emplace(name, new Material(_materials.size(), nodes[i]));
 	}
 
@@ -881,10 +881,21 @@ AnimationInfo* D3DApp::loadXMLAnimationInfo(const std::string& fileName)
 
 GameObject* D3DApp::createGameObject(const MeshGeometry* meshGeometry, SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept
 {
-	const uint16_t objCBIndex = _gameObjects.size();
+	UINT objCBIndex = popObjectContantBufferIndex();
 
 	_gameObjects.emplace_back(std::make_unique<GameObject>(meshGeometry, objCBIndex, skinnedBufferIndex, skinnedInstance));
 	return _gameObjects.back().get();
+}
+
+SkinnedModelInstance* D3DApp::createSkinnedInstance(uint16_t& skinnedBufferIndex, const BoneInfo* boneInfo, const AnimationInfo* animationInfo) noexcept
+{
+	skinnedBufferIndex = popSkinnedContantBufferIndex();
+
+	unique_ptr<SkinnedModelInstance> newSkinnedInstance(new SkinnedModelInstance(skinnedBufferIndex, boneInfo, animationInfo));
+	SkinnedModelInstance* skinnedInstancePtr = newSkinnedInstance.get();
+	_skinnedInstance.emplace_back(move(newSkinnedInstance));
+
+	return skinnedInstancePtr;
 }
 
 GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
@@ -910,7 +921,7 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 
 		string skeletonName;
 		childIter->second.loadAttribute("FileName", skeletonName);
-		BoneInfo* boneInfo = loadXMLBoneInfo(skeletonName);
+		const BoneInfo* boneInfo = loadXMLBoneInfo(skeletonName);
 		
 		childIter = childNodes.find("Animation");
 		if (childIter == childNodes.end())
@@ -919,21 +930,12 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		}
 		string animationInfoName;
 		childIter->second.loadAttribute("FileName", animationInfoName);
-		AnimationInfo* animationInfo = loadXMLAnimationInfo(animationInfoName);
+		const AnimationInfo* animationInfo = loadXMLAnimationInfo(animationInfoName);
 
 #if defined DEBUG | defined _DEBUG
 		_animationNameListDev = animationInfo->getAnimationNameListDev();
 #endif
-
-		if (_skinnedInstance.size() >= SKINNED_UNDEFINED)
-		{
-			ThrowErrCode(ErrCode::Overflow, std::to_string(_skinnedInstance.size()) + ": SkinnedInstance list가 최대 갯수를 넘어갔습니다. ");
-		}
-		skinnedConstantBufferIndex = _skinnedInstance.size();
-
-		unique_ptr<SkinnedModelInstance> newSkinnedInstance(new SkinnedModelInstance(skinnedConstantBufferIndex, boneInfo, animationInfo));
-		skinnedInstance = newSkinnedInstance.get();
-		_skinnedInstance.emplace_back(move(newSkinnedInstance));
+		skinnedInstance = createSkinnedInstance(skinnedConstantBufferIndex, boneInfo, animationInfo);
 	}
 
 	childIter = childNodes.find("Mesh");
@@ -943,7 +945,7 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 	}
 	string meshFileName;
 	childIter->second.loadAttribute("FileName", meshFileName);
-	MeshGeometry* mesh = loadXMLMeshGeometry(meshFileName);
+	const MeshGeometry* mesh = loadXMLMeshGeometry(meshFileName);
 
 	GameObject* gameObject = createGameObject(mesh, skinnedInstance, skinnedConstantBufferIndex);
 	const auto& subMeshList = mesh->_subMeshList;
@@ -1198,6 +1200,54 @@ void D3DApp::updateMaterialConstantBuffer(void)
 	}
 }
 
+UINT D3DApp::popObjectContantBufferIndex(void)
+{
+	if (_objectCBReturned.empty())
+	{
+		if (_objectCBIndexCount >= OBJECT_MAX - 1)
+		{
+			ThrowErrCode(ErrCode::MemoryIsFull, "ObjectConstantBuffer가 " + std::to_string(OBJECT_MAX) + "를 넘어갑니다.");
+		}
+		return _objectCBIndexCount++;
+	}
+	else
+	{
+		UINT rv = _objectCBReturned.front();
+		_objectCBReturned.pop();
+
+		return rv;
+	}
+}
+
+uint16_t D3DApp::popSkinnedContantBufferIndex(void)
+{
+	if (_skinnedCBReturned.empty())
+	{
+		if (_skinnedCBIndexCount >= SKINNED_INSTANCE_MAX - 1)
+		{
+			ThrowErrCode(ErrCode::MemoryIsFull, "SkinnedConstantBuffer가 " + std::to_string(SKINNED_INSTANCE_MAX) + "를 넘어갑니다.");
+		}
+		return _skinnedCBIndexCount++;
+	}
+	else
+	{
+		uint16_t rv = _skinnedCBReturned.front();
+		_skinnedCBReturned.pop();
+
+		return rv;
+	}
+}
+
+void D3DApp::pushObjectContantBufferIndex(UINT index) noexcept
+{
+	_objectCBReturned.push(index);
+}
+
+void D3DApp::pushSkinnedContantBufferIndex(uint16_t index) noexcept
+{
+	_skinnedCBReturned.push(index);
+}
+
 void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 {
 	switch (renderLayer)
@@ -1295,15 +1345,6 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 			subMesh._baseVertexLoaction,
 			0);
 	}
-}
-
-void D3DApp::buildConstantBufferViews()
-{
-}
-
-UINT D3DApp::getGameObjectCount(void) const noexcept
-{
-	return _gameObjects.size();
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> D3DApp::getStaticSampler(void) const
@@ -1578,7 +1619,6 @@ bool D3DApp::Initialize(void)
 	//BuildMaterials();
 	//buildGameObjects();
 	buildFrameResources();
-	buildConstantBufferViews();
 
 	ThrowIfFailed(_commandList->Close());
 	ID3D12CommandList* cmdLists[] = { _commandList.Get() };
