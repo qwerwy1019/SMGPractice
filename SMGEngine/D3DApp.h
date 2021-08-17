@@ -50,6 +50,7 @@ enum class PSOType : uint8_t
 	//ReflectedTransparent,
 	Transparent,
 	Shadow,
+	ShadowSkinned,
 	UI,
 	GameObjectDev,
 	Count,
@@ -119,7 +120,7 @@ public:
 	void removeGameObject(const GameObject* gameObject) noexcept;
 	//const DirectX::XMFLOAT4X4& getInverseViewMatrix(void) const noexcept;
 	bool XM_CALLCONV checkCulled(const DirectX::BoundingBox& box, FXMMATRIX world) const noexcept;
-	void setLight(const std::vector<Light>& lights, float mapRadius) noexcept;
+	void setLight(const std::vector<Light>& lights) noexcept;
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보
@@ -148,11 +149,11 @@ private:
 	void buildShaders(void);
 	void buildPipelineStateObject(void);
 
-	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> getStaticSampler(void) const;
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> getStaticSampler(void) const;
 	void updateCamera(void);
 
 	void initShadowMap();
-	void updateShdowTransform(void) noexcept;
+	void updateShadowTransform(void) noexcept;
 	void updateShadowPassConstantBuffer(void) noexcept;
 private:
 	void updateObjectConstantBuffer(void);

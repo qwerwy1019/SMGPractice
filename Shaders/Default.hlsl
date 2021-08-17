@@ -14,7 +14,8 @@ struct VertexIn
 struct VertexOut
 {
 	float4 _posHCS : SV_POSITION;
-	float3 _posWorld : POSITION;
+	float4 _shadowPosHCS : POSITION0;
+	float3 _posWorld : POSITION1;
 	float3 _normalWorld : NORMAL;
 	float2 _textureCoord : TEXTURE;
 };
@@ -55,6 +56,7 @@ VertexOut DefaultVertexShader(VertexIn vIn)
 	vOut._textureCoord = mul(textureCoord, gMaterialTransform).xy;
 	// 물체들에 비균등비례나 이동이 들어가지 않았으므로 역전치행렬이 월드행렬과 같아서 그대로 사용한다.
 	vOut._normalWorld = mul(vIn._normalLocal, (float3x3)gWorld);
+	vOut._shadowPosHCS = mul(posWorld, gShadowTransform);
 	return vOut;
 }
 
@@ -77,6 +79,7 @@ float4 DefaultPixelShader(VertexOut pIn) : SV_TARGET
 	const float shininess = 1.f - gRoughness;
 	Material material = { diffuseAlbedo, gFresnelR0, shininess };
 	float3 shadowFactor = { 1.f, 1.f, 1.f };
+	shadowFactor[0] = CalcShadowFactor(pIn._shadowPosHCS);
 
 	float4 directLight = ComputeLighting(gLights, material, pIn._posWorld, pIn._normalWorld, toEye, shadowFactor);
 

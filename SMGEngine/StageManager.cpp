@@ -41,10 +41,8 @@ void StageManager::loadStage(void)
 	spawnStageInfoActors();
 
 	SMGFramework::getD3DApp()->executeCommandQueue();
-	float mapRadius = std::sqrt(_sectorUnitNumber.x * _sectorSize.x + 
-								_sectorUnitNumber.y * _sectorSize.y +
-								_sectorUnitNumber.z * _sectorSize.z);
-	SMGFramework::getD3DApp()->setLight(_stageInfo->getLights(), mapRadius);
+
+	SMGFramework::getD3DApp()->setLight(_stageInfo->getLights());
 	_isLoading = false;
 }
 

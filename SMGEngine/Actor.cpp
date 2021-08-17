@@ -91,7 +91,6 @@ void Actor::rotateUpVector(const DirectX::XMFLOAT3& toUpVector) noexcept
 	}
 	else if (MathHelper::equal_d(dot, 1) || MathHelper::equal_d(dot , -1))
 	{
-		check(false, "한 프레임에 90도 회전. 회전 속도를 조절해야함");
 		upVector *= dot;
 
 		_direction = _upVector;

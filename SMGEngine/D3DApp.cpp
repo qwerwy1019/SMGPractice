@@ -67,14 +67,18 @@ D3DApp::D3DApp()
 	, _cameraInputFocusPosition(0, 0, 0)
 	, _cameraSpeed(1.f)
 	, _cameraFocusSpeed(1.f)
-	, _cameraPosition(100, 0, 0)
+	, _cameraPosition(0, 0, 3100)
 	, _cameraUpVector(0, 1, 0)
-	, _cameraFocusPosition(0, 0, 0)
+	, _cameraFocusPosition(0, 0, 3000)
 	, _invViewMatrix(MathHelper::Identity4x4)
 	, _viewMatrix(MathHelper::Identity4x4)
 	, _projectionMatrix(MathHelper::Identity4x4)
 	, _viewPort()
 	, _scissorRect()
+	, _sceneBounds(XMFLOAT3(0, 0, 0), 3000.f)
+	, _mainLightViewMatrix(MathHelper::Identity4x4)
+	, _mainLightProjectionMatrix(MathHelper::Identity4x4)
+	, _shadowTransform(MathHelper::Identity4x4)
 {
 	Initialize();
 }
@@ -479,7 +483,7 @@ void D3DApp::OnResize(void)
 	flushCommandQueue();
 
 	double aspectRatio = static_cast<double>(width) / height;
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, aspectRatio, 1.f, 500000.0f);
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, aspectRatio, 10.f, 50000.0f);
 	XMStoreFloat4x4(&_projectionMatrix, proj);
 
 	BoundingFrustum::CreateFromMatrix(_viewFrustumLocal, proj);
@@ -506,6 +510,7 @@ void D3DApp::Update(void)
 	updateObjectConstantBuffer();
 	updateSkinnedConstantBuffer();
 	updatePassConstantBuffer();
+	updateShadowPassConstantBuffer();
 	updateMaterialConstantBuffer();
 
 }
@@ -587,7 +592,7 @@ void D3DApp::Draw(void)
 			default:
 			{
 				static_assert(static_cast<int>(RenderLayer::Count) == 6, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
-				static_assert(static_cast<int>(PSOType::Count) == 7, "PSO 타입이 추가되었다면 확인해주세요");
+				static_assert(static_cast<int>(PSOType::Count) == 8, "PSO 타입이 추가되었다면 확인해주세요");
 				ThrowErrCode(ErrCode::UndefinedType, "비정상입니다");
 			}
 		}
@@ -682,7 +687,7 @@ void D3DApp::buildFrameResources(void)
 {
 	for (int i = 0; i < FRAME_RESOURCE_COUNT; ++i)
 	{
-		auto frameResource = std::make_unique<FrameResource>(_deviceD3d12.Get(), 1, OBJECT_MAX, MATERIAL_MAX, SKINNED_INSTANCE_MAX);
+		auto frameResource = std::make_unique<FrameResource>(_deviceD3d12.Get(), 2, OBJECT_MAX, MATERIAL_MAX, SKINNED_INSTANCE_MAX);
 		_frameResources.push_back(std::move(frameResource));
 	}
 }
@@ -745,7 +750,7 @@ void D3DApp::initShadowMap()
 								CD3DX12_CPU_DESCRIPTOR_HANDLE(dsvCpuStart, 1, _dsvDescriptorSize));
 }
 
-void D3DApp::updateShdowTransform(void) noexcept
+void D3DApp::updateShadowTransform(void) noexcept
 {
 	auto& mainLight = _passConstants._lights[0];
 	// Only the first "main" light casts a shadow.
@@ -1106,7 +1111,7 @@ void D3DApp::createGameObjectDev(Actor* actor)
 	check(actor != nullptr);
 	check(actor->getGameObject() != nullptr);
 	check(actor->getCharacterInfo() != nullptr);
-
+	return;
 	// collision boundary
 	const CharacterInfo* characterInfo = actor->getCharacterInfo();
 	GeneratedMeshData meshData;
@@ -1163,6 +1168,7 @@ void D3DApp::createGameObjectDev(Actor* actor)
 
 void D3DApp::createGameObjectDev(GameObject* gameObject)
 {
+	return;
 	// normal vector
 	GeneratedMeshData normalLineMeshData;
 	
@@ -1239,16 +1245,19 @@ void D3DApp::drawSceneToShadowMap(void)
 	
 	_commandList->OMSetRenderTargets(0, nullptr, false, &dsv);
 
-	auto passCBAddress = _frameResources[_frameIndex]->getPassCBVirtualAddress();
-	_commandList->SetGraphicsRootConstantBufferView(3, passCBAddress);
+	UINT passCBByteSize = D3DUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+	auto shadowPassCBAddress = _frameResources[_frameIndex]->getPassCBVirtualAddress() + 1 * passCBByteSize;
+	_commandList->SetGraphicsRootConstantBufferView(3, shadowPassCBAddress);
 
-	// draw에서 reset할때 함 [8/17/2021 qwerw]
-	//_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
+	_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
 
-	for (auto renderLayer : HasShadowLayers)
-	{
-		drawRenderItems(renderLayer);
-	}
+	drawRenderItems(RenderLayer::Opaque);
+	drawRenderItems(RenderLayer::AlphaTested);
+
+	_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::ShadowSkinned].Get());
+	drawRenderItems(RenderLayer::OpaqueSkinned);
+
+	static_assert(static_cast<int>(RenderLayer::Count) == 6, "그림자가 생겨야하는 레이어라면 추가해주세요.");
 
 	CD3DX12_RESOURCE_BARRIER readBarrier = CD3DX12_RESOURCE_BARRIER::Transition(_shadowMap->getResource(),
 		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -1314,16 +1323,14 @@ bool XM_CALLCONV D3DApp::checkCulled(const DirectX::BoundingBox& box, FXMMATRIX 
 	return true;
 }
 
-void D3DApp::setLight(const std::vector<Light>& lights, float mapRadius) noexcept
+void D3DApp::setLight(const std::vector<Light>& lights) noexcept
 {
 	check(0 < lights.size() && lights.size() <= MAX_LIGHT_COUNT);
 	for (int i = 0; i < lights.size(); ++i)
 	{
 		_passConstants._lights[i] = lights[i];
 	}
-	_sceneBounds.Center = XMFLOAT3(0, 0, 0);
-	_sceneBounds.Radius = mapRadius;
-	updateShdowTransform();
+	updateShadowTransform();
 }
 
 void D3DApp::updateMaterialConstantBuffer(void)
@@ -1451,7 +1458,7 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 	}
 }
 
-std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> D3DApp::getStaticSampler(void) const
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> D3DApp::getStaticSampler(void) const
 {
 	const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
 		0,
@@ -1499,7 +1506,19 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> D3DApp::getStaticSampler(void) 
 		0.0f,
 		8
 	);
-	return { pointWrap, pointClamp, linearWrap, linearClamp, anisotropicWrap, anisotropicClamp };
+	const CD3DX12_STATIC_SAMPLER_DESC shadow(
+		6,
+		D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT,
+		D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+		D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+		D3D12_TEXTURE_ADDRESS_MODE_BORDER,
+		0.0f,
+		16,
+		D3D12_COMPARISON_FUNC_LESS_EQUAL,
+		D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK
+	);
+
+	return { pointWrap, pointClamp, linearWrap, linearClamp, anisotropicWrap, anisotropicClamp, shadow };
 }
 void D3DApp::buildRootSignature(void)
 {
@@ -1545,6 +1564,7 @@ void D3DApp::buildShaders(void)
 	_shaders["defaultPS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultPixelShader", "ps_5_1");
 	_shaders["shadowVS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForShader, "ShadowVertexShader", "vs_5_1");
 	_shaders["shadowPS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForShader, "ShadowPixelShader", "ps_5_1");
+	_shaders["shadowSkinnedVS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForSkinnedVertexShader, "ShadowVertexShader", "vs_5_1");
 }
 
 void D3DApp::buildPipelineStateObject(void)
@@ -1615,28 +1635,9 @@ void D3DApp::buildPipelineStateObject(void)
 		transparentStencilDesc.BackFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
 		transparentStencilDesc.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
 	}
-	//shadowDesc
+	//uiDepthStencilesc
 	{
 		uiDepthStencilesc.DepthEnable = false;
-	}
-	//shadowDesc
-	{
-		shadowDesc.DepthEnable = true;
-		shadowDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		shadowDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		shadowDesc.StencilEnable = true;
-		shadowDesc.StencilReadMask = 0xff;
-		shadowDesc.StencilWriteMask = 0xff;
-
-		shadowDesc.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-		shadowDesc.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-		shadowDesc.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
-		shadowDesc.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
-
-		shadowDesc.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-		shadowDesc.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-		shadowDesc.BackFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
-		shadowDesc.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
 	}
 	{
 
@@ -1673,7 +1674,7 @@ void D3DApp::buildPipelineStateObject(void)
 
 
 		psoDescTransparent.BlendState.RenderTarget[0] = blendDesc;
-		psoDescTransparent.DepthStencilState = transparentStencilDesc;
+
 		auto transparentPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Transparent, nullptr));
 		check(transparentPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Transparent");
 
@@ -1684,9 +1685,10 @@ void D3DApp::buildPipelineStateObject(void)
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescShadow = psoDescNormal;
 
-		psoDescShadow.RasterizerState.DepthBias = 100000;
+		psoDescShadow.RasterizerState.DepthBias = 50000;
 		psoDescShadow.RasterizerState.DepthBiasClamp = 0.f;
-		psoDescShadow.RasterizerState.SlopeScaledDepthBias = 1.f;
+ 		psoDescShadow.RasterizerState.SlopeScaledDepthBias = 0.5f;
+		psoDescShadow.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDescShadow.VS =
 		{
 			reinterpret_cast<BYTE*>(_shaders["shadowVS"]->GetBufferPointer()),
@@ -1706,13 +1708,22 @@ void D3DApp::buildPipelineStateObject(void)
 
 		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescShadow, IID_PPV_ARGS(&shadowPSO.first->second)),
 					"PSO 생성 실패! PSOType::Shadow");
+
+		psoDescShadow.InputLayout = { SKINNED_VERTEX_INPUT_LAYOUT, SKINNED_VERTEX_INPUT_DESC_SIZE };
+		psoDescShadow.VS = 
+		{
+			reinterpret_cast<BYTE*>(_shaders["shadowSkinnedVS"]->GetBufferPointer()),
+			_shaders["shadowSkinnedVS"]->GetBufferSize()
+		};
+		auto shadowSkinnedPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::ShadowSkinned, nullptr));
+		check(shadowSkinnedPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::ShadowSkinned");
+
+		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescShadow, IID_PPV_ARGS(&shadowSkinnedPSO.first->second)),
+			"PSO 생성 실패! PSOType::ShadowSkinned");
 	}
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescUI = psoDescNormal;
 
-
-		psoDescUI.BlendState.RenderTarget[0] = blendDesc;
-		psoDescUI.DepthStencilState = shadowDesc;
 		auto UIPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::UI, nullptr));
 		check(UIPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Shadow");
 
@@ -1732,7 +1743,7 @@ void D3DApp::buildPipelineStateObject(void)
 			"PSO 생성 실패! PSOType::GameObjectDev");
 	}
 #endif
-	static_assert(static_cast<int>(PSOType::Count) == 7, "PSO 타입이 추가되었다면 확인해주세요.");
+	static_assert(static_cast<int>(PSOType::Count) == 8, "PSO 타입이 추가되었다면 확인해주세요.");
 }
 
 bool D3DApp::Initialize(void)

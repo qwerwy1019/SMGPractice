@@ -49,7 +49,6 @@ struct PassConstants
 	// 조명관련
 	DirectX::XMFLOAT4 _ambientLight;
 	std::array<Light, MAX_LIGHT_COUNT> _lights;
-	DirectX::XMFLOAT4X4 _orthogonalView;
 };
 struct MaterialConstants
 {

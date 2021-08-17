@@ -3,6 +3,7 @@
 struct VertexIn
 {
 	float3 _posLocal : POSITION;
+	float3 _normalLocal : NORMAL;
 	float2 _textureCoord : TEXCOORD;
 #ifdef SKINNED
 	float3 _boneWeights : WEIGHTS;
@@ -26,20 +27,16 @@ VertexOut ShadowVertexShader(VertexIn vIn)
 	weights[3] = 1.f - weights[0] - weights[1] - weights[2];
 
 	float3 posLocal = float3(0.f, 0.f, 0.f);
-	float3 normalLocal = float3(0.f, 0.f, 0.f);
-	float3 tangentLocal = float3(0.f, 0.f, 0.f);
 
 	for (int i = 0; i < 4; ++i)
 	{
 		if (vIn._boneIndices[i] != 255)
 		{
 			posLocal += weights[i] * mul(float4(vIn._posLocal, 1.f), gBoneTransforms[vIn._boneIndices[i]]).xyz;
-			normalLocal += weights[i] * mul(vIn._normalLocal, (float3x3)gBoneTransforms[vIn._boneIndices[i]]);
 		}
 		//tangent
 	}
 	vIn._posLocal = posLocal;
-	vIn._normalLocal = normalLocal;
 	//tangent
 #endif
 	VertexOut vOut = (VertexOut)0.0f;;
@@ -56,7 +53,7 @@ void ShadowPixelShader(VertexOut pIn)
 {
 	float4 diffuseAlbedo = gDiffuseAlbedo * gDiffuseMap.Sample(gsamAnisotropicWrap, pIn._textureCoord);
 
-#ifdef ALPHA_TEST
+//#ifdef ALPHA_TEST
 	clip(diffuseAlbedo.a - 0.1f);
-#endif
+//#endif
 }

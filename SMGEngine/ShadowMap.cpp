@@ -8,7 +8,7 @@ ShadowMap::ShadowMap(ID3D12Device* device, uint32_t width, uint32_t height)
 	_width = width;
 	_height = height;
 
-	_viewPort = { 0.f, 0.f, static_cast<float>(width), static_cast<float>(height) };
+	_viewPort = { 0.f, 0.f, static_cast<float>(width), static_cast<float>(height), 0.f, 1.f };
 	_scissorRect = { 0, 0, static_cast<int>(width), static_cast<int>(height) };
 
 	buildResource();
@@ -34,14 +34,14 @@ void ShadowMap::buildDescriptors()
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.MipLevels = 1;
-	srvDesc.Texture1D.ResourceMinLODClamp = 0.f;
+	srvDesc.Texture2D.ResourceMinLODClamp = 0.f;
 	srvDesc.Texture2D.PlaneSlice = 0;
 	_d3dDevice->CreateShaderResourceView(_shadowMap.Get(), &srvDesc, _hCpuSrv);
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	dsvDesc.Format = DEPTH_STENCIL_FORMAT;
 	dsvDesc.Texture2D.MipSlice = 0;
 	_d3dDevice->CreateDepthStencilView(_shadowMap.Get(), &dsvDesc, _hCpuDsv);
 }
@@ -108,7 +108,7 @@ void ShadowMap::buildResource()
 	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 	
 	D3D12_CLEAR_VALUE optClear;
-	optClear.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	optClear.Format = DEPTH_STENCIL_FORMAT;
 	optClear.DepthStencil.Depth = 1.f;
 	optClear.DepthStencil.Stencil = 0;
 
