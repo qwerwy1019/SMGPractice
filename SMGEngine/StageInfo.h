@@ -1,6 +1,7 @@
 #pragma once
 #include "TypeD3d.h"
 #include "TypeCommon.h"
+#include "TypeGeometry.h"
 
 class XMLReaderNode;
 
@@ -81,6 +82,7 @@ public:
 	void loadXmlSpawnInfo(const XMLReaderNode& node);
 	void loadXmlTerrainObjectInfo(const XMLReaderNode& node);
 	void loadXmlGravityPointInfo(const XMLReaderNode& node);
+	void loadXmlLightInfo(const XMLReaderNode& node);
 
 	std::vector<const CameraPoint*> getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept;
 	const FixedCameraPoint& getFixedCameraPoint(const std::string& name) const noexcept;
@@ -89,6 +91,7 @@ public:
 	const DirectX::XMINT3& getSectorUnitNumber(void) const noexcept;
 	const DirectX::XMINT3& getSectorSize(void) const noexcept;
 	const GravityPoint* getGravityPointAt(const DirectX::XMFLOAT3& position) const noexcept;
+	const std::vector<Light>& getLights(void) const noexcept;
 private:
 	LandscapeType _landscapeType;
 	std::vector<std::unique_ptr<CameraPoint>> _cameraPoints;
@@ -96,6 +99,7 @@ private:
 	std::vector<SpawnInfo> _spawnInfo;
 	std::vector<TerrainObjectInfo> _terrainObjectInfo;
 	std::unordered_map<int, std::unique_ptr<GravityPoint>> _gravityPoints;
+	std::vector<Light> _lightInfo;
 
 	DirectX::XMINT3 _sectorUnitNumber;
 	DirectX::XMINT3 _sectorSize;

@@ -8,6 +8,7 @@ constexpr int MAX_LIGHT_COUNT = 16;
 struct Light
 {
 	Light() noexcept;
+	
 	DirectX::XMFLOAT3 _strength;
 	float _falloffStart;
 	DirectX::XMFLOAT3 _direction;
@@ -32,6 +33,7 @@ struct PassConstants
 	DirectX::XMFLOAT4X4 _invProj;
 	DirectX::XMFLOAT4X4 _viewProj;
 	DirectX::XMFLOAT4X4 _invViewProj;
+	DirectX::XMFLOAT4X4 _shadowTransform;
 	DirectX::XMFLOAT3 _cameraPos;
 	float pad1;
 	DirectX::XMFLOAT2 _renderTargetSize;
@@ -108,3 +110,14 @@ struct GeneratedMeshData
 	std::vector<Vertex> _vertices;
 	std::vector<uint16_t> _indices;
 };
+
+struct EffectInstanceData
+{
+	DirectX::XMFLOAT4X4 _world;
+	uint16_t _textureIndex;
+};
+
+static constexpr UINT OBJECT_MAX = 200;
+static constexpr UINT MATERIAL_MAX = 200;
+static constexpr UINT SKINNED_INSTANCE_MAX = 50;
+static constexpr UINT EFFECT_INSTANCE_MAX = 50;

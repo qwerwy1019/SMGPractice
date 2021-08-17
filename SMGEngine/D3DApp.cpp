@@ -27,14 +27,15 @@
 #include <algorithm>
 #include <corecrt_math.h>
 #include "GameObject.h"
+#include "ShadowMap.h"
 
 void D3DApp::buildShaderResourceViews()
 {
 	//check(!_textures.empty(), "texture info가 먼저 로드되어야 합니다.");
-
+	
 	CD3DX12_CPU_DESCRIPTOR_HANDLE handle(
 		_srvHeap->GetCPUDescriptorHandleForHeapStart(),
-		_textureLoadedCount,
+		TEXTURE_SRV_INDEX + _textureLoadedCount,
 		_cbvSrcUavDescriptorSize);
 
 	for (int i = _textureLoadedCount; i < _textures.size(); ++i)
@@ -72,7 +73,6 @@ D3DApp::D3DApp()
 	, _invViewMatrix(MathHelper::Identity4x4)
 	, _viewMatrix(MathHelper::Identity4x4)
 	, _projectionMatrix(MathHelper::Identity4x4)
-	, _psoType(PSOType::Normal)
 	, _viewPort()
 	, _scissorRect()
 {
@@ -215,6 +215,8 @@ void D3DApp::initDirect3D()
 	createCommandObjects();
 	createSwapChain();
 	createDescriptorHeaps();
+
+	initShadowMap();
 }
 
 void D3DApp::initDirect2D(void)
@@ -347,7 +349,7 @@ void D3DApp::createDescriptorHeaps(void)
 	ThrowIfFailed(_deviceD3d12->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(_rtvHeap.GetAddressOf())));
 
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
-	dsvHeapDesc.NumDescriptors = 1;
+	dsvHeapDesc.NumDescriptors = 2;
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask = 0;
@@ -369,7 +371,7 @@ void D3DApp::OnResize(void)
 
 	// 이거 왜 있어야 하지? [5/24/2021 qwerw]
 	//flushCommandQueue();
-
+	
 	// reset ui before resize
 	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
 	{
@@ -513,7 +515,14 @@ void D3DApp::Draw(void)
 	ID3D12CommandAllocator* cmdListAlloc = _frameResources[_frameIndex]->getCommandListAlloc();
 	ThrowIfFailed(cmdListAlloc->Reset(), "reset in Draw Failed");
 
-	ThrowIfFailed(_commandList->Reset(cmdListAlloc, _pipelineStateObjectMap[_psoType].Get()), "psoType:" + std::to_string((int)_psoType));
+	ThrowIfFailed(_commandList->Reset(cmdListAlloc, _pipelineStateObjectMap[PSOType::Shadow].Get()));
+	
+	ID3D12DescriptorHeap* descriptorHeaps[] = { _srvHeap.Get() };
+	_commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+
+	_commandList->SetGraphicsRootSignature(_rootSignature.Get());
+
+	drawSceneToShadowMap();
 
 	_commandList->RSSetViewports(1, &_viewPort);
 	_commandList->RSSetScissorRects(1, &_scissorRect);
@@ -532,15 +541,56 @@ void D3DApp::Draw(void)
 	const D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView = getDepthStencilView();
 	_commandList->OMSetRenderTargets(1, &backBufferView, true, &depthStencilView);
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { _srvHeap.Get() };
-	_commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-
-	_commandList->SetGraphicsRootSignature(_rootSignature.Get());
-
 	_commandList->SetGraphicsRootConstantBufferView(3, _frameResources[_frameIndex]->getPassCBVirtualAddress());
-
+	CD3DX12_GPU_DESCRIPTOR_HANDLE shadowMapHandle(_srvHeap->GetGPUDescriptorHandleForHeapStart());
+	_commandList->SetGraphicsRootDescriptorTable(5, shadowMapHandle);
 	for (auto e : RenderLayers)
 	{
+		switch (e)
+		{
+			case RenderLayer::Opaque:
+			{
+				_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Normal].Get());
+			}
+			break;
+			case RenderLayer::OpaqueSkinned:
+			{
+				_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Skinned].Get());
+			}
+			break;
+			case RenderLayer::AlphaTested:
+			{
+				_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::BackSideNotCulling].Get());
+			}
+			break;
+			case RenderLayer::Transparent:
+			{
+				_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Transparent].Get());
+			}
+			break;
+			case RenderLayer::Shadow:
+			{
+				_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
+			}
+			break;
+			case RenderLayer::GameObjectDev:
+			{
+#if defined(DEBUG) | defined(_DEBUG)
+				_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::GameObjectDev].Get());
+				//return;
+#else
+				return;
+#endif
+			}
+			break;
+			case RenderLayer::Count:
+			default:
+			{
+				static_assert(static_cast<int>(RenderLayer::Count) == 6, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
+				static_assert(static_cast<int>(PSOType::Count) == 7, "PSO 타입이 추가되었다면 확인해주세요");
+				ThrowErrCode(ErrCode::UndefinedType, "비정상입니다");
+			}
+		}
 		drawRenderItems(e);
  	}
 
@@ -683,6 +733,91 @@ void D3DApp::updateCamera(void)
 	XMStoreFloat4x4(&_invViewMatrix, XMMatrixInverse(&viewDet, view));
 }
 
+void D3DApp::initShadowMap()
+{
+	_shadowMap = std::make_unique<ShadowMap>(_deviceD3d12.Get(), 2048, 2048);
+	auto srvCpuStart = _srvHeap->GetCPUDescriptorHandleForHeapStart();
+	auto srvGpuStart = _srvHeap->GetGPUDescriptorHandleForHeapStart();
+	auto dsvCpuStart = _dsvHeap->GetCPUDescriptorHandleForHeapStart();
+
+	_shadowMap->buildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart),
+								CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart),
+								CD3DX12_CPU_DESCRIPTOR_HANDLE(dsvCpuStart, 1, _dsvDescriptorSize));
+}
+
+void D3DApp::updateShdowTransform(void) noexcept
+{
+	auto& mainLight = _passConstants._lights[0];
+	// Only the first "main" light casts a shadow.
+	XMVECTOR lightDir = XMLoadFloat3(&mainLight._direction);
+	XMVECTOR lightPos = -2.0f * _sceneBounds.Radius * lightDir;
+	XMVECTOR targetPos = XMLoadFloat3(&_sceneBounds.Center);
+	XMVECTOR lightUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	XMMATRIX lightView = XMMatrixLookAtLH(lightPos, targetPos, lightUp);
+
+	XMStoreFloat3(&_shadowPassConstants._cameraPos, lightPos);
+
+	// Transform bounding sphere to light space.
+	XMFLOAT3 sphereCenterLightSpace;
+	XMStoreFloat3(&sphereCenterLightSpace, XMVector3TransformCoord(targetPos, lightView));
+
+	// Ortho frustum in light space encloses scene.
+	float leftX = sphereCenterLightSpace.x - _sceneBounds.Radius;
+	float rightX = sphereCenterLightSpace.x + _sceneBounds.Radius;
+	float bottomY = sphereCenterLightSpace.y - _sceneBounds.Radius;
+	float topY = sphereCenterLightSpace.y + _sceneBounds.Radius;
+	float nearZ = sphereCenterLightSpace.z - _sceneBounds.Radius;
+	float farZ = sphereCenterLightSpace.z + _sceneBounds.Radius;
+
+	_shadowPassConstants._nearZ = nearZ;
+	_shadowPassConstants._farZ = farZ;
+	XMMATRIX lightProj = XMMatrixOrthographicOffCenterLH(leftX, rightX, bottomY, topY, nearZ, farZ);
+
+	// Transform NDC space [-1,+1]^2 to texture space [0,1]^2
+	XMMATRIX T(
+		0.5f, 0.0f, 0.0f, 0.0f,
+		0.0f, -0.5f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.5f, 0.5f, 0.0f, 1.0f);
+
+	XMMATRIX S = lightView * lightProj * T;
+	XMStoreFloat4x4(&_mainLightViewMatrix, lightView);
+	XMStoreFloat4x4(&_mainLightProjectionMatrix, lightProj);
+	XMStoreFloat4x4(&_shadowTransform, S);
+}
+
+void D3DApp::updateShadowPassConstantBuffer(void) noexcept
+{
+	XMMATRIX view = XMLoadFloat4x4(&_mainLightViewMatrix);
+	XMMATRIX proj = XMLoadFloat4x4(&_mainLightProjectionMatrix);
+
+	XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+
+	XMVECTOR viewDet = XMMatrixDeterminant(view);
+	XMMATRIX invView = XMMatrixInverse(&viewDet, view);
+
+	XMVECTOR projDet = XMMatrixDeterminant(proj);
+	XMMATRIX invProj = XMMatrixInverse(&projDet, proj);
+
+	XMVECTOR viewProjDet = XMMatrixDeterminant(viewProj);
+	XMMATRIX invViewProj = XMMatrixInverse(&viewProjDet, viewProj);
+
+	uint32_t width = _shadowMap->getWidth();
+	uint32_t height = _shadowMap->getHeight();
+
+	XMStoreFloat4x4(&_shadowPassConstants._view, XMMatrixTranspose(view));
+	XMStoreFloat4x4(&_shadowPassConstants._invView, XMMatrixTranspose(invView));
+	XMStoreFloat4x4(&_shadowPassConstants._proj, XMMatrixTranspose(proj));
+	XMStoreFloat4x4(&_shadowPassConstants._invProj, XMMatrixTranspose(invProj));
+	XMStoreFloat4x4(&_shadowPassConstants._viewProj, XMMatrixTranspose(viewProj));
+	XMStoreFloat4x4(&_shadowPassConstants._invViewProj, XMMatrixTranspose(invViewProj));
+	
+	_shadowPassConstants._renderTargetSize = XMFLOAT2(static_cast<float>(width), static_cast<float>(height));
+	_shadowPassConstants._invRenderTargetSize = XMFLOAT2(1.0f / width, 1.0f / height);
+
+	_frameResources[_frameIndex]->setPassCB(1, _shadowPassConstants);
+}
+
 void D3DApp::updateObjectConstantBuffer()
 {
 	auto& currentFrameResource = _frameResources[_frameIndex];
@@ -732,6 +867,7 @@ void D3DApp::updatePassConstantBuffer()
 	XMMATRIX invView = XMMatrixInverse(&viewDet, view);
 	XMMATRIX invProj = XMMatrixInverse(&projDet, proj);
 	XMMATRIX invViewProj = XMMatrixInverse(&viewProjDet, viewProj);
+	XMMATRIX shadowTransform = XMLoadFloat4x4(&_shadowTransform);
 	
 	XMStoreFloat4x4(&_passConstants._view, XMMatrixTranspose(view));
 	XMStoreFloat4x4(&_passConstants._invView, XMMatrixTranspose(invView));
@@ -739,6 +875,7 @@ void D3DApp::updatePassConstantBuffer()
 	XMStoreFloat4x4(&_passConstants._invProj, XMMatrixTranspose(invProj));
 	XMStoreFloat4x4(&_passConstants._viewProj, XMMatrixTranspose(viewProj));
 	XMStoreFloat4x4(&_passConstants._invViewProj, XMMatrixTranspose(invViewProj));
+	XMStoreFloat4x4(&_passConstants._shadowTransform, XMMatrixTranspose(shadowTransform));
 	_passConstants._cameraPos = _cameraPosition;
 
 	const float width = static_cast<float>(SMGFramework::Get().getClientWidth());
@@ -755,37 +892,7 @@ void D3DApp::updatePassConstantBuffer()
 	_passConstants._fogEnd = 4000.f;
 	_passConstants._ambientLight = { 0.3f, 0.3f, 0.4f, 1.0f };
 	
-	// 주광
-	XMVECTOR lightDir = XMVectorSet(0.f, 0.f, -1.f, 0.f);
-	XMStoreFloat3(&_passConstants._lights[0]._direction, lightDir);
-	XMStoreFloat3(&_passConstants._lights[0]._position, -lightDir * 2000.0f);
-	_passConstants._lights[0]._strength = { 0.5f, 0.5f, 0.4f };
-	_passConstants._lights[0]._falloffEnd = 3000.f;
-	//_passConstants._lights[0]._strength = { 0.7f * abs(sinf(3.f * _timer.GetTotalTime())) + 0.3f, 0.f, 0.f };
-	// 보조광
-	XMVECTOR subLightDir = XMVectorSet(1.f, 0.f, 0.f, 0.f);
-	XMStoreFloat3(&_passConstants._lights[1]._direction, subLightDir);
-	XMStoreFloat3(&_passConstants._lights[1]._position, -subLightDir * 50.f);
-	_passConstants._lights[1]._strength = { 0.3f, 0.3f, 0.2f };
-	_passConstants._lights[1]._falloffEnd = 200.f;
-	// 역광
-	XMVECTOR backLightDir = XMVectorSet(0.f, 0.f, 1.f, 0.f);
-	XMStoreFloat3(&_passConstants._lights[2]._direction, backLightDir);
-	XMStoreFloat3(&_passConstants._lights[2]._position, -backLightDir * 50.f);
-	_passConstants._lights[2]._strength = { 0.2f, 0.2f, 0.4f };
-	_passConstants._lights[2]._falloffEnd = 200.f;
-	
 	_frameResources[_frameIndex]->setPassCB(0, _passConstants);
-
-
-// 	XMVECTOR shadowPlane = XMVectorSet(0.f, 1.f, 0.f, 0.f);
-// 	XMVECTOR shadowDir = -XMLoadFloat3(&_passConstants._lights[0]._direction);
-// 	XMMATRIX shadowMatrix = XMMatrixShadow(shadowPlane, shadowDir);
-// 	XMMATRIX shadowWorld = XMMatrixTranslation(0.f, 0.5f, 0.f);
-// 	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.f, 0.001f, 0.f);
-// 	XMStoreFloat4x4(&_shadowItem->_worldMatrix, shadowWorld * shadowMatrix * shadowOffsetY);
-// 
-// 	_shadowItem->_dirtyFrames = FRAME_RESOURCE_COUNT;
 }
 
 Material* D3DApp::loadXmlMaterial(const std::string& fileName, const std::string& materialName)
@@ -1118,6 +1225,36 @@ void D3DApp::drawUI(void)
 	_immediateContext->Flush();
 }
 
+void D3DApp::drawSceneToShadowMap(void)
+{
+	_commandList->RSSetViewports(1, &_shadowMap->getViewPort());
+	_commandList->RSSetScissorRects(1, &_shadowMap->getScissorRect());
+
+	CD3DX12_RESOURCE_BARRIER depthWriteBarrier = CD3DX12_RESOURCE_BARRIER::Transition(_shadowMap->getResource(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	_commandList->ResourceBarrier(1, &depthWriteBarrier);
+	auto dsv = _shadowMap->getDsv();
+	_commandList->ClearDepthStencilView(dsv,
+		D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
+	
+	_commandList->OMSetRenderTargets(0, nullptr, false, &dsv);
+
+	auto passCBAddress = _frameResources[_frameIndex]->getPassCBVirtualAddress();
+	_commandList->SetGraphicsRootConstantBufferView(3, passCBAddress);
+
+	// draw에서 reset할때 함 [8/17/2021 qwerw]
+	//_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
+
+	for (auto renderLayer : HasShadowLayers)
+	{
+		drawRenderItems(renderLayer);
+	}
+
+	CD3DX12_RESOURCE_BARRIER readBarrier = CD3DX12_RESOURCE_BARRIER::Transition(_shadowMap->getResource(),
+		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ);
+	_commandList->ResourceBarrier(1, &readBarrier);
+}
+
 void D3DApp::removeRenderItem(const RenderLayer renderLayer, const RenderItem* renderItem) noexcept
 {
 	auto& renderItems = _renderItems[static_cast<int>(renderLayer)];
@@ -1175,6 +1312,18 @@ bool XM_CALLCONV D3DApp::checkCulled(const DirectX::BoundingBox& box, FXMMATRIX 
 		return false;
 	}
 	return true;
+}
+
+void D3DApp::setLight(const std::vector<Light>& lights, float mapRadius) noexcept
+{
+	check(0 < lights.size() && lights.size() <= MAX_LIGHT_COUNT);
+	for (int i = 0; i < lights.size(); ++i)
+	{
+		_passConstants._lights[i] = lights[i];
+	}
+	_sceneBounds.Center = XMFLOAT3(0, 0, 0);
+	_sceneBounds.Radius = mapRadius;
+	updateShdowTransform();
 }
 
 void D3DApp::updateMaterialConstantBuffer(void)
@@ -1250,51 +1399,6 @@ void D3DApp::pushSkinnedContantBufferIndex(uint16_t index) noexcept
 
 void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 {
-	switch (renderLayer)
-	{
-		case RenderLayer::Opaque:
-		{
-			__noop;
-		}
-		break;
-		case RenderLayer::OpaqueSkinned:
-		{
-			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Skinned].Get());
-		}
-		break;
-		case RenderLayer::AlphaTested:
-		{
-			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::BackSideNotCulling].Get());
-		}
-		break;
-		case RenderLayer::Transparent:
-		{
-			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Transparent].Get());
-		}
-		break;
-		case RenderLayer::Shadow:
-		{
-			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
-		}
-		break;
-		case RenderLayer::GameObjectDev:
-		{
-#if defined(DEBUG) | defined(_DEBUG)
-			_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::GameObjectDev].Get());
-			//return;
-#else
-			return;
-#endif
-		}
-		break;
-		case RenderLayer::Count:
-		default:
-		{
-			static_assert(static_cast<int>(RenderLayer::Count) == 6, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
-			static_assert(static_cast<int>(PSOType::Count) == 7, "PSO 타입이 추가되었다면 확인해주세요");
-			ThrowErrCode(ErrCode::UndefinedType, "비정상입니다");
-		}
-	}
 	int renderLayerIdx = static_cast<int>(renderLayer);
 	UINT objectCBByteSize = D3DUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 	UINT skinnedCBByteSize = D3DUtil::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
@@ -1399,19 +1503,24 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> D3DApp::getStaticSampler(void) 
 }
 void D3DApp::buildRootSignature(void)
 {
+	// texture 전체가 한 테이블에 묶이도록 수정해야함.(성능) 우선은 현상태를 유지한다. [8/16/2021 qwerw]
 	CD3DX12_DESCRIPTOR_RANGE textureTable;
 	textureTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
+	CD3DX12_DESCRIPTOR_RANGE shadowMapTable;
+	shadowMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
 
+	CD3DX12_ROOT_PARAMETER slotRootParameter[6];
+	// 자주 사용되는것부터 정렬해야함 (성능)[8/16/2021 qwerw]
 	slotRootParameter[0].InitAsDescriptorTable(1, &textureTable, D3D12_SHADER_VISIBILITY_PIXEL);
 	slotRootParameter[1].InitAsConstantBufferView(0);
 	slotRootParameter[2].InitAsConstantBufferView(1);
 	slotRootParameter[3].InitAsConstantBufferView(2);
 	slotRootParameter[4].InitAsConstantBufferView(3);
+	slotRootParameter[5].InitAsDescriptorTable(1, &shadowMapTable, D3D12_SHADER_VISIBILITY_PIXEL);
 
 	auto staticSampler = getStaticSampler();
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(5, slotRootParameter, staticSampler.size(), staticSampler.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(6, slotRootParameter, staticSampler.size(), staticSampler.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 	WComPtr<ID3DBlob> serializedRootSig = nullptr;
 	WComPtr<ID3DBlob> errorBlob = nullptr;
 	
@@ -1431,9 +1540,11 @@ void D3DApp::buildRootSignature(void)
 
 void D3DApp::buildShaders(void)
 {
-	_vertexShader = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultVertexShader", "vs_5_0");
-	_skinnedVertexShader = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForSkinnedVertexShader, "DefaultVertexShader", "vs_5_0");
-	_pixelShader = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultPixelShader", "ps_5_0");
+	_shaders["defaultVS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultVertexShader", "vs_5_1");
+	_shaders["skinnedVS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForSkinnedVertexShader, "DefaultVertexShader", "vs_5_1");
+	_shaders["defaultPS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultPixelShader", "ps_5_1");
+	_shaders["shadowVS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForShader, "ShadowVertexShader", "vs_5_1");
+	_shaders["shadowPS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForShader, "ShadowPixelShader", "ps_5_1");
 }
 
 void D3DApp::buildPipelineStateObject(void)
@@ -1450,8 +1561,16 @@ void D3DApp::buildPipelineStateObject(void)
 	// psoDescNormal
 	{
 		psoDescNormal.pRootSignature = _rootSignature.Get();
-		psoDescNormal.VS = { reinterpret_cast<BYTE*>(_vertexShader->GetBufferPointer()), _vertexShader->GetBufferSize() };
-		psoDescNormal.PS = { reinterpret_cast<BYTE*>(_pixelShader->GetBufferPointer()), _pixelShader->GetBufferSize() };
+		psoDescNormal.VS = 
+		{ 
+			reinterpret_cast<BYTE*>(_shaders["defaultVS"]->GetBufferPointer()),
+			_shaders["defaultVS"]->GetBufferSize()
+		};
+		psoDescNormal.PS =
+		{ 
+			reinterpret_cast<BYTE*>(_shaders["defaultPS"]->GetBufferPointer()),
+			_shaders["defaultPS"]->GetBufferSize()
+		};
 		psoDescNormal.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDescNormal.SampleMask = UINT_MAX;
 		psoDescNormal.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -1529,7 +1648,11 @@ void D3DApp::buildPipelineStateObject(void)
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescSkinned = psoDescNormal;
 		psoDescSkinned.InputLayout = { SKINNED_VERTEX_INPUT_LAYOUT, SKINNED_VERTEX_INPUT_DESC_SIZE };
-		psoDescSkinned.VS = { reinterpret_cast<BYTE*>(_skinnedVertexShader->GetBufferPointer()), _skinnedVertexShader->GetBufferSize() };
+		psoDescSkinned.VS = 
+		{
+			reinterpret_cast<BYTE*>(_shaders["skinnedVS"]->GetBufferPointer()),
+			_shaders["skinnedVS"]->GetBufferSize()
+		};
 		auto skinnedPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Skinned, nullptr));
 		check(skinnedPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Skinned");
 
@@ -1561,8 +1684,23 @@ void D3DApp::buildPipelineStateObject(void)
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescShadow = psoDescNormal;
 
+		psoDescShadow.RasterizerState.DepthBias = 100000;
+		psoDescShadow.RasterizerState.DepthBiasClamp = 0.f;
+		psoDescShadow.RasterizerState.SlopeScaledDepthBias = 1.f;
+		psoDescShadow.VS =
+		{
+			reinterpret_cast<BYTE*>(_shaders["shadowVS"]->GetBufferPointer()),
+			_shaders["shadowVS"]->GetBufferSize()
+		};
+		psoDescShadow.PS =
+		{
+			reinterpret_cast<BYTE*>(_shaders["shadowPS"]->GetBufferPointer()),
+			_shaders["shadowPS"]->GetBufferSize()
+		};
 
-		psoDescShadow.DepthStencilState.DepthEnable = false;
+		psoDescShadow.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+		psoDescShadow.NumRenderTargets = 0;
+
 		auto shadowPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Shadow, nullptr));
 		check(shadowPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Shadow");
 
@@ -1676,7 +1814,8 @@ uint16_t D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	_commandList->ResourceBarrier(1, &barrier);
 
-	uint16_t textureSRVIndex = static_cast<uint16_t>(_textures.size());
+	// 첫칸은 shadowMap이 사용중 [8/16/2021 qwerw]
+	uint16_t textureSRVIndex = TEXTURE_SRV_INDEX + static_cast<uint16_t>(_textures.size());
 	texture->_index = textureSRVIndex;
 	_textures.emplace_back(std::move(texture));
 	

@@ -21,6 +21,7 @@ class Material;
 class UIManager;
 class Actor;
 class GameObject;
+class ShadowMap;
 
 // 정점 관련
 static constexpr size_t VERTEX_INPUT_DESC_SIZE = 3;
@@ -38,9 +39,6 @@ const D3D12_INPUT_ELEMENT_DESC SKINNED_VERTEX_INPUT_LAYOUT[SKINNED_VERTEX_INPUT_
 	{"BONEINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 };
 
-static constexpr UINT OBJECT_MAX = 200;
-static constexpr UINT MATERIAL_MAX = 200;
-static constexpr UINT SKINNED_INSTANCE_MAX = 50;
 enum class PSOType : uint8_t
 {
 	Normal,
@@ -121,6 +119,7 @@ public:
 	void removeGameObject(const GameObject* gameObject) noexcept;
 	//const DirectX::XMFLOAT4X4& getInverseViewMatrix(void) const noexcept;
 	bool XM_CALLCONV checkCulled(const DirectX::BoundingBox& box, FXMMATRIX world) const noexcept;
+	void setLight(const std::vector<Light>& lights, float mapRadius) noexcept;
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보
@@ -152,6 +151,9 @@ private:
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> getStaticSampler(void) const;
 	void updateCamera(void);
 
+	void initShadowMap();
+	void updateShdowTransform(void) noexcept;
+	void updateShadowPassConstantBuffer(void) noexcept;
 private:
 	void updateObjectConstantBuffer(void);
 	void updateSkinnedConstantBuffer(void);
@@ -174,6 +176,7 @@ private:
 
 	void drawRenderItems(const RenderLayer renderLayer);
 	void drawUI(void);
+	void drawSceneToShadowMap(void);
 
 	void buildShaderResourceViews();
 
@@ -207,6 +210,7 @@ private:
 	std::vector<std::unique_ptr<FrameResource>> _frameResources;
 	int _frameIndex;
 	PassConstants _passConstants;
+	PassConstants _shadowPassConstants;
 
 	WComPtr<ID3D12DescriptorHeap> _rtvHeap;
 	WComPtr<ID3D12DescriptorHeap> _dsvHeap;
@@ -221,9 +225,7 @@ private:
 
 	// 셰이더 입력 관련
 	WComPtr<ID3D12RootSignature> _rootSignature;
-	WComPtr<ID3DBlob> _vertexShader;
-	WComPtr<ID3DBlob> _skinnedVertexShader;
-	WComPtr<ID3DBlob> _pixelShader;
+	std::unordered_map<std::string, WComPtr<ID3DBlob>> _shaders;
 
 	unordered_map<PSOType, WComPtr<ID3D12PipelineState>> _pipelineStateObjectMap;
 
@@ -232,6 +234,7 @@ private:
 
 	std::vector<std::unique_ptr<Texture>> _textures;
 	int _textureLoadedCount;
+	static constexpr int TEXTURE_SRV_INDEX = 1;
 
 	// 카메라
 	DirectX::XMFLOAT3 _cameraInputPosition;
@@ -252,9 +255,14 @@ private:
 	XMFLOAT4X4 _invViewMatrix;
 	XMFLOAT4X4 _projectionMatrix;
 
-	PSOType _psoType;
 	D3D12_VIEWPORT _viewPort;
 	D3D12_RECT _scissorRect;
+
+	std::unique_ptr<ShadowMap> _shadowMap;
+	BoundingSphere _sceneBounds;
+	DirectX::XMFLOAT4X4 _mainLightViewMatrix;
+	DirectX::XMFLOAT4X4 _mainLightProjectionMatrix;
+	DirectX::XMFLOAT4X4 _shadowTransform;
 
 	// UI & D2D
 	WComPtr<ID3D11Resource> _backBufferWrapped[SWAP_CHAIN_BUFFER_COUNT];

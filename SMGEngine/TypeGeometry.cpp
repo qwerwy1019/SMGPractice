@@ -28,6 +28,7 @@ PassConstants::PassConstants() noexcept
 	, _invProj(MathHelper::Identity4x4)
 	, _viewProj(MathHelper::Identity4x4)
 	, _invViewProj(MathHelper::Identity4x4)
+	, _shadowTransform(MathHelper::Identity4x4)
 	, _cameraPos(0.f, 0.f, 0.f)
 	, pad1(0.0f)
 	, _renderTargetSize(0.f, 0.f)

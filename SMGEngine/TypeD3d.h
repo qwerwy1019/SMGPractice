@@ -66,5 +66,11 @@ constexpr RenderLayer RenderLayers[] =
 	RenderLayer::GameObjectDev,
 };
 static_assert(sizeof(RenderLayers) == static_cast<int>(RenderLayer::Count), "RenderLayer 추가 시 수정해주세요.");
-
+constexpr RenderLayer HasShadowLayers[] =
+{
+	RenderLayer::Opaque,
+	RenderLayer::OpaqueSkinned,
+	RenderLayer::AlphaTested,
+};
+static_assert(static_cast<int>(RenderLayer::Count) == 6, "그림자가 생겨야 하는 레이어라면 추가해주세요.");
 constexpr uint16_t SKINNED_UNDEFINED = std::numeric_limits<uint16_t>::max();

@@ -48,6 +48,9 @@ void StageInfo::loadXml(const XMLReaderNode& rootNode)
 
 	childIter = childNodes.find("GravityPoints");
 	loadXmlGravityPointInfo(childIter->second);
+
+	childIter = childNodes.find("Lights");
+	loadXmlLightInfo(childIter->second);
 }
 
 void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
@@ -121,6 +124,11 @@ const GravityPoint* StageInfo::getGravityPointAt(const DirectX::XMFLOAT3& positi
 	return nullptr;
 }
 
+const std::vector<Light>& StageInfo::getLights(void) const noexcept
+{
+	return _lightInfo;
+}
+
 void StageInfo::loadXmlTerrainObjectInfo(const XMLReaderNode& node)
 {
 	const auto& childNodes = node.getChildNodes();
@@ -173,6 +181,50 @@ void StageInfo::loadXmlGravityPointInfo(const XMLReaderNode& node)
 		childNodes[i].loadAttribute("Position", gravityPoint->_position);
 
 		_gravityPoints.emplace(key, std::move(gravityPoint));
+	}
+}
+
+void StageInfo::loadXmlLightInfo(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	_lightInfo.reserve(childNodes.size());
+	if (childNodes.size() > MAX_LIGHT_COUNT || childNodes.size() == 0)
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData, std::to_string(MAX_LIGHT_COUNT) + " : " + std::to_string(childNodes.size()));
+	}
+	for (int i = 0; i < childNodes.size(); ++i)
+	{
+		Light light;
+		std::string typeString;
+		childNodes[i].loadAttribute("Type", typeString);
+		if (typeString == "Directional")
+		{
+			childNodes[i].loadAttribute("Strength", light._strength);
+			childNodes[i].loadAttribute("Direction", light._direction);
+		}
+		else if (typeString == "Point")
+		{
+			childNodes[i].loadAttribute("Strength", light._strength);
+			childNodes[i].loadAttribute("Position", light._position);
+			childNodes[i].loadAttribute("FallOffStart", light._falloffStart);
+			childNodes[i].loadAttribute("FallOffEnd", light._falloffEnd);
+		}
+		else if (typeString == "Spot")
+		{
+			childNodes[i].loadAttribute("Strength", light._strength);
+			childNodes[i].loadAttribute("Direction", light._direction);
+			childNodes[i].loadAttribute("Position", light._position);
+			childNodes[i].loadAttribute("FallOffStart", light._falloffStart);
+			childNodes[i].loadAttribute("FallOffEnd", light._falloffEnd);
+			childNodes[i].loadAttribute("SpotPower", light._spotPower);
+		}
+		else
+		{
+			ThrowErrCode(ErrCode::UndefinedType, typeString);
+		}
+		
+		
+		_lightInfo.push_back(std::move(light));
 	}
 }
 
