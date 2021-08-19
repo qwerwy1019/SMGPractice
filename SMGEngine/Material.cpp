@@ -21,7 +21,7 @@ Material::Material(const int materialCBIndex, const XMLReaderNode& node)
 	textureNameWstring.assign(textureName.begin(), textureName.end());
 	textureNameWstring = L"../Resources/XmlFiles/Asset/Texture/" + textureNameWstring + L".dds";
 
-	_diffuseSRVHeapIndex = SMGFramework::getD3DApp()->loadTexture(textureName, textureNameWstring);
+	_textureIndex = SMGFramework::getD3DApp()->loadTexture(textureName, textureNameWstring);
 
 	std::string renderLayerString;
 	node.loadAttribute("RenderLayer", renderLayerString);

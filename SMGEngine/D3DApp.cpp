@@ -360,7 +360,7 @@ void D3DApp::createDescriptorHeaps(void)
 	ThrowIfFailed(_deviceD3d12->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(_dsvHeap.GetAddressOf())));
 
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc;
-	srvHeapDesc.NumDescriptors = 200;
+	srvHeapDesc.NumDescriptors = TEXTURE_SRV_INDEX + TEXTURE_MAX;
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	srvHeapDesc.NodeMask = 0;
@@ -527,6 +527,10 @@ void D3DApp::Draw(void)
 
 	_commandList->SetGraphicsRootSignature(_rootSignature.Get());
 
+	CD3DX12_GPU_DESCRIPTOR_HANDLE textureHandle(_srvHeap->GetGPUDescriptorHandleForHeapStart());
+	textureHandle.Offset(TEXTURE_SRV_INDEX, _cbvSrcUavDescriptorSize);
+	_commandList->SetGraphicsRootDescriptorTable(5, textureHandle);
+
 	drawSceneToShadowMap();
 
 	_commandList->RSSetViewports(1, &_viewPort);
@@ -548,7 +552,7 @@ void D3DApp::Draw(void)
 
 	_commandList->SetGraphicsRootConstantBufferView(3, _frameResources[_frameIndex]->getPassCBVirtualAddress());
 	CD3DX12_GPU_DESCRIPTOR_HANDLE shadowMapHandle(_srvHeap->GetGPUDescriptorHandleForHeapStart());
-	_commandList->SetGraphicsRootDescriptorTable(5, shadowMapHandle);
+	_commandList->SetGraphicsRootDescriptorTable(4, shadowMapHandle);
 	for (auto e : RenderLayers)
 	{
 		switch (e)
@@ -895,7 +899,6 @@ void D3DApp::updatePassConstantBuffer()
 	_passConstants._fogColor = DirectX::XMFLOAT4(DirectX::Colors::LightSteelBlue);
 	_passConstants._fogStart = 20.f;
 	_passConstants._fogEnd = 4000.f;
-	_passConstants._ambientLight = { 0.3f, 0.3f, 0.4f, 1.0f };
 	
 	_frameResources[_frameIndex]->setPassCB(0, _passConstants);
 }
@@ -1323,13 +1326,14 @@ bool XM_CALLCONV D3DApp::checkCulled(const DirectX::BoundingBox& box, FXMMATRIX 
 	return true;
 }
 
-void D3DApp::setLight(const std::vector<Light>& lights) noexcept
+void D3DApp::setLight(const std::vector<Light>& lights, const DirectX::XMFLOAT4& ambientLight) noexcept
 {
 	check(0 < lights.size() && lights.size() <= MAX_LIGHT_COUNT);
 	for (int i = 0; i < lights.size(); ++i)
 	{
 		_passConstants._lights[i] = lights[i];
 	}
+	_passConstants._ambientLight = ambientLight;
 	updateShadowTransform();
 }
 
@@ -1345,6 +1349,7 @@ void D3DApp::updateMaterialConstantBuffer(void)
 			matConstants._diffuseAlbedo = mat->getDiffuseAlbedo();
 			matConstants._fresnelR0 = mat->getFresnelR0();
 			matConstants._roughness = mat->getRoughness();
+			matConstants._diffuseMapIndex = mat->getDiffuseSRVHeapIndex();
 
 			XMMATRIX matTransform = XMLoadFloat4x4(&mat->getMaterialTransform());
 			XMStoreFloat4x4(&matConstants._materialTransform, XMMatrixTranspose(matTransform));
@@ -1431,23 +1436,18 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 		_commandList->IASetIndexBuffer(&ibv);
 		_commandList->IASetPrimitiveTopology(renderItem->_primitive);
 
-		CD3DX12_GPU_DESCRIPTOR_HANDLE textureHandle(_srvHeap->GetGPUDescriptorHandleForHeapStart());
-		textureHandle.Offset(renderItem->_material->getDiffuseSRVHeapIndex(), _cbvSrcUavDescriptorSize);
-		_commandList->SetGraphicsRootDescriptorTable(0, textureHandle);
-
 		D3D12_GPU_VIRTUAL_ADDRESS objectCBaddress = objectCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_parentObject->getObjectConstantBufferIndex()) * objectCBByteSize;
-		_commandList->SetGraphicsRootConstantBufferView(1, objectCBaddress);
+		_commandList->SetGraphicsRootConstantBufferView(0, objectCBaddress);
 
 		auto skinnedIndex = renderItem->_parentObject->getSkinnedConstantBufferIndex();
 		if (skinnedIndex != SKINNED_UNDEFINED)
 		{
 			D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(skinnedIndex) * skinnedCBByteSize;
-			_commandList->SetGraphicsRootConstantBufferView(2, skinnedCBAdress);
+			_commandList->SetGraphicsRootConstantBufferView(1, skinnedCBAdress);
 		}
-		
 		D3D12_GPU_VIRTUAL_ADDRESS materialCBAddress = materialCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_material->getMaterialCBIndex()) * materialCBByteSize;
-		_commandList->SetGraphicsRootConstantBufferView(4, materialCBAddress);
-
+		_commandList->SetGraphicsRootConstantBufferView(2, materialCBAddress);
+		
 		const auto& subMesh = meshGeometry->_subMeshList[renderItem->_subMeshIndex];
 		_commandList->DrawIndexedInstanced(
 			subMesh._indexCount,
@@ -1523,23 +1523,24 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> D3DApp::getStaticSampler(void) 
 void D3DApp::buildRootSignature(void)
 {
 	// texture 전체가 한 테이블에 묶이도록 수정해야함.(성능) 우선은 현상태를 유지한다. [8/16/2021 qwerw]
-	CD3DX12_DESCRIPTOR_RANGE textureTable;
-	textureTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
-
 	CD3DX12_DESCRIPTOR_RANGE shadowMapTable;
-	shadowMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+	shadowMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[6];
+	CD3DX12_DESCRIPTOR_RANGE textureTable;
+	textureTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, TEXTURE_MAX, 1);
+
+	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
 	// 자주 사용되는것부터 정렬해야함 (성능)[8/16/2021 qwerw]
-	slotRootParameter[0].InitAsDescriptorTable(1, &textureTable, D3D12_SHADER_VISIBILITY_PIXEL);
-	slotRootParameter[1].InitAsConstantBufferView(0);
-	slotRootParameter[2].InitAsConstantBufferView(1);
-	slotRootParameter[3].InitAsConstantBufferView(2);
-	slotRootParameter[4].InitAsConstantBufferView(3);
-	slotRootParameter[5].InitAsDescriptorTable(1, &shadowMapTable, D3D12_SHADER_VISIBILITY_PIXEL);
+	slotRootParameter[0].InitAsConstantBufferView(0); // objectConstant
+	slotRootParameter[1].InitAsConstantBufferView(1); // skinnedConstant
+	slotRootParameter[2].InitAsConstantBufferView(2); // materialDatas
+	slotRootParameter[3].InitAsConstantBufferView(3); // passConstant
+	slotRootParameter[4].InitAsDescriptorTable(1, &shadowMapTable, D3D12_SHADER_VISIBILITY_PIXEL); // shadowMap
+	slotRootParameter[5].InitAsDescriptorTable(1, &textureTable, D3D12_SHADER_VISIBILITY_PIXEL); // textures
+	slotRootParameter[6].InitAsShaderResourceView(1, 1); // instanceDatas
 
 	auto staticSampler = getStaticSampler();
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(6, slotRootParameter, staticSampler.size(), staticSampler.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(7, slotRootParameter, staticSampler.size(), staticSampler.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 	WComPtr<ID3DBlob> serializedRootSig = nullptr;
 	WComPtr<ID3DBlob> errorBlob = nullptr;
 	
@@ -1825,9 +1826,7 @@ uint16_t D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	_commandList->ResourceBarrier(1, &barrier);
 
-	// 첫칸은 shadowMap이 사용중 [8/16/2021 qwerw]
-	uint16_t textureSRVIndex = TEXTURE_SRV_INDEX + static_cast<uint16_t>(_textures.size());
-	texture->_index = textureSRVIndex;
+	uint16_t textureSRVIndex = static_cast<uint16_t>(_textures.size());
 	_textures.emplace_back(std::move(texture));
 	
 	return textureSRVIndex;

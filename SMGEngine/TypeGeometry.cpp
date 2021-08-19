@@ -30,7 +30,7 @@ PassConstants::PassConstants() noexcept
 	, _invViewProj(MathHelper::Identity4x4)
 	, _shadowTransform(MathHelper::Identity4x4)
 	, _cameraPos(0.f, 0.f, 0.f)
-	, pad1(0.0f)
+	, pad0(0.0f)
 	, _renderTargetSize(0.f, 0.f)
 	, _invRenderTargetSize(0.f, 0.f)
 	, _nearZ(0.f)
@@ -40,7 +40,7 @@ PassConstants::PassConstants() noexcept
 	, _fogColor(DirectX::XMFLOAT4(DirectX::Colors::LightSteelBlue))
 	, _fogStart(20.f)
 	, _fogEnd(100.f)
-	, pad2(0.f, 0.f)
+	, pad1(0.f, 0.f)
 	, _ambientLight(0.25, 0.25, 0.35f, 1.f)
 	, _lights()
 {
@@ -52,6 +52,10 @@ MaterialConstants::MaterialConstants() noexcept
 	, _fresnelR0(0.01f, 0.01f, 0.01f)
 	, _roughness(0.25f)
 	, _materialTransform(MathHelper::Identity4x4)
+	, _diffuseMapIndex(0)
+	, pad0(0)
+	, pad1(0)
+	, pad2(0)
 {
 
 }

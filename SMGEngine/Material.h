@@ -10,7 +10,7 @@ public:
 	Material(const int materialCBIndex, const XMLReaderNode& node);
 
 	inline int getMaterialCBIndex(void) const noexcept { return _materialCBIndex; }
-	inline int getDiffuseSRVHeapIndex(void) const noexcept { return _diffuseSRVHeapIndex; }
+	inline int getDiffuseSRVHeapIndex(void) const noexcept { return _textureIndex; }
 
 	inline const DirectX::XMFLOAT4& getDiffuseAlbedo(void) const noexcept { return _diffuseAlbedo; }
 	inline const DirectX::XMFLOAT3& getFresnelR0(void) const noexcept { return _fresnelR0; }
@@ -20,7 +20,7 @@ public:
 	int _dirtyFrames;
 private:
 	int _materialCBIndex;
-	uint16_t _diffuseSRVHeapIndex;
+	uint16_t _textureIndex;
 	uint16_t _normalSRVHeapIndex;
 
 	DirectX::XMFLOAT4 _diffuseAlbedo;

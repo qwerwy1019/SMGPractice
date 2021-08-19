@@ -35,7 +35,7 @@ struct PassConstants
 	DirectX::XMFLOAT4X4 _invViewProj;
 	DirectX::XMFLOAT4X4 _shadowTransform;
 	DirectX::XMFLOAT3 _cameraPos;
-	float pad1;
+	float pad0;
 	DirectX::XMFLOAT2 _renderTargetSize;
 	DirectX::XMFLOAT2 _invRenderTargetSize;
 	float _nearZ;
@@ -45,7 +45,7 @@ struct PassConstants
 	DirectX::XMFLOAT4 _fogColor;
 	float _fogStart;
 	float _fogEnd;
-	DirectX::XMFLOAT2 pad2;
+	DirectX::XMFLOAT2 pad1;
 	// 조명관련
 	DirectX::XMFLOAT4 _ambientLight;
 	std::array<Light, MAX_LIGHT_COUNT> _lights;
@@ -57,6 +57,10 @@ struct MaterialConstants
 	DirectX::XMFLOAT3 _fresnelR0;
 	float _roughness;
 	DirectX::XMFLOAT4X4 _materialTransform;
+	uint32_t _diffuseMapIndex;
+	uint32_t pad0;
+	uint32_t pad1;
+	uint32_t pad2;
 };
 struct Vertex
 {
@@ -99,7 +103,6 @@ struct Texture
 	std::string _name;
 	std::wstring _fileName;
 
-	uint16_t _index = 0;
 	WComPtr<ID3D12Resource> _resource;
 	WComPtr<ID3D12Resource> _uploader;
 };
@@ -115,8 +118,3 @@ struct EffectInstanceData
 	DirectX::XMFLOAT4X4 _world;
 	uint16_t _textureIndex;
 };
-
-static constexpr UINT OBJECT_MAX = 200;
-static constexpr UINT MATERIAL_MAX = 200;
-static constexpr UINT SKINNED_INSTANCE_MAX = 50;
-static constexpr UINT EFFECT_INSTANCE_MAX = 50;

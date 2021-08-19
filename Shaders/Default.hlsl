@@ -62,7 +62,7 @@ VertexOut DefaultVertexShader(VertexIn vIn)
 
 float4 DefaultPixelShader(VertexOut pIn) : SV_TARGET
 {
-	float4 diffuseAlbedo = gDiffuseAlbedo * gDiffuseMap.Sample(gsamAnisotropicWrap, pIn._textureCoord);
+	float4 diffuseAlbedo = gDiffuseAlbedo * gDiffuseMap[gDiffuseMapIndex].Sample(gsamAnisotropicWrap, pIn._textureCoord);
 
 //#ifdef ALPHA_TEST
 	clip(diffuseAlbedo.a - 0.1f);

@@ -120,7 +120,7 @@ public:
 	void removeGameObject(const GameObject* gameObject) noexcept;
 	//const DirectX::XMFLOAT4X4& getInverseViewMatrix(void) const noexcept;
 	bool XM_CALLCONV checkCulled(const DirectX::BoundingBox& box, FXMMATRIX world) const noexcept;
-	void setLight(const std::vector<Light>& lights) noexcept;
+	void setLight(const std::vector<Light>& lights, const DirectX::XMFLOAT4& ambientLight) noexcept;
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보

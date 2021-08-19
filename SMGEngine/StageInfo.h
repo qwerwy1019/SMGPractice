@@ -92,6 +92,7 @@ public:
 	const DirectX::XMINT3& getSectorSize(void) const noexcept;
 	const GravityPoint* getGravityPointAt(const DirectX::XMFLOAT3& position) const noexcept;
 	const std::vector<Light>& getLights(void) const noexcept;
+	const DirectX::XMFLOAT4& getAmbientLight(void) const noexcept;
 private:
 	LandscapeType _landscapeType;
 	std::vector<std::unique_ptr<CameraPoint>> _cameraPoints;
@@ -99,6 +100,8 @@ private:
 	std::vector<SpawnInfo> _spawnInfo;
 	std::vector<TerrainObjectInfo> _terrainObjectInfo;
 	std::unordered_map<int, std::unique_ptr<GravityPoint>> _gravityPoints;
+
+	DirectX::XMFLOAT4 _ambientLight;
 	std::vector<Light> _lightInfo;
 
 	DirectX::XMINT3 _sectorUnitNumber;

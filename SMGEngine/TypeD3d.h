@@ -19,6 +19,13 @@ constexpr const char* NUM_DIR_LIGHTS_LPCSTR = "3";
 constexpr const char* NUM_POINT_LIGHTS_LPCSTR = "0";
 constexpr const char* NUM_SPOT_LIGHTS_LPCSTR = "0";
 
+constexpr UINT OBJECT_MAX = 200;
+constexpr UINT MATERIAL_MAX = 200;
+constexpr UINT SKINNED_INSTANCE_MAX = 50;
+constexpr UINT EFFECT_INSTANCE_MAX = 50;
+constexpr UINT TEXTURE_MAX = 200;
+constexpr const char* TEXTURE_MAX_LPCSTR = "200";
+
 // 셰이더 디파인
 const D3D_SHADER_MACRO definesForShader[] =
 {
@@ -28,12 +35,14 @@ const D3D_SHADER_MACRO definesForShader[] =
 //	"FOG", "1",
 //	"ALPHA_TEST", "1",
 //	"CARTOON_RENDER", "1",
+	"TEXTURE_MAX", TEXTURE_MAX_LPCSTR,
 	NULL, NULL
 };
 const D3D_SHADER_MACRO definesForSkinnedVertexShader[] =
 {
 	"NUM_DIR_LIGHTS", NUM_DIR_LIGHTS_LPCSTR,
 	"SKINNED", "1",
+	"TEXTURE_MAX", TEXTURE_MAX_LPCSTR,
 	NULL, NULL
 };
 

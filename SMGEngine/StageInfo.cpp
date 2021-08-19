@@ -10,6 +10,7 @@ StageInfo::StageInfo(void) noexcept
 	: _landscapeType(LandscapeType::Basic)
 	, _sectorUnitNumber(0, 0, 0)
 	, _sectorSize(0, 0, 0)
+	, _ambientLight(0, 0, 0, 0)
 {
 
 }
@@ -129,6 +130,11 @@ const std::vector<Light>& StageInfo::getLights(void) const noexcept
 	return _lightInfo;
 }
 
+const DirectX::XMFLOAT4& StageInfo::getAmbientLight(void) const noexcept
+{
+	return _ambientLight;
+}
+
 void StageInfo::loadXmlTerrainObjectInfo(const XMLReaderNode& node)
 {
 	const auto& childNodes = node.getChildNodes();
@@ -197,7 +203,12 @@ void StageInfo::loadXmlLightInfo(const XMLReaderNode& node)
 		Light light;
 		std::string typeString;
 		childNodes[i].loadAttribute("Type", typeString);
-		if (typeString == "Directional")
+		if (typeString == "Ambient")
+		{
+			childNodes[i].loadAttribute("Strength", _ambientLight);
+			continue;
+		}
+		else if (typeString == "Directional")
 		{
 			childNodes[i].loadAttribute("Strength", light._strength);
 			childNodes[i].loadAttribute("Direction", light._direction);

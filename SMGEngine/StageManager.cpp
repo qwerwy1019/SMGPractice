@@ -42,7 +42,7 @@ void StageManager::loadStage(void)
 
 	SMGFramework::getD3DApp()->executeCommandQueue();
 
-	SMGFramework::getD3DApp()->setLight(_stageInfo->getLights());
+	SMGFramework::getD3DApp()->setLight(_stageInfo->getLights(), _stageInfo->getAmbientLight());
 	_isLoading = false;
 }
 
