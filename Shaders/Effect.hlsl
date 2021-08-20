@@ -80,10 +80,7 @@ void EffectGeoShader(point VertexOut gIn[1],
 float4 EffectPixelShader(GeoOut pIn) : SV_TARGET
 {
 	float4 diffuseAlbedo = gDiffuseAlbedo * gDiffuseMap[pIn._diffuseMapIndex].Sample(gsamAnisotropicWrap, pIn._textureCoord);
-	//diffuseAlbedo.a *= pIn._alpha;
-//#ifdef ALPHA_TEST
-//	clip(diffuseAlbedo.a - 0.1f);
-//#endif
+	diffuseAlbedo.a *= pIn._alpha;
 
 	pIn._normalWorld = normalize(pIn._normalWorld);
 
