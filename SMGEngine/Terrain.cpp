@@ -434,7 +434,7 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 
 	TerrainCollisionInfoXXX collisionInfo;
 	// sliding을 구현하지 않았기 때문에, 겹쳐지는 경우에는 뒤로 보내야해서 미리 반지름만큼 뒤로 보내서 충돌 체크를 할 것임. [7/12/2021 qwerw]
-	float adjustingDistance = actor.getRadius();
+	float adjustingDistance = actor.getRadius() * 0.5;
 	collisionInfo._velocity = XMVector3Transform(XMLoadFloat3(&velocity), inverseMatrix);
 	float speed = XMVectorGetX(XMVector3Length(collisionInfo._velocity));
 	XMVECTOR adjustingVelocity = collisionInfo._velocity * adjustingDistance / speed;

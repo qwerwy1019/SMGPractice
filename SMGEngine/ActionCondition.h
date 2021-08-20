@@ -138,7 +138,6 @@ private:
 	std::string _actionStateName;
 };
 
-
 class ActionCondition_CharacterType : public ActionCondition
 {
 public:
@@ -148,4 +147,16 @@ public:
 	virtual bool checkCondition(const Actor& actor) const noexcept override;
 private:
 	CharacterType _characterType;
+};
+
+class ActionCondition_CheckSpeed : public ActionCondition
+{
+public:
+	ActionCondition_CheckSpeed(const std::string& args);
+	virtual ~ActionCondition_CheckSpeed() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::CheckSpeed; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	float _min;
+	float _max;
 };

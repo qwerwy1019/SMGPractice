@@ -124,4 +124,8 @@ struct EffectInstanceData
 	DirectX::XMFLOAT2 _size;
 	uint32_t _frame;
 	uint32_t _totalFrame;
+	float _alpha;
+	uint32_t pad0;
+	uint32_t pad1;
+	uint32_t pad2;
 };

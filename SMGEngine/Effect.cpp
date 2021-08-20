@@ -14,12 +14,20 @@ Effect::Effect(const XMLReaderNode& node)
 	node.loadAttribute("TotalFrame", _totalFrame);
 	node.loadAttribute("TickPerFrame", _tickPerFrame);
 	node.loadAttribute("Size", _size);
+	node.loadAttribute("AlphaDecrease", _alphaDecrease);
+	node.loadAttribute("SizeDecrease", _sizeDecrease);
+	node.loadAttribute("IsRepeat", _isRepeat);
+
+	if (_tickPerFrame * _totalFrame == 0)
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData, "Effect 재생 시간이 0입니다.");
+	}
 }
 
-void Effect::addInstance(const DirectX::XMFLOAT3& position, float size) noexcept
+void Effect::addInstance(EffectInstance&& instance) noexcept
 {
-	TickCount64 expireTick = SMGFramework::Get().getTimer().getCurrentTickCount() + (_tickPerFrame * _totalFrame);
-	_instances.emplace_back(position, expireTick, size);
+	instance._startTick = SMGFramework::Get().getTimer().getCurrentTickCount();
+	_instances.emplace_back(instance);
 }
 
 void Effect::updateEffectInstanceData(FrameResource* frameResource, uint32_t& instanceCount) const noexcept
@@ -30,16 +38,13 @@ void Effect::updateEffectInstanceData(FrameResource* frameResource, uint32_t& in
 		return;
 	}
 	TickCount64 currentTick = SMGFramework::Get().getTimer().getCurrentTickCount();
-	check(currentTick < _instances.front()._expireTick);
 
 	float radius = std::sqrt(_size.x * _size.x + _size.y + _size.y);
 	XMMATRIX identityMat = XMLoadFloat4x4(&MathHelper::Identity4x4);
 	EffectInstanceData instanceData;
 	instanceData._totalFrame = _totalFrame;
 	instanceData._textureIndex = _textureIndex;
-	instanceData._size = _size;
-	instanceData._totalFrame = _totalFrame;
-
+	TickCount64 effectTick = _totalFrame * _tickPerFrame;
 	for (const auto& instance : _instances)
 	{
 		BoundingBox box(instance._position, XMFLOAT3(radius, radius, radius));
@@ -48,9 +53,16 @@ void Effect::updateEffectInstanceData(FrameResource* frameResource, uint32_t& in
 			continue;
 		}
 
+		TickCount64 effectLocalTick = (currentTick - instance._startTick) % effectTick;
+
 		instanceData._position = instance._position;
-		instanceData._frame = getCurrentFrame(instance._expireTick - currentTick);
-		instanceData._size = XMFLOAT2(_size.x * instance._size, _size.y * instance._size);
+		instanceData._frame = effectLocalTick / _tickPerFrame;
+		float sizeDecreaseRate = _sizeDecrease * (static_cast<float>(effectLocalTick) / effectTick);
+		float sizeRate = instance._size * (1 - sizeDecreaseRate);
+		instanceData._size = XMFLOAT2(_size.x * sizeRate, _size.y * sizeRate);
+
+		float alphaDecreaseRate = _alphaDecrease * (static_cast<float>(effectLocalTick) / effectTick);
+		instanceData._alpha = 1 - alphaDecreaseRate;
 
 		frameResource->setEffectBuffer(instanceCount++, instanceData);
 	}
@@ -58,22 +70,21 @@ void Effect::updateEffectInstanceData(FrameResource* frameResource, uint32_t& in
 
 void Effect::update(void) noexcept
 {
+	if (_isRepeat)
+	{
+		return;
+	}
 	TickCount64 currentTick = SMGFramework::Get().getTimer().getCurrentTickCount();
-	while (!_instances.empty() && _instances.front()._expireTick <= currentTick)
+	currentTick -= _tickPerFrame * _totalFrame;
+	while (!_instances.empty() && _instances.front()._startTick <= currentTick)
 	{
 		_instances.pop_front();
 	}
 }
 
-uint32_t Effect::getCurrentFrame(const TickCount64& leftTick) const noexcept
-{
-	check(leftTick > 0);
-	return _totalFrame - 1 - (leftTick - 1) / _tickPerFrame;
-}
-
-EffectInstance::EffectInstance(const DirectX::XMFLOAT3& position, const TickCount64& expireTick, float size) noexcept
+EffectInstance::EffectInstance(const DirectX::XMFLOAT3& position, float size) noexcept
 	: _position(position)
-	, _expireTick(expireTick)
+	, _startTick(0)
 	, _size(size)
 {
 
@@ -81,6 +92,7 @@ EffectInstance::EffectInstance(const DirectX::XMFLOAT3& position, const TickCoun
 
 EffectManager::EffectManager()
 	: _instanceCount(0)
+	, _mesh(nullptr)
 {
 }
 
@@ -113,7 +125,7 @@ void EffectManager::loadXML(const std::string& fileName)
 	}
 }
 
-void EffectManager::addEffectInstance(const std::string& effectName, const DirectX::XMFLOAT3& position, float size) noexcept
+void EffectManager::addEffectInstance(const std::string& effectName, EffectInstance&& instance) noexcept
 {
 	auto it = _effects.find(effectName);
 	if (it == _effects.end())
@@ -122,7 +134,7 @@ void EffectManager::addEffectInstance(const std::string& effectName, const Direc
 		return;
 	}
 
-	it->second->addInstance(position, size);
+	it->second->addInstance(std::move(instance));
 }
 
 void EffectManager::updateEffectInstanceData(FrameResource* frameResource) noexcept

@@ -22,6 +22,7 @@ struct GeoOut
 	float3 _normalWorld : NORMAL;
 	float2 _textureCoord    : TEXCOORD;
 	uint _diffuseMapIndex : DIFFUSEINDEX;
+	float _alpha : ALPHA;
 };
 
 VertexOut EffectVertexShader(VertexIn vIn, uint instanceID : SV_InstanceID)
@@ -71,7 +72,7 @@ void EffectGeoShader(point VertexOut gIn[1],
 		gOut._normalWorld = cross(up, right);
 		gOut._textureCoord = texCoord[i];
 		gOut._diffuseMapIndex = instanceData._diffuseMapIndex;
-
+		gOut._alpha = instanceData._alpha;
 		triStream.Append(gOut);
 	}
 }
@@ -79,9 +80,9 @@ void EffectGeoShader(point VertexOut gIn[1],
 float4 EffectPixelShader(GeoOut pIn) : SV_TARGET
 {
 	float4 diffuseAlbedo = gDiffuseAlbedo * gDiffuseMap[pIn._diffuseMapIndex].Sample(gsamAnisotropicWrap, pIn._textureCoord);
-
+	//diffuseAlbedo.a *= pIn._alpha;
 //#ifdef ALPHA_TEST
-	clip(diffuseAlbedo.a - 0.1f);
+//	clip(diffuseAlbedo.a - 0.1f);
 //#endif
 
 	pIn._normalWorld = normalize(pIn._normalWorld);
@@ -95,7 +96,6 @@ float4 EffectPixelShader(GeoOut pIn) : SV_TARGET
 	float fogAmount = saturate((distanceToEye - gFogStart) / gFogEnd);
 	color = lerp(color, gFogColor, fogAmount);
 #endif
-	// 통상적으로 diffuseAlbedo 알파값에 알파값을 넣는다고함.
 	color.a = diffuseAlbedo.a;
 
 	return color;

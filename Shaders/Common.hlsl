@@ -30,6 +30,10 @@ struct InstanceData
 	float2 _size;
 	uint _frame;
 	uint _totalFrame;
+	float _alpha;
+	uint pad0;
+	uint pad1;
+	uint pad2;
 };
 StructuredBuffer<InstanceData> gInstanceData : register(t1, space1);
 #else

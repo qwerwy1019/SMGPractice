@@ -23,6 +23,7 @@ class Actor;
 class GameObject;
 class ShadowMap;
 class EffectManager;
+struct EffectInstance;
 
 // 정점 관련
 static constexpr size_t VERTEX_INPUT_DESC_SIZE = 3;
@@ -123,7 +124,7 @@ public:
 	//const DirectX::XMFLOAT4X4& getInverseViewMatrix(void) const noexcept;
 	bool XM_CALLCONV checkCulled(const DirectX::BoundingBox& box, FXMMATRIX world) const noexcept;
 	void setLight(const std::vector<Light>& lights, const DirectX::XMFLOAT4& ambientLight) noexcept;
-	void addEffectInstance(const std::string& effectName, const DirectX::XMFLOAT3& position, float size) noexcept;
+	void addEffectInstance(const std::string& effectName, EffectInstance&& instance) noexcept;
 	bool hasEffect(const std::string& effectName) const noexcept;
 	void loadXMLEffectFile(const std::string& effectFileName);
 	void createEffectMeshGeometry(void);

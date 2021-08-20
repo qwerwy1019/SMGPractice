@@ -14,6 +14,7 @@ enum class ActionConditionType
 	CheckPlayerAltitude,
 	CheckAction,
 	CharacterType,
+	CheckSpeed,
 
 	Count,
 };

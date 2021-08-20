@@ -11,6 +11,7 @@
 #include "StageInfo.h"
 #include "D3DApp.h"
 #include "GameObject.h"
+#include "Effect.h"
 
 FrameEvent::FrameEvent(const XMLReaderNode& node)
 {
@@ -221,5 +222,7 @@ void FrameEvent_Effect::process(Actor& actor) const noexcept
 	XMMATRIX world = XMLoadFloat4x4(&actor.getGameObject()->getWorldMatrix());
 	XMFLOAT3 position;
 	XMStoreFloat3(&position, XMVector3Transform(XMLoadFloat3(&_positionOffset), world));
-	SMGFramework::getD3DApp()->addEffectInstance(_effectName, position, _size);
+
+	EffectInstance instance(position, _size);
+	SMGFramework::getD3DApp()->addEffectInstance(_effectName, std::move(instance));
 }

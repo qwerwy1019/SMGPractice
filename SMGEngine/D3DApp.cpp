@@ -1389,11 +1389,11 @@ void D3DApp::setLight(const std::vector<Light>& lights, const DirectX::XMFLOAT4&
 	updateShadowTransform();
 }
 
-void D3DApp::addEffectInstance(const std::string& effectName, const DirectX::XMFLOAT3& position, float size) noexcept
+void D3DApp::addEffectInstance(const std::string& effectName, EffectInstance&& instance) noexcept
 {
 	check(_effectManager != nullptr);
 
-	return _effectManager->addEffectInstance(effectName, position, size);
+	return _effectManager->addEffectInstance(effectName, std::move(instance));
 }
 
 bool D3DApp::hasEffect(const std::string& effectName) const noexcept
@@ -1753,7 +1753,7 @@ void D3DApp::buildPipelineStateObject(void)
 
 
 		psoDescTransparent.BlendState.RenderTarget[0] = blendDesc;
-
+		psoDescTransparent.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 		auto transparentPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Transparent, nullptr));
 		check(transparentPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Transparent");
 
@@ -1819,6 +1819,10 @@ void D3DApp::buildPipelineStateObject(void)
 		};
 		psoDescEffect.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 		psoDescEffect.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+
+		psoDescEffect.BlendState.RenderTarget[0] = blendDesc;
+		psoDescEffect.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+
 		auto effectPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Effect, nullptr));
 		check(effectPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Effect");
 

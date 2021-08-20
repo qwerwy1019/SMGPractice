@@ -87,7 +87,7 @@ class FrameEvent_Effect : public FrameEvent
 public:
 	FrameEvent_Effect(const XMLReaderNode& node);
 	virtual ~FrameEvent_Effect() = default;
-	virtual void process(Actor & actor) const noexcept override;
+	virtual void process(Actor& actor) const noexcept override;
 	virtual FrameEventType getType() const noexcept override { return FrameEventType::Effect; }
 private:
 	std::string _effectName;
