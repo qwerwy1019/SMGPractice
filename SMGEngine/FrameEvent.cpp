@@ -9,6 +9,8 @@
 #include "StageManager.h"
 #include "CharacterInfoManager.h"
 #include "StageInfo.h"
+#include "D3DApp.h"
+#include "GameObject.h"
 
 FrameEvent::FrameEvent(const XMLReaderNode& node)
 {
@@ -65,9 +67,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_SpawnCharacter>(node);
 	}
+	else if (typeString == "Effect")
+	{
+		return std::make_unique<FrameEvent_Effect>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 5, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 6, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -198,4 +204,22 @@ void FrameEvent_SpawnCharacter::process(Actor& actor) const noexcept
 	spawnInfo._size = _size;
 
 	SMGFramework::getStageManager()->requestSpawn(std::move(spawnInfo));
+}
+
+FrameEvent_Effect::FrameEvent_Effect(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("Name", _effectName);
+	node.loadAttribute("Position", _positionOffset);
+	node.loadAttribute("Size", _size);
+
+	check(SMGFramework::getD3DApp()->hasEffect(_effectName), _effectName);
+}
+
+void FrameEvent_Effect::process(Actor& actor) const noexcept
+{
+	XMMATRIX world = XMLoadFloat4x4(&actor.getGameObject()->getWorldMatrix());
+	XMFLOAT3 position;
+	XMStoreFloat3(&position, XMVector3Transform(XMLoadFloat3(&_positionOffset), world));
+	SMGFramework::getD3DApp()->addEffectInstance(_effectName, position, _size);
 }

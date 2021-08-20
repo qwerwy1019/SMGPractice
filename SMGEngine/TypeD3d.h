@@ -22,7 +22,7 @@ constexpr const char* NUM_SPOT_LIGHTS_LPCSTR = "0";
 constexpr UINT OBJECT_MAX = 200;
 constexpr UINT MATERIAL_MAX = 200;
 constexpr UINT SKINNED_INSTANCE_MAX = 50;
-constexpr UINT EFFECT_INSTANCE_MAX = 50;
+constexpr UINT EFFECT_INSTANCE_MAX = 200;
 constexpr UINT TEXTURE_MAX = 200;
 constexpr const char* TEXTURE_MAX_LPCSTR = "200";
 

@@ -10,6 +10,7 @@ public:
 	void Start(void) noexcept;
 	void Stop(void) noexcept;
 
+	TickCount64 getCurrentTickCount(void) const noexcept { return _currentTickCount; }
 	TickCount64 getDeltaTickCount(void) const noexcept { return _deltaTickCount; }
 	double getDeltaTime(void) const noexcept;
 	double getTotalTime(void) const noexcept;

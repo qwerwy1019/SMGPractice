@@ -17,11 +17,8 @@ Material::Material(const int materialCBIndex, const XMLReaderNode& node)
 
 	std::string textureName;
 	node.loadAttribute("DiffuseTexture", textureName);
-	std::wstring textureNameWstring;
-	textureNameWstring.assign(textureName.begin(), textureName.end());
-	textureNameWstring = L"../Resources/XmlFiles/Asset/Texture/" + textureNameWstring + L".dds";
-
-	_textureIndex = SMGFramework::getD3DApp()->loadTexture(textureName, textureNameWstring);
+	
+	_textureIndex = SMGFramework::getD3DApp()->loadTexture(textureName);
 
 	std::string renderLayerString;
 	node.loadAttribute("RenderLayer", renderLayerString);

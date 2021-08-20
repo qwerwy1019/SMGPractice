@@ -166,7 +166,10 @@ ActionChart* StageManager::loadActionChartFromXML(const std::string& actionChart
 	xmlActionChart.loadXMLFile(filePath);
 
 	auto it = _actionchartMap.emplace(actionChartName, new ActionChart(xmlActionChart.getRootNode()));
-	check(it.second == true);
+	if (it.second == false)
+	{
+		ThrowErrCode(ErrCode::KeyDuplicated, actionChartName);
+	}
 	return it.first->second.get();
 }
 
@@ -590,5 +593,12 @@ void StageManager::createMap(void)
 	for (const auto& terrainObjectInfo : terrainObjectInfos)
 	{
 		_terrains.emplace_back(terrainObjectInfo);
+	}
+	
+	SMGFramework::getD3DApp()->createEffectMeshGeometry();
+	const auto& effectFileNames = _stageInfo->getEffectFileNames();
+	for (const auto& effectFileName : effectFileNames)
+	{
+		SMGFramework::getD3DApp()->loadXMLEffectFile(effectFileName);
 	}
 }

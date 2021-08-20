@@ -25,6 +25,7 @@ enum class FrameEventType
 	Jump,
 	Die,
 	SpawnCharacter,
+	Effect,
 
 	Count,
 };

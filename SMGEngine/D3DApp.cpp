@@ -28,6 +28,7 @@
 #include <corecrt_math.h>
 #include "GameObject.h"
 #include "ShadowMap.h"
+#include "Effect.h"
 
 void D3DApp::buildShaderResourceViews()
 {
@@ -512,7 +513,8 @@ void D3DApp::Update(void)
 	updatePassConstantBuffer();
 	updateShadowPassConstantBuffer();
 	updateMaterialConstantBuffer();
-
+	_effectManager->update();
+	_effectManager->updateEffectInstanceData(_frameResources[_frameIndex].get());
 }
 
 void D3DApp::Draw(void)
@@ -596,13 +598,13 @@ void D3DApp::Draw(void)
 			default:
 			{
 				static_assert(static_cast<int>(RenderLayer::Count) == 6, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
-				static_assert(static_cast<int>(PSOType::Count) == 8, "PSO 타입이 추가되었다면 확인해주세요");
+				static_assert(static_cast<int>(PSOType::Count) == 9, "PSO 타입이 추가되었다면 확인해주세요");
 				ThrowErrCode(ErrCode::UndefinedType, "비정상입니다");
 			}
 		}
 		drawRenderItems(e);
  	}
-
+	drawEffects();
 	// drawUI 때문에 삭제함 [2/16/2021 qwerwy]
 // 	const CD3DX12_RESOURCE_BARRIER& transitionBarrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
 // 		getCurrentBackBuffer(),
@@ -691,7 +693,7 @@ void D3DApp::buildFrameResources(void)
 {
 	for (int i = 0; i < FRAME_RESOURCE_COUNT; ++i)
 	{
-		auto frameResource = std::make_unique<FrameResource>(_deviceD3d12.Get(), 2, OBJECT_MAX, MATERIAL_MAX, SKINNED_INSTANCE_MAX);
+		auto frameResource = std::make_unique<FrameResource>(_deviceD3d12.Get(), 2, OBJECT_MAX, MATERIAL_MAX, SKINNED_INSTANCE_MAX, EFFECT_INSTANCE_MAX);
 		_frameResources.push_back(std::move(frameResource));
 	}
 }
@@ -887,6 +889,13 @@ void D3DApp::updatePassConstantBuffer()
 	XMStoreFloat4x4(&_passConstants._shadowTransform, XMMatrixTranspose(shadowTransform));
 	_passConstants._cameraPos = _cameraPosition;
 
+	XMVECTOR cameraDirection = XMVector3Normalize(XMLoadFloat3(&_cameraFocusPosition) - XMLoadFloat3(&_cameraPosition));
+	XMVECTOR cameraRight = XMVector3Cross(XMLoadFloat3(&_cameraUpVector), cameraDirection);
+	XMVECTOR cameraUpVector = XMVector3Cross(cameraDirection, cameraRight);
+
+	XMStoreFloat3(&_passConstants._cameraUpVector, cameraUpVector);
+	XMStoreFloat3(&_passConstants._cameraRight, cameraRight);
+
 	const float width = static_cast<float>(SMGFramework::Get().getClientWidth());
 	const float height = static_cast<float>(SMGFramework::Get().getClientHeight());
 	_passConstants._renderTargetSize = XMFLOAT2(static_cast<float>(width), static_cast<float>(height));
@@ -1011,6 +1020,16 @@ SkinnedModelInstance* D3DApp::createSkinnedInstance(uint16_t& skinnedBufferIndex
 	_skinnedInstance.emplace_back(move(newSkinnedInstance));
 
 	return skinnedInstancePtr;
+}
+
+const MeshGeometry* D3DApp::createMeshGeometry(const std::string& meshName, const GeneratedMeshData& meshData)
+{
+	auto it = _geometries.emplace(meshName, new MeshGeometry(meshData, _deviceD3d12.Get(), _commandList.Get()));
+	if (it.second == false)
+	{
+		ThrowErrCode(ErrCode::KeyDuplicated, meshName);
+	}
+	return it.first->second.get();
 }
 
 GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
@@ -1267,6 +1286,39 @@ void D3DApp::drawSceneToShadowMap(void)
 	_commandList->ResourceBarrier(1, &readBarrier);
 }
 
+void D3DApp::drawEffects(void)
+{
+	_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Effect].Get());
+
+	auto meshGeometry = _effectManager->getMeshGeometry();
+	D3D12_VERTEX_BUFFER_VIEW vbv = meshGeometry->getVertexBufferView();
+	_commandList->IASetVertexBuffers(0, 1, &vbv);
+	D3D12_INDEX_BUFFER_VIEW ibv = meshGeometry->getIndexBufferView();
+	_commandList->IASetIndexBuffer(&ibv);
+	_commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+// 	D3D12_GPU_VIRTUAL_ADDRESS objectCBaddress = objectCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_parentObject->getObjectConstantBufferIndex()) * objectCBByteSize;
+// 	_commandList->SetGraphicsRootConstantBufferView(0, objectCBaddress);
+
+// 	auto skinnedIndex = renderItem->_parentObject->getSkinnedConstantBufferIndex();
+// 	if (skinnedIndex != SKINNED_UNDEFINED)
+// 	{
+// 		D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(skinnedIndex) * skinnedCBByteSize;
+// 		_commandList->SetGraphicsRootConstantBufferView(1, skinnedCBAdress);
+// 	}
+// 	D3D12_GPU_VIRTUAL_ADDRESS materialCBAddress = materialCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_material->getMaterialCBIndex()) * materialCBByteSize;
+// 	_commandList->SetGraphicsRootConstantBufferView(2, materialCBAddress);
+	auto instanceBufferAddress = _frameResources[_frameIndex]->getEffectBufferVirtualAddress();
+	_commandList->SetGraphicsRootShaderResourceView(6, instanceBufferAddress);
+	const auto& subMesh = meshGeometry->_subMeshList[0];
+	_commandList->DrawIndexedInstanced(
+		subMesh._indexCount,
+		_effectManager->getInstanceCount(),
+		subMesh._baseIndexLoacation,
+		subMesh._baseVertexLoaction,
+		0);
+}
+
 void D3DApp::removeRenderItem(const RenderLayer renderLayer, const RenderItem* renderItem) noexcept
 {
 	auto& renderItems = _renderItems[static_cast<int>(renderLayer)];
@@ -1335,6 +1387,30 @@ void D3DApp::setLight(const std::vector<Light>& lights, const DirectX::XMFLOAT4&
 	}
 	_passConstants._ambientLight = ambientLight;
 	updateShadowTransform();
+}
+
+void D3DApp::addEffectInstance(const std::string& effectName, const DirectX::XMFLOAT3& position, float size) noexcept
+{
+	check(_effectManager != nullptr);
+
+	return _effectManager->addEffectInstance(effectName, position, size);
+}
+
+bool D3DApp::hasEffect(const std::string& effectName) const noexcept
+{
+	return _effectManager->hasEffect(effectName);
+}
+
+void D3DApp::loadXMLEffectFile(const std::string& effectFileName)
+{
+	check(_effectManager != nullptr);
+	_effectManager->loadXML(effectFileName);
+}
+
+void D3DApp::createEffectMeshGeometry(void)
+{
+	check(_effectManager != nullptr);
+	_effectManager->createEffectMeshGeometry();
 }
 
 void D3DApp::updateMaterialConstantBuffer(void)
@@ -1522,7 +1598,6 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> D3DApp::getStaticSampler(void) 
 }
 void D3DApp::buildRootSignature(void)
 {
-	// texture 전체가 한 테이블에 묶이도록 수정해야함.(성능) 우선은 현상태를 유지한다. [8/16/2021 qwerw]
 	CD3DX12_DESCRIPTOR_RANGE shadowMapTable;
 	shadowMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
@@ -1530,7 +1605,7 @@ void D3DApp::buildRootSignature(void)
 	textureTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, TEXTURE_MAX, 1);
 
 	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
-	// 자주 사용되는것부터 정렬해야함 (성능)[8/16/2021 qwerw]
+
 	slotRootParameter[0].InitAsConstantBufferView(0); // objectConstant
 	slotRootParameter[1].InitAsConstantBufferView(1); // skinnedConstant
 	slotRootParameter[2].InitAsConstantBufferView(2); // materialDatas
@@ -1566,6 +1641,9 @@ void D3DApp::buildShaders(void)
 	_shaders["shadowVS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForShader, "ShadowVertexShader", "vs_5_1");
 	_shaders["shadowPS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForShader, "ShadowPixelShader", "ps_5_1");
 	_shaders["shadowSkinnedVS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForSkinnedVertexShader, "ShadowVertexShader", "vs_5_1");
+	_shaders["effectVS"] = D3DUtil::CompileShader(L"Shaders\\Effect.hlsl", definesForShader, "EffectVertexShader", "vs_5_1");
+	_shaders["effectGS"] = D3DUtil::CompileShader(L"Shaders\\Effect.hlsl", definesForShader, "EffectGeoShader", "gs_5_1");
+	_shaders["effectPS"] = D3DUtil::CompileShader(L"Shaders\\Effect.hlsl", definesForShader, "EffectPixelShader", "ps_5_1");
 }
 
 void D3DApp::buildPipelineStateObject(void)
@@ -1723,6 +1801,32 @@ void D3DApp::buildPipelineStateObject(void)
 			"PSO 생성 실패! PSOType::ShadowSkinned");
 	}
 	{
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescEffect = psoDescNormal;
+		psoDescEffect.VS = 
+		{
+			reinterpret_cast<BYTE*>(_shaders["effectVS"]->GetBufferPointer()),
+			_shaders["effectVS"]->GetBufferSize()
+		};
+		psoDescEffect.GS =
+		{
+			reinterpret_cast<BYTE*>(_shaders["effectGS"]->GetBufferPointer()),
+			_shaders["effectGS"]->GetBufferSize()
+		};
+		psoDescEffect.PS =
+		{
+			reinterpret_cast<BYTE*>(_shaders["effectPS"]->GetBufferPointer()),
+			_shaders["effectPS"]->GetBufferSize()
+		};
+		psoDescEffect.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		psoDescEffect.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		auto effectPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Effect, nullptr));
+		check(effectPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Effect");
+
+		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescEffect, IID_PPV_ARGS(&effectPSO.first->second)),
+			"PSO 생성 실패! PSOType::Effect");
+
+	}
+	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescUI = psoDescNormal;
 
 		auto UIPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::UI, nullptr));
@@ -1744,13 +1848,14 @@ void D3DApp::buildPipelineStateObject(void)
 			"PSO 생성 실패! PSOType::GameObjectDev");
 	}
 #endif
-	static_assert(static_cast<int>(PSOType::Count) == 8, "PSO 타입이 추가되었다면 확인해주세요.");
+	static_assert(static_cast<int>(PSOType::Count) == 9, "PSO 타입이 추가되었다면 확인해주세요.");
 }
 
 bool D3DApp::Initialize(void)
 {
 	initDirect3D();
 	initDirect2D();
+	_effectManager = make_unique<EffectManager>();
 
 	OnResize();
 
@@ -1779,12 +1884,20 @@ bool D3DApp::Initialize(void)
 	return true;
 }
 
-uint16_t D3DApp::loadTexture(const string& textureName, const wstring& fileName)
+uint16_t D3DApp::loadTexture(const string& textureName)
 {
+	auto it = _textureIndexMap.find(textureName);
+	if (it != _textureIndexMap.end())
+	{
+		return it->second;
+	}
 	if (std::numeric_limits<uint16_t>::max() <= _textures.size())
 	{
 		ThrowErrCode(ErrCode::Overflow, "Texture index가 범위를 넘어갑니다.");
 	}
+	std::wstring fileName;
+	fileName.assign(textureName.begin(), textureName.end());
+	fileName = L"../Resources/XmlFiles/Asset/Texture/" + fileName + L".dds";
 
 	auto texture = std::make_unique<Texture>();
 	texture->_name = textureName;
@@ -1828,7 +1941,7 @@ uint16_t D3DApp::loadTexture(const string& textureName, const wstring& fileName)
 
 	uint16_t textureSRVIndex = static_cast<uint16_t>(_textures.size());
 	_textures.emplace_back(std::move(texture));
-	
+	_textureIndexMap.emplace(textureName, textureSRVIndex);
 	return textureSRVIndex;
 }
 

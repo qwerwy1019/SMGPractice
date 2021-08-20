@@ -36,6 +36,10 @@ struct PassConstants
 	DirectX::XMFLOAT4X4 _shadowTransform;
 	DirectX::XMFLOAT3 _cameraPos;
 	float pad0;
+	DirectX::XMFLOAT3 _cameraUpVector;
+	float pad1;
+	DirectX::XMFLOAT3 _cameraRight;
+	float pad2;
 	DirectX::XMFLOAT2 _renderTargetSize;
 	DirectX::XMFLOAT2 _invRenderTargetSize;
 	float _nearZ;
@@ -45,7 +49,7 @@ struct PassConstants
 	DirectX::XMFLOAT4 _fogColor;
 	float _fogStart;
 	float _fogEnd;
-	DirectX::XMFLOAT2 pad1;
+	DirectX::XMFLOAT2 pad3;
 	// 조명관련
 	DirectX::XMFLOAT4 _ambientLight;
 	std::array<Light, MAX_LIGHT_COUNT> _lights;
@@ -115,6 +119,9 @@ struct GeneratedMeshData
 
 struct EffectInstanceData
 {
-	DirectX::XMFLOAT4X4 _world;
-	uint16_t _textureIndex;
+	DirectX::XMFLOAT3 _position;
+	uint32_t _textureIndex;
+	DirectX::XMFLOAT2 _size;
+	uint32_t _frame;
+	uint32_t _totalFrame;
 };

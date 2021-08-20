@@ -22,6 +22,7 @@ class UIManager;
 class Actor;
 class GameObject;
 class ShadowMap;
+class EffectManager;
 
 // 정점 관련
 static constexpr size_t VERTEX_INPUT_DESC_SIZE = 3;
@@ -51,6 +52,7 @@ enum class PSOType : uint8_t
 	Transparent,
 	Shadow,
 	ShadowSkinned,
+	Effect,
 	UI,
 	GameObjectDev,
 	Count,
@@ -92,7 +94,7 @@ public:
 
 	GameObject* createObjectFromXML(const std::string& fileName);
 
-	uint16_t loadTexture(const string& textureName, const wstring& fileName);
+	uint16_t loadTexture(const string& textureName);
 
 	// 업데이트
 	void OnResize(void);
@@ -121,6 +123,10 @@ public:
 	//const DirectX::XMFLOAT4X4& getInverseViewMatrix(void) const noexcept;
 	bool XM_CALLCONV checkCulled(const DirectX::BoundingBox& box, FXMMATRIX world) const noexcept;
 	void setLight(const std::vector<Light>& lights, const DirectX::XMFLOAT4& ambientLight) noexcept;
+	void addEffectInstance(const std::string& effectName, const DirectX::XMFLOAT3& position, float size) noexcept;
+	bool hasEffect(const std::string& effectName) const noexcept;
+	void loadXMLEffectFile(const std::string& effectFileName);
+	void createEffectMeshGeometry(void);
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보
@@ -172,12 +178,16 @@ private:
 	uint16_t _skinnedCBIndexCount;
 	std::queue<uint16_t> _skinnedCBReturned;
 
+private:
 	GameObject* createGameObject(const MeshGeometry* meshGeometry, SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept;
 	SkinnedModelInstance* createSkinnedInstance(uint16_t& skinnedBufferIndex, const BoneInfo* boneInfo, const AnimationInfo* animationInfo) noexcept;
-
+public:
+	const MeshGeometry* createMeshGeometry(const std::string& meshName, const GeneratedMeshData& meshData);
+private:
 	void drawRenderItems(const RenderLayer renderLayer);
 	void drawUI(void);
 	void drawSceneToShadowMap(void);
+	void drawEffects(void);
 
 	void buildShaderResourceViews();
 
@@ -234,6 +244,7 @@ private:
 	std::vector<std::unique_ptr<GameObject>> _gameObjects;
 
 	std::vector<std::unique_ptr<Texture>> _textures;
+	std::unordered_map<std::string, uint16_t> _textureIndexMap;
 	int _textureLoadedCount;
 	static constexpr int TEXTURE_SRV_INDEX = 1;
 
@@ -278,6 +289,7 @@ private:
 	std::array<WComPtr<ID2D1Brush>, static_cast<int>(TextBrushType::Count)> _textBrushes;
 
 	WComPtr<ID3D11DeviceContext3> _immediateContext;
+	unique_ptr<EffectManager> _effectManager;
 
 	//_resourceManager : 스테이지매니저가 요청한 자료들을 로드/언로드한다. 멀티스레드 적용이 되었으면 좋겠음.
 	//_stageManager : 스테이지를 불러오고, 오브젝트를 배치한다.

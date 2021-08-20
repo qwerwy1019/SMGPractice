@@ -25,12 +25,11 @@ SamplerComparisonState gsamShadow : register(s6);
 #ifdef INSTANCING
 struct InstanceData
 {
-	float4x4 _world;
-	float4x4 _textureTransform;
+	float3 _position;
 	uint _diffuseMapIndex;
-	uint pad0;
-	uint pad1;
-	uint pad2;
+	float2 _size;
+	uint _frame;
+	uint _totalFrame;
 };
 StructuredBuffer<InstanceData> gInstanceData : register(t1, space1);
 #else
@@ -71,6 +70,10 @@ cbuffer cbPassConstants : register(b3)
 	float4x4 gShadowTransform;
 	float3 gCameraPos;
 	float passPad0;
+	float3 gCameraUpVector;
+	float passPad1;
+	float3 gCameraRight;
+	float passPad2;
 	float2 gRenderTargetSize;
 	float2 gInvRenderTargetSize;
 	float gNearZ;
@@ -81,7 +84,7 @@ cbuffer cbPassConstants : register(b3)
 	float4 gFogColor;
 	float gFogStart;
 	float gFogEnd;
-	float2 passPad1;
+	float2 passPad3;
 	float4 gAmbientLight;
 	Light gLights[MAX_LIGHT_COUNT];
 };

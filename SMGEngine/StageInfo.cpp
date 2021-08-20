@@ -52,6 +52,9 @@ void StageInfo::loadXml(const XMLReaderNode& rootNode)
 
 	childIter = childNodes.find("Lights");
 	loadXmlLightInfo(childIter->second);
+
+	childIter = childNodes.find("EffectFiles");
+	loadXmlEffectFiles(childIter->second);
 }
 
 void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
@@ -133,6 +136,11 @@ const std::vector<Light>& StageInfo::getLights(void) const noexcept
 const DirectX::XMFLOAT4& StageInfo::getAmbientLight(void) const noexcept
 {
 	return _ambientLight;
+}
+
+const std::vector<std::string>& StageInfo::getEffectFileNames(void) const noexcept
+{
+	return _effectFileNames;
 }
 
 void StageInfo::loadXmlTerrainObjectInfo(const XMLReaderNode& node)
@@ -236,6 +244,18 @@ void StageInfo::loadXmlLightInfo(const XMLReaderNode& node)
 		
 		
 		_lightInfo.push_back(std::move(light));
+	}
+}
+
+void StageInfo::loadXmlEffectFiles(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	_effectFileNames.reserve(childNodes.size());
+	for (const auto& childNode : childNodes)
+	{
+		std::string fileName;
+		childNode.loadAttribute("FileName", fileName);
+		_effectFileNames.push_back(fileName);
 	}
 }
 
