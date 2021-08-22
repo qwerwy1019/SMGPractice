@@ -2,15 +2,19 @@
 #include "StageInfo.h"
 #include "Exception.h"
 #include "FileHelper.h"
-#include "SMGFramework.h"
-#include "CharacterInfoManager.h"
 #include "MathHelper.h"
+#include "CameraPoint.h"
 
 StageInfo::StageInfo(void) noexcept
 	: _landscapeType(LandscapeType::Basic)
 	, _sectorUnitNumber(0, 0, 0)
 	, _sectorSize(0, 0, 0)
 	, _ambientLight(0, 0, 0, 0)
+{
+
+}
+
+StageInfo::~StageInfo()
 {
 
 }
@@ -55,6 +59,9 @@ void StageInfo::loadXml(const XMLReaderNode& rootNode)
 
 	childIter = childNodes.find("EffectFiles");
 	loadXmlEffectFiles(childIter->second);
+
+	childIter = childNodes.find("CameraPoints");
+	loadXmlCameraInfo(childIter->second);
 }
 
 void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
@@ -71,14 +78,17 @@ void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
 	}
 }
 
+const std::vector<SpawnInfo>& StageInfo::getSpawnInfos(void) const noexcept
+{
+	return _spawnInfo;
+}
+
 std::vector<const CameraPoint*> StageInfo::getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept
 {
 	std::vector<const CameraPoint*> rv;
-	
-	for (const auto& camera : _cameraPoints)
+	for (const auto& camera : _autoCameraPoints)
 	{
-		float distanceSq = MathHelper::lengthSq(MathHelper::sub(position, camera->_position));
-		if (distanceSq < camera->_radius * camera->_radius)
+		if (camera->checkInRange(position))
 		{
 			rv.push_back(camera.get());
 		}
@@ -86,17 +96,14 @@ std::vector<const CameraPoint*> StageInfo::getNearCameraPoints(const DirectX::XM
 	return rv;
 }
 
-const FixedCameraPoint& StageInfo::getFixedCameraPoint(const std::string& name) const noexcept
+const CameraPoint* StageInfo::getTriggeredCameraPoint(int key) const noexcept
 {
-	auto it = _fixedCameraPoints.find(name);
-	check(it != _fixedCameraPoints.end(), name);
-
-	return *it->second.get();
-}
-
-const std::vector<SpawnInfo>& StageInfo::getSpawnInfos(void) const noexcept
-{
-	return _spawnInfo;
+	auto it = _triggeredCmeraPoints.find(key);
+	if (it == _triggeredCmeraPoints.end())
+	{
+		return nullptr;
+	}
+	return it->second.get();
 }
 
 const std::vector<TerrainObjectInfo>& StageInfo::getTerrainObjectInfos(void) const noexcept
@@ -259,6 +266,41 @@ void StageInfo::loadXmlEffectFiles(const XMLReaderNode& node)
 	}
 }
 
+void StageInfo::loadXmlCameraInfo(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodesWithName();
+
+	auto childIter = childNodes.find("TriggeredCamera");
+	loadXmlTriggeredCameraInfo(childIter->second);
+
+	childIter = childNodes.find("AutoCamera");
+	loadXmlAutoCameraInfo(childIter->second);
+}
+
+void StageInfo::loadXmlTriggeredCameraInfo(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	for (const auto& childNode : childNodes)
+	{
+		int key;
+		childNode.loadAttribute("Key", key);
+		if (key < 0)
+		{
+			ThrowErrCode(ErrCode::InvalidXmlData, std::to_string(key));
+		}
+		_triggeredCmeraPoints.emplace(key, std::make_unique<CameraPoint>(childNode));
+	}
+}
+
+void StageInfo::loadXmlAutoCameraInfo(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	for (const auto& childNode : childNodes)
+	{
+		_autoCameraPoints.emplace_back(std::make_unique<CameraPoint>(childNode));
+	}
+}
+
 SpawnInfo::SpawnInfo() noexcept
 	: _key(std::numeric_limits<CharacterKey>::max())
 	, _position(0.f, 0.f, 0.f)
@@ -276,24 +318,6 @@ TerrainObjectInfo::TerrainObjectInfo() noexcept
 	, _size(0.f)
 	, _isGround(false)
 	, _isWall(false)
-{
-
-}
-
-CameraPoint::CameraPoint() noexcept
-	: _position(0.f, 0.f, 0.f)
-	, _upVector(0.f, 0.f, 0.f)
-	, _radius(0.f)
-{
-
-}
-
-FixedCameraPoint::FixedCameraPoint() noexcept
-	: _position(0.f, 0.f, 0.f)
-	, _upVector(0.f, 0.f, 0.f)
-	, _focusPosition(0.f, 0.f, 0.f)
-	, _cameraSpeed(0.f)
-	, _cameraFocusSpeed(0.f)
 {
 
 }

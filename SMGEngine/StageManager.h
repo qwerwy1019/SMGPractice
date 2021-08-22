@@ -22,8 +22,6 @@ public:
 public:
 	void update();
 private:
-	void updateCamera() noexcept;
-
 	void processActorCollision(void) noexcept;
 	void processActorCollisionXXX(int sectorCoord0, int sectorCoord1) noexcept;
 	// 스테이지 이동
@@ -33,6 +31,7 @@ public:
 	void setNextStage(std::string stageName) noexcept;
 	ActionChart* loadActionChartFromXML(const std::string& actionChartName);
 	void requestSpawn(SpawnInfo&& spawnInfo) noexcept;
+	const StageInfo* getStageInfo(void) const noexcept;
 private:
 	void spawnStageInfoActors();
 	void spawnRequested();

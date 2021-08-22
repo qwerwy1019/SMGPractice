@@ -29,6 +29,7 @@
 #include "GameObject.h"
 #include "ShadowMap.h"
 #include "Effect.h"
+#include "Camera.h"
 
 void D3DApp::buildShaderResourceViews()
 {
@@ -63,16 +64,6 @@ D3DApp::D3DApp()
 	, _frameIndex(0)
 	, _currentBackBuffer(0)
 	, _textureLoadedCount(0)
-	, _cameraInputPosition(100, 0, 0)
-	, _cameraInputUpVector(0, 1, 0)
-	, _cameraInputFocusPosition(0, 0, 0)
-	, _cameraSpeed(1.f)
-	, _cameraFocusSpeed(1.f)
-	, _cameraPosition(0, 0, 3100)
-	, _cameraUpVector(0, 1, 0)
-	, _cameraFocusPosition(0, 0, 3000)
-	, _invViewMatrix(MathHelper::Identity4x4)
-	, _viewMatrix(MathHelper::Identity4x4)
 	, _projectionMatrix(MathHelper::Identity4x4)
 	, _viewPort()
 	, _scissorRect()
@@ -492,8 +483,6 @@ void D3DApp::OnResize(void)
 
 void D3DApp::Update(void)
 {
-	updateCamera();
-
 	_frameIndex = (_frameIndex + 1) % FRAME_RESOURCE_COUNT;
 	const UINT64& currentFrameFence = _frameResources[_frameIndex]->getFence();
 
@@ -643,35 +632,6 @@ void D3DApp::executeCommandQueue(void)
 	flushCommandQueue();
 }
 
-void D3DApp::setCameraInput(const DirectX::XMFLOAT3& cameraPosition,
-							const DirectX::XMFLOAT3& focusPosition,
-							const DirectX::XMFLOAT3& upVector,
-							float cameraSpeed,
-							float cameraFocusSpeed) noexcept
-{
-	_cameraInputPosition = cameraPosition;
-	_cameraInputFocusPosition = focusPosition;
-	_cameraInputUpVector = upVector;
-	_cameraSpeed = cameraSpeed;
-	_cameraFocusSpeed = cameraFocusSpeed;
-}
-
-DirectX::XMFLOAT3 D3DApp::getCameraDirection(void) const noexcept
-{
-	XMVECTOR focusPosition = XMLoadFloat3(&_cameraFocusPosition);
-	XMVECTOR camPosition = XMLoadFloat3(&_cameraPosition);
-
-	XMFLOAT3 rv;
-	XMStoreFloat3(&rv, XMVector3Normalize(focusPosition - camPosition));
-
-	return rv;
-}
-
-const DirectX::XMFLOAT3& D3DApp::getCameraUpVector(void) const noexcept
-{
-	return _cameraUpVector;
-}
-
 ID3D12Resource* D3DApp::getCurrentBackBuffer() const noexcept
 {
 	return _swapChainBuffer[_currentBackBuffer].Get();
@@ -696,52 +656,6 @@ void D3DApp::buildFrameResources(void)
 		auto frameResource = std::make_unique<FrameResource>(_deviceD3d12.Get(), 2, OBJECT_MAX, MATERIAL_MAX, SKINNED_INSTANCE_MAX, EFFECT_INSTANCE_MAX);
 		_frameResources.push_back(std::move(frameResource));
 	}
-}
-
-void D3DApp::updateCamera(void)
-{
-	TickCount64 deltaTickCount = SMGFramework::Get().getTimer().getDeltaTickCount();
-	XMVECTOR position = XMLoadFloat3(&_cameraPosition);
-	XMVECTOR upVector = XMLoadFloat3(&_cameraUpVector);
-	XMVECTOR focusPosition = XMLoadFloat3(&_cameraFocusPosition);
-	
-	XMVECTOR inputPosition = XMLoadFloat3(&_cameraInputPosition);
-	XMVECTOR inputUpVector = XMLoadFloat3(&_cameraInputUpVector);
-	XMVECTOR inputFocusPosition = XMLoadFloat3(&_cameraInputFocusPosition);
-
-	float deltaMoveDistance = XMVectorGetX(XMVector3Length(position - inputPosition));
-	float deltaFocusMoveDistance = XMVectorGetX(XMVector3Length(focusPosition - inputFocusPosition));
-
-	if (deltaMoveDistance > _cameraSpeed * deltaTickCount)
-	{
-		float t = _cameraSpeed / static_cast<float>(deltaMoveDistance);
-		position = XMVectorLerp(position, inputPosition, t);
-	}
-	else
-	{
-		position = inputPosition;
-	}
-
-	if (deltaFocusMoveDistance > _cameraFocusSpeed * deltaTickCount)
-	{
-		float t = _cameraFocusSpeed / static_cast<float>(deltaFocusMoveDistance);
-		focusPosition = XMVectorLerp(focusPosition, inputFocusPosition, t);
-		upVector = XMVectorLerp(upVector, inputUpVector, t);
-	}
-	else
-	{
-		focusPosition = inputFocusPosition;
-		upVector = inputUpVector;
-	}
-
-	XMStoreFloat3(&_cameraPosition, position);
-	XMStoreFloat3(&_cameraUpVector, upVector);
-	XMStoreFloat3(&_cameraFocusPosition, focusPosition);
-
-	XMMATRIX view = XMMatrixLookAtLH(position, focusPosition, upVector);
-	XMStoreFloat4x4(&_viewMatrix, view);
-	XMVECTOR viewDet = XMMatrixDeterminant(view);
-	XMStoreFloat4x4(&_invViewMatrix, XMMatrixInverse(&viewDet, view));
 }
 
 void D3DApp::initShadowMap()
@@ -867,7 +781,8 @@ void D3DApp::updateSkinnedConstantBuffer(void)
 
 void D3DApp::updatePassConstantBuffer()
 {
-	XMMATRIX view = XMLoadFloat4x4(&_viewMatrix);
+	const Camera* camera = SMGFramework::getCamera();
+	XMMATRIX view = XMLoadFloat4x4(&camera->getViewMatrix());
 	XMMATRIX proj = XMLoadFloat4x4(&_projectionMatrix);
 	XMMATRIX viewProj = view * proj;
 
@@ -887,14 +802,10 @@ void D3DApp::updatePassConstantBuffer()
 	XMStoreFloat4x4(&_passConstants._viewProj, XMMatrixTranspose(viewProj));
 	XMStoreFloat4x4(&_passConstants._invViewProj, XMMatrixTranspose(invViewProj));
 	XMStoreFloat4x4(&_passConstants._shadowTransform, XMMatrixTranspose(shadowTransform));
-	_passConstants._cameraPos = _cameraPosition;
 
-	XMVECTOR cameraDirection = XMVector3Normalize(XMLoadFloat3(&_cameraFocusPosition) - XMLoadFloat3(&_cameraPosition));
-	XMVECTOR cameraRight = XMVector3Cross(XMLoadFloat3(&_cameraUpVector), cameraDirection);
-	XMVECTOR cameraUpVector = XMVector3Cross(cameraDirection, cameraRight);
-
-	XMStoreFloat3(&_passConstants._cameraUpVector, cameraUpVector);
-	XMStoreFloat3(&_passConstants._cameraRight, cameraRight);
+	_passConstants._cameraPos = camera->getPosition();
+	_passConstants._cameraUpVector = camera->getUpVector();
+	_passConstants._cameraRight = camera->getRightVector();
 
 	const float width = static_cast<float>(SMGFramework::Get().getClientWidth());
 	const float height = static_cast<float>(SMGFramework::Get().getClientHeight());
@@ -1366,7 +1277,7 @@ bool XM_CALLCONV D3DApp::checkCulled(const DirectX::BoundingBox& box, FXMMATRIX 
 {
 	XMVECTOR worldDet = XMMatrixDeterminant(world);
 	XMMATRIX invWorld = XMMatrixInverse(&worldDet, world);
-	XMMATRIX viewToLocal = XMMatrixMultiply(XMLoadFloat4x4(&_invViewMatrix), invWorld);
+	XMMATRIX viewToLocal = XMMatrixMultiply(XMLoadFloat4x4(&SMGFramework::getCamera()->getInvViewMatrix()), invWorld);
 
 	BoundingFrustum localSpaceFrustum;
 	_viewFrustumLocal.Transform(localSpaceFrustum, viewToLocal);

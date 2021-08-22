@@ -111,13 +111,6 @@ public:
 	void prepareCommandQueue(void);
 	void executeCommandQueue(void);
 
-	void setCameraInput(const DirectX::XMFLOAT3& cameraPosition,
-						const DirectX::XMFLOAT3& focusPosition,
-						const DirectX::XMFLOAT3& upVector,
-						float cameraSpeed,
-						float cameraFocusSpeed) noexcept;
-	DirectX::XMFLOAT3 getCameraDirection(void) const noexcept;
-	const DirectX::XMFLOAT3& getCameraUpVector(void) const noexcept;
 	void removeRenderItem(const RenderLayer renderLayer, const RenderItem* renderItem) noexcept;
 	void removeSkinnedInstance(const SkinnedModelInstance* skinnedInstance) noexcept;
 	void removeGameObject(const GameObject* gameObject) noexcept;
@@ -157,7 +150,6 @@ private:
 	void buildPipelineStateObject(void);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> getStaticSampler(void) const;
-	void updateCamera(void);
 
 	void initShadowMap();
 	void updateShadowTransform(void) noexcept;
@@ -249,23 +241,9 @@ private:
 	int _textureLoadedCount;
 	static constexpr int TEXTURE_SRV_INDEX = 1;
 
-	// 카메라
-	DirectX::XMFLOAT3 _cameraInputPosition;
-	DirectX::XMFLOAT3 _cameraInputUpVector;
-	DirectX::XMFLOAT3 _cameraInputFocusPosition;
-	//TickCount64 _cameraInputLeftTickCount;
-	float _cameraSpeed;
-	float _cameraFocusSpeed;
-
-	DirectX::XMFLOAT3 _cameraPosition;
-	DirectX::XMFLOAT3 _cameraUpVector;
-	DirectX::XMFLOAT3 _cameraFocusPosition;
-
 	DirectX::BoundingFrustum _viewFrustumLocal;
 
 	// 좌표계 변환
-	XMFLOAT4X4 _viewMatrix;
-	XMFLOAT4X4 _invViewMatrix;
 	XMFLOAT4X4 _projectionMatrix;
 
 	D3D12_VIEWPORT _viewPort;

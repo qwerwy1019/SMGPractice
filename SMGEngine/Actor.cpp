@@ -11,6 +11,7 @@
 #include "StageManager.h"
 #include <algorithm>
 #include "GameObject.h"
+#include "Camera.h"
 
 Actor::Actor(const SpawnInfo& spawnInfo)
 	: _position(spawnInfo._position)
@@ -65,6 +66,8 @@ Actor::~Actor()
 void Actor::rotateOnPlane(const float rotateAngle) noexcept
 {
 	check(!MathHelper::equal(rotateAngle, 0.f));
+	check(!isnan(rotateAngle));
+
 	XMVECTOR direction = XMLoadFloat3(&_direction);
 
 	XMMATRIX rotateMatrix = XMMatrixRotationNormal(XMLoadFloat3(&_upVector), rotateAngle);
@@ -100,7 +103,7 @@ void Actor::rotateUpVector(const DirectX::XMFLOAT3& toUpVector) noexcept
 
 	XMMATRIX rotateMatrix = XMMatrixRotationNormal(XMVector3Cross(upVector, currentDirection), MathHelper::Pi_DIV2 - acos(dot));
 	XMVECTOR newDirection = XMVector3Transform(currentDirection, rotateMatrix);
-
+	check(!isnan(XMVectorGetX(newDirection)));
 	XMStoreFloat3(&_upVector, XMVector3Normalize(upVector));
 	XMStoreFloat3(&_direction, XMVector3Normalize(newDirection));
 }
@@ -140,15 +143,15 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 		{
 			XMFLOAT2 stickInput = SMGFramework::Get().getStickInput(StickInputType::LStick);
 
-			XMFLOAT3 camDirectionF = SMGFramework::getD3DApp()->getCameraDirection();
+			XMFLOAT3 camDirectionF = SMGFramework::getCamera()->getDirection();
 			XMVECTOR camDirection = XMLoadFloat3(&camDirectionF);
-			XMVECTOR camUpVector = XMLoadFloat3(&SMGFramework::getD3DApp()->getCameraUpVector());
-			XMVECTOR camLeft = XMVector3Cross(camUpVector, camDirection);
+			XMVECTOR camUpVector = XMLoadFloat3(&SMGFramework::getCamera()->getUpVector());
+			XMVECTOR camRight = XMVector3Cross(camUpVector, camDirection);
 
 			XMVECTOR actorDirection = XMLoadFloat3(&_direction);
 			XMVECTOR actorUpVector = XMLoadFloat3(&_upVector);
 
-			XMVECTOR stickInputVector = camDirection * stickInput.y + camLeft * stickInput.x;
+			XMVECTOR stickInputVector = camUpVector * stickInput.y + camRight * stickInput.x;
 			deltaAngle = MathHelper::getDeltaAngleToVector(actorUpVector, actorDirection, stickInputVector);
 		}
 		break;
@@ -595,7 +598,7 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 			{
 				return XMFLOAT3(0, 0, 0);
 			}
-			const XMFLOAT3& camDirectionFloat = SMGFramework::getD3DApp()->getCameraDirection();
+			const XMFLOAT3& camDirectionFloat = SMGFramework::getCamera()->getDirection();
 			XMVECTOR camDirection = XMLoadFloat3(&camDirectionFloat);
 			XMVECTOR actorUpVector = XMLoadFloat3(&_upVector);
 			XMVECTOR front = camDirection - XMVector3Dot(camDirection, actorUpVector) * actorUpVector;

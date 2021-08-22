@@ -50,7 +50,6 @@ void StageManager::update()
 {
 	TickCount64 deltaTick = SMGFramework::Get().getTimer().getDeltaTickCount();
 	
-	updateCamera();
 	//updateStageScript();
 
 	for (const auto& actor : _actors)
@@ -176,6 +175,11 @@ ActionChart* StageManager::loadActionChartFromXML(const std::string& actionChart
 void StageManager::requestSpawn(SpawnInfo&& spawnInfo) noexcept
 {
 	_requestedSpawnInfos.emplace_back(spawnInfo);
+}
+
+const StageInfo* StageManager::getStageInfo(void) const noexcept
+{
+	return _stageInfo.get();
 }
 
 void StageManager::spawnActor(const SpawnInfo& spawnInfo)
@@ -383,68 +387,6 @@ void StageManager::loadStageInfo()
 	xmlStageInfo.loadXMLFile(stageInfoFilePath);
 
 	_stageInfo->loadXml(xmlStageInfo.getRootNode());
-}
-
-void StageManager::updateCamera() noexcept
-{
-	check(_stageInfo != nullptr);
-	check(_playerActor != nullptr);
-
-	if (!_fixedCameraName.empty())
-	{
-		setCameraCount(0);
-		const auto& camera = _stageInfo->getFixedCameraPoint(_fixedCameraName);
-		SMGFramework::getD3DApp()->setCameraInput(camera._position, camera._focusPosition, camera._upVector, camera._cameraSpeed, camera._cameraFocusSpeed);
-	}
-	else
-	{
-		const auto& nearCameraList = _stageInfo->getNearCameraPoints(_playerActor->getPosition());
-		setCameraCount(nearCameraList.size());
-
-		if (nearCameraList.empty())
-		{
-			using namespace MathHelper;
-			auto playerPosition = _playerActor->getPosition();
-			auto playerDirection = _playerActor->getDirection();
-			auto playerUpVector = _playerActor->getUpVector();
-
-			auto cameraFocusPosition = add(playerPosition, mul(playerUpVector, 100));
-			auto cameraPosition = add(playerPosition, mul(sub(mul(playerUpVector, 2.f), playerDirection), 600));
-
-			SMGFramework::getD3DApp()->setCameraInput(cameraPosition, cameraFocusPosition, playerUpVector, 8.f, 10.f);
-		}
-		else
-		{
-			int cameraIndex = getCameraIndex();
-			check(cameraIndex < nearCameraList.size());
-			if (cameraIndex == -1)
-			{
-				using namespace MathHelper;
-				float distanceSum = 0.f;
-				DirectX::XMFLOAT3 positionSum(0, 0, 0);
-				DirectX::XMFLOAT3 upVectorSum(0, 0, 0);
-				for (const auto& cam : nearCameraList)
-				{
-					float distance = length(sub(cam->_position, _playerActor->getPosition()));
-					distanceSum += distance;
-
-					positionSum = add(positionSum, mul(cam->_position, distance));
-					upVectorSum = add(upVectorSum, mul(cam->_upVector, distance));
-				}
-				SMGFramework::getD3DApp()->setCameraInput(
-					div(positionSum, distanceSum),
-					_playerActor->getPosition(),
-					div(upVectorSum, distanceSum), 1.f, 1.f);
-			}
-			else
-			{
-				SMGFramework::getD3DApp()->setCameraInput(
-					nearCameraList[cameraIndex]->_position,
-					_playerActor->getPosition(),
-					nearCameraList[cameraIndex]->_upVector, 1.f, 1.f);
-			}
-		}
-	}
 }
 
 void StageManager::processActorCollision(void) noexcept

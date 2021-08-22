@@ -6,6 +6,7 @@
 #include "StageManager.h"
 #include <windowsx.h>
 #include "CharacterInfoManager.h"
+#include "Camera.h"
 
 SMGFramework::SMGFramework(HINSTANCE hInstance)
 	: _clientWidth(1280)
@@ -45,6 +46,7 @@ void SMGFramework::Create(HINSTANCE hInstance)
 	_instance->_characterInfoManager = std::make_unique<CharacterInfoManager>();
 	_instance->_stageManager = std::make_unique<StageManager>();
 	_instance->_uiManager = std::make_unique<UIManager>();
+	_instance->_camera = std::make_unique<Camera>();
 
 	_instance->_stageManager->loadStage();
 }
@@ -86,6 +88,13 @@ StageManager* SMGFramework::getStageManager(void) noexcept
 	check(_instance != nullptr);
 	check(_instance->_stageManager != nullptr);
 	return _instance->_stageManager.get();
+}
+
+Camera* SMGFramework::getCamera(void) noexcept
+{
+	check(_instance != nullptr);
+	check(_instance->_camera != nullptr);
+	return _instance->_camera.get();
 }
 
 ButtonState SMGFramework::getButtonInput(const ButtonInputType type) const noexcept
@@ -238,6 +247,7 @@ int SMGFramework::Run(void)
 				if (_timer.getDeltaTickCount() != 0)
 				{
 					_stageManager->update();
+					_camera->update();
 					_d3dApp->Update();
 				}
 

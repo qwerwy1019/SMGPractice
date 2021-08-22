@@ -2,16 +2,10 @@
 #include "TypeD3d.h"
 #include "TypeCommon.h"
 #include "TypeGeometry.h"
+#include "TypeStage.h"
 
 class XMLReaderNode;
-
-enum class LandscapeType
-{
-	Basic,
-	Galaxy,
-
-	Count,
-};
+class CameraPoint;
 
 struct SpawnInfo
 {
@@ -35,33 +29,6 @@ struct TerrainObjectInfo
 	bool _isWall;
 };
 
-struct CameraPoint
-{
-	CameraPoint() noexcept;
-	DirectX::XMFLOAT3 _position;
-	DirectX::XMFLOAT3 _upVector;
-	float _radius;
-};
-struct FixedCameraPoint
-{
-	FixedCameraPoint() noexcept;
-	DirectX::XMFLOAT3 _position;
-	DirectX::XMFLOAT3 _upVector;
-	DirectX::XMFLOAT3 _focusPosition;
-
-	float _cameraSpeed;
-	float _cameraFocusSpeed;
-};
-
-enum class GravityPointType
-{
-	Fixed,
-	Point,
-	GroundNormal,
-
-	Count,
-};
-
 struct GravityPoint
 {
 	GravityPoint() noexcept;
@@ -78,27 +45,34 @@ class StageInfo
 {
 public:
 	StageInfo(void) noexcept;
+	~StageInfo();
 	void loadXml(const XMLReaderNode& rootNode);
 	void loadXmlSpawnInfo(const XMLReaderNode& node);
 	void loadXmlTerrainObjectInfo(const XMLReaderNode& node);
 	void loadXmlGravityPointInfo(const XMLReaderNode& node);
 	void loadXmlLightInfo(const XMLReaderNode& node);
 	void loadXmlEffectFiles(const XMLReaderNode& node);
+	void loadXmlCameraInfo(const XMLReaderNode& node);
+	void loadXmlTriggeredCameraInfo(const XMLReaderNode& node);
+	void loadXmlAutoCameraInfo(const XMLReaderNode& node);
+
 
 	std::vector<const CameraPoint*> getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept;
-	const FixedCameraPoint& getFixedCameraPoint(const std::string& name) const noexcept;
+	const CameraPoint* getTriggeredCameraPoint(int key) const noexcept;
 	const std::vector<SpawnInfo>& getSpawnInfos(void) const noexcept;
 	const std::vector<TerrainObjectInfo>& getTerrainObjectInfos(void) const noexcept;
 	const DirectX::XMINT3& getSectorUnitNumber(void) const noexcept;
 	const DirectX::XMINT3& getSectorSize(void) const noexcept;
 	const GravityPoint* getGravityPointAt(const DirectX::XMFLOAT3& position) const noexcept;
+
 	const std::vector<Light>& getLights(void) const noexcept;
 	const DirectX::XMFLOAT4& getAmbientLight(void) const noexcept;
+
 	const std::vector<std::string>& getEffectFileNames(void) const noexcept;
 private:
 	LandscapeType _landscapeType;
-	std::vector<std::unique_ptr<CameraPoint>> _cameraPoints;
-	std::unordered_map<std::string, std::unique_ptr<FixedCameraPoint>> _fixedCameraPoints;
+	std::vector<std::unique_ptr<CameraPoint>> _autoCameraPoints;
+	std::unordered_map<int, std::unique_ptr<CameraPoint>> _triggeredCmeraPoints;
 	std::vector<SpawnInfo> _spawnInfo;
 	std::vector<TerrainObjectInfo> _terrainObjectInfo;
 	std::unordered_map<int, std::unique_ptr<GravityPoint>> _gravityPoints;

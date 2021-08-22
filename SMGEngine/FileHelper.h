@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "D3DUtil.h"
 #include <atlconv.h>
+#include <algorithm>
 
 class XMLWriter
 {
@@ -98,6 +99,19 @@ public:
 		}
 		valueStr.resize(valueStr.size() - 1);
 		return addAttribute(name, valueStr.c_str());
+	}
+
+	template<>
+	void addAttribute(const std::string& name, const bool& value)
+	{
+		if (value == true)
+		{
+			return addAttribute(name, "true");
+		}
+		else
+		{
+			return addAttribute(name, "false");
+		}
 	}
 
 	void addNode(const std::string& name);
@@ -256,6 +270,28 @@ public:
 			outValue[i] = D3DUtil::convertTo<T>(tokenized[i]);
 		}
 	}
+
+	template<>
+	void loadAttribute(const std::string& attrName, bool& outValue) const
+	{
+		std::string outString;
+		loadAttribute(attrName, outString);
+		std::transform(outString.begin(), outString.end(), outString.begin(), ::tolower);
+		if (outString == "true")
+		{
+			outValue = true;
+		}
+		else if (outString == "false")
+		{
+			outValue = false;
+		}
+		else
+		{
+			ThrowErrCode(ErrCode::InvalidXmlData);
+		}
+
+	}
+
 	std::string getNodeName(void) const;
 
 	std::vector<XMLReaderNode> getChildNodes(void) const;
