@@ -101,7 +101,7 @@ void Actor::rotateUpVector(const DirectX::XMFLOAT3& toUpVector) noexcept
 		return;
 	}
 
-	XMMATRIX rotateMatrix = XMMatrixRotationNormal(XMVector3Cross(upVector, currentDirection), MathHelper::Pi_DIV2 - acos(dot));
+	XMMATRIX rotateMatrix = XMMatrixRotationAxis(XMVector3Cross(upVector, currentDirection), MathHelper::Pi_DIV2 - acos(dot));
 	XMVECTOR newDirection = XMVector3Transform(currentDirection, rotateMatrix);
 	check(!isnan(XMVectorGetX(newDirection)));
 	XMStoreFloat3(&_upVector, XMVector3Normalize(upVector));

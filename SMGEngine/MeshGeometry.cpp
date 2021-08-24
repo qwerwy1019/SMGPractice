@@ -170,7 +170,7 @@ MeshGeometry::MeshGeometry(const XMLReaderNode& rootNode, ID3D12Device* device, 
 		createMeshGeometryXXX(device, commandList, vertices.data(), indices.data());
 	}
 }
-#if defined DEBUG | defined _DEBUG
+
 MeshGeometry::MeshGeometry(const GeneratedMeshData& meshData, ID3D12Device* device, ID3D12GraphicsCommandList* commandList)
 {
 	_vertexBufferByteSize = meshData._vertices.size() * sizeof(Vertex);
@@ -185,7 +185,6 @@ MeshGeometry::MeshGeometry(const GeneratedMeshData& meshData, ID3D12Device* devi
 
 	createMeshGeometryXXX(device, commandList, meshData._vertices.data(), meshData._indices.data());
 }
-#endif
 
 const Vertex* MeshGeometry::getVertexBufferXXX(size_t& bufferSize) const noexcept
 {

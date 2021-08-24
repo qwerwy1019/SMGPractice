@@ -35,6 +35,7 @@ Terrain::Terrain(const TerrainObjectInfo& terrainInfo)
 		terrainInfo._direction,
 		terrainInfo._upVector,
 		terrainInfo._size);
+	_size = terrainInfo._size;
 #if defined DEBUG | defined _DEBUG
 	SMGFramework::getD3DApp()->createGameObjectDev(_gameObject);
 #endif
@@ -435,13 +436,12 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 	TerrainCollisionInfoXXX collisionInfo;
 	// sliding을 구현하지 않았기 때문에, 겹쳐지는 경우에는 뒤로 보내야해서 미리 반지름만큼 뒤로 보내서 충돌 체크를 할 것임. [7/12/2021 qwerw]
 	float adjustingDistance = actor.getRadius() * 0.5;
-	collisionInfo._velocity = XMVector3Transform(XMLoadFloat3(&velocity), inverseMatrix);
-	float speed = XMVectorGetX(XMVector3Length(collisionInfo._velocity));
-	XMVECTOR adjustingVelocity = collisionInfo._velocity * adjustingDistance / speed;
+	XMVECTOR velocityWorld = XMLoadFloat3(&velocity);
+	float speed = XMVectorGetX(XMVector3Length(velocityWorld));
+	XMVECTOR adjustingVelocityWorld = (velocityWorld * adjustingDistance / speed);
 
-	
-	collisionInfo._position = XMVector3Transform(XMLoadFloat3(&actor.getPosition()), inverseMatrix) - adjustingVelocity;
-	collisionInfo._velocity += adjustingVelocity;
+	collisionInfo._velocity = XMVector3Transform(velocityWorld + adjustingVelocityWorld, inverseMatrix);
+	collisionInfo._position = XMVector3Transform(XMLoadFloat3(&actor.getPosition()) - adjustingVelocityWorld, inverseMatrix);
 
 	switch (actor.getCharacterInfo()->getCollisionShape())
 	{
@@ -450,7 +450,7 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 		{
 			collisionInfo._shape = CollisionShape::Sphere;
 			
-			collisionInfo._radius = actor.getRadius();
+			collisionInfo._radius = actor.getRadius() / _size;
 			collisionInfo._min = XMVectorMin(collisionInfo._position, collisionInfo._position + collisionInfo._velocity);
 			collisionInfo._max = XMVectorMax(collisionInfo._position, collisionInfo._position + collisionInfo._velocity);
 
@@ -463,9 +463,12 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 		{
 			collisionInfo._shape = CollisionShape::Box;
 
-			collisionInfo._boxZ = XMVector3Transform(-XMLoadFloat3(&actor.getDirection()), inverseMatrix);
-			collisionInfo._boxY = XMVector3Transform(XMLoadFloat3(&actor.getUpVector()), inverseMatrix);
-			collisionInfo._boxX = XMVector3Cross(collisionInfo._boxZ, collisionInfo._boxY);
+			XMVECTOR direction = XMLoadFloat3(&actor.getDirection());
+			XMVECTOR upVector = XMLoadFloat3(&actor.getUpVector());
+			XMVECTOR rightVector = XMVector3Cross(upVector, direction);
+			collisionInfo._boxZ = XMVector3Transform(-direction, inverseMatrix);
+			collisionInfo._boxY = XMVector3Transform(upVector, inverseMatrix);
+			collisionInfo._boxX = XMVector3Transform(rightVector, inverseMatrix);
 
 			collisionInfo._boxX *= actor.getSizeX();
 			collisionInfo._boxY *= actor.getSizeY();

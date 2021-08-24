@@ -10,15 +10,13 @@
 #include "CameraPoint.h"
 
 Camera::Camera()
-	: _cameraInputPosition(100, 0, 0)
-	, _cameraInputUpVector(0, 1, 0)
-	, _cameraInputDirection(0, 0, -1)
+	: _cameraInputPosition(0, 0, 0)
+	, _cameraInputRotationQuat(0, 0, 0, 1)
 	, _cameraDataIndexInput(0)
-	, _cameraPositionSpeed(10.f)
-	, _cameraAngleSpeed(0.01f)
-	, _cameraPosition(0, 0, 3100)
-	, _cameraUpVector(0, 1, 0)
-	, _cameraDirection(0, 0, -1)
+	, _cameraPositionSpeed(0.2f)
+	, _cameraAngleSpeed(0.003f)
+	, _cameraPosition(0, 0, 0)
+	, _cameraRotationQuat(0, 0, 0, 1)
 	, _cameraRightVector(1, 0, 0)
 	, _cameraDataIndex(-1)
 	, _invViewMatrix(MathHelper::Identity4x4)
@@ -43,20 +41,19 @@ void Camera::update(void) noexcept
 
 	TickCount64 deltaTickCount = SMGFramework::Get().getTimer().getDeltaTickCount();
 	XMVECTOR position = XMLoadFloat3(&_cameraPosition);
-	XMVECTOR upVector = XMLoadFloat3(&_cameraUpVector);
-	XMVECTOR direction = XMLoadFloat3(&_cameraDirection);
+	XMVECTOR rotationQuat = XMLoadFloat4(&_cameraRotationQuat);
 
 	XMVECTOR inputPosition = XMLoadFloat3(&_cameraInputPosition);
-	XMVECTOR inputUpVector = XMLoadFloat3(&_cameraInputUpVector);
-	XMVECTOR inputDirection = XMLoadFloat3(&_cameraInputDirection);
+	XMVECTOR inputRotationQuat = XMLoadFloat4(&_cameraInputRotationQuat);
 
 	float deltaMoveDistance = XMVectorGetX(XMVector3Length(position - inputPosition));
-	float deltaAngle = std::max(XMVectorGetX(XMVector3AngleBetweenVectors(direction, inputDirection)),
-						XMVectorGetX(XMVector3AngleBetweenVectors(upVector, inputUpVector)));
-
-	if (deltaMoveDistance > _cameraPositionSpeed * deltaTickCount)
+	float deltaAngle = XMVectorGetX(XMQuaternionLength(rotationQuat - inputRotationQuat));
+	
+	float maxMoveDistance = _cameraPositionSpeed * deltaTickCount;
+	float maxAngle = _cameraAngleSpeed * deltaTickCount;
+	if (deltaMoveDistance > maxMoveDistance)
 	{
-		float t = _cameraPositionSpeed / static_cast<float>(deltaMoveDistance);
+		float t = maxMoveDistance / deltaMoveDistance;
 		position = XMVectorLerp(position, inputPosition, t);
 	}
 	else
@@ -64,20 +61,20 @@ void Camera::update(void) noexcept
 		position = inputPosition;
 	}
 
-	if (deltaAngle > _cameraAngleSpeed * deltaTickCount)
+	if (deltaAngle > maxAngle)
 	{
-		float t = _cameraAngleSpeed / static_cast<float>(deltaAngle);
-		direction = XMVectorLerp(direction, inputDirection, t);
-		upVector = XMVectorLerp(upVector, inputUpVector, t);
+		float t = maxAngle / deltaAngle;
+		rotationQuat = XMQuaternionSlerp(rotationQuat, inputRotationQuat, t);
 	}
 	else
 	{
-		direction = inputDirection;
-		upVector = inputUpVector;
+		rotationQuat = inputRotationQuat;
 	}
 
-	XMVECTOR rightVector = XMVector3Cross(upVector, direction);
-	upVector = XMVector3Cross(direction, rightVector);
+	XMMATRIX cameraRotateMatrix = XMMatrixRotationQuaternion(rotationQuat);
+	XMVECTOR rightVector = cameraRotateMatrix.r[0];
+	XMVECTOR upVector = cameraRotateMatrix.r[1];
+	XMVECTOR direction = cameraRotateMatrix.r[2];
 
 	check(!isnan(XMVectorGetX(position)));
 	check(!isnan(XMVectorGetX(upVector)));
@@ -88,6 +85,7 @@ void Camera::update(void) noexcept
 	XMStoreFloat3(&_cameraUpVector, upVector);
 	XMStoreFloat3(&_cameraDirection, direction);
 	XMStoreFloat3(&_cameraRightVector, rightVector);
+	XMStoreFloat4(&_cameraRotationQuat, rotationQuat);
 
 	XMMATRIX view = XMMatrixLookAtLH(position, position + direction, upVector);
 	XMStoreFloat4x4(&_viewMatrix, view);
@@ -104,7 +102,8 @@ void Camera::updateByPlayerPosition() noexcept
 
 	const auto& playerPosition = SMGFramework::getStageManager()->getPlayerActor()->getPosition();
 
-	DirectX::XMFLOAT3 positionSum(0, 0, 0), upVectorSum(0, 0, 0), directionSum(0, 0, 0);
+	XMVECTOR positionSum = XMVectorZero();
+	XMVECTOR rotationQuatAvg = XMVectorZero();
 	float weightSum = 0.f;
 	const auto& nearCameraList = stageInfo->getNearCameraPoints(playerPosition);
 	int inputIndex = updateCameraDataIndexInput(nearCameraList);
@@ -113,16 +112,17 @@ void Camera::updateByPlayerPosition() noexcept
 	for (const auto& camera : nearCameraList)
 	{
 		const auto& cameraDatas = camera->getDatas();
-		DirectX::XMFLOAT3 position, upVector, direction;
+		DirectX::XMFLOAT3 position;
+		DirectX::XMFLOAT4 rotationQuat;
 		if (cameraDatas.size() == 1)
 		{
-			getCameraData(cameraDatas[0], camera->getType(), position, upVector, direction);
+			getCameraData(cameraDatas[0], camera->getType(), position, rotationQuat);
 		}
 		else
 		{
 			if (inputIndex > 0)
 			{
-				getCameraData(cameraDatas[inputIndex], camera->getType(), position, upVector, direction);
+				getCameraData(cameraDatas[inputIndex], camera->getType(), position, rotationQuat);
 			}
 			else
 			{
@@ -136,27 +136,22 @@ void Camera::updateByPlayerPosition() noexcept
 					canSaveIndex = false;
 					newIndex = -1;
 				}
-				getCameraData(cameraDatas[nearestIndex], camera->getType(), position, upVector, direction);
+				getCameraData(cameraDatas[nearestIndex], camera->getType(), position, rotationQuat);
 			}
 		}
 
 		float cameraWeight = camera->getWeight(playerPosition);
 		weightSum += cameraWeight;
-		positionSum = MathHelper::add(positionSum, MathHelper::mul(position, cameraWeight));
-		upVectorSum = MathHelper::add(upVectorSum, MathHelper::mul(upVector, cameraWeight));
-		directionSum = MathHelper::add(directionSum, MathHelper::mul(direction, cameraWeight));
+
+		check(cameraWeight > 0);
+		positionSum += XMLoadFloat3(&position) * cameraWeight;
+		rotationQuatAvg = XMQuaternionSlerp(rotationQuatAvg, XMLoadFloat4(&rotationQuat), cameraWeight / weightSum);
 	}
 
 	if (weightSum != 0.f)
 	{
-		_cameraInputPosition = MathHelper::div(positionSum, weightSum);
-		_cameraInputUpVector = MathHelper::div(upVectorSum, weightSum);
-		_cameraInputDirection = MathHelper::div(directionSum, weightSum);
-
-		XMVECTOR direction = XMLoadFloat3(&_cameraInputDirection);
-		XMVECTOR rightVector = XMVector3Cross(XMLoadFloat3(&_cameraInputUpVector), direction);
-		XMVECTOR upVector = XMVector3Cross(direction, rightVector);
-		XMStoreFloat3(&_cameraInputUpVector, upVector);
+		XMStoreFloat3(&_cameraInputPosition, positionSum / weightSum);
+		XMStoreFloat4(&_cameraInputRotationQuat, rotationQuatAvg);
 	}
 	if (canSaveIndex)
 	{
@@ -174,10 +169,10 @@ void Camera::updateByCameraInput() noexcept
 	auto camera = stageInfo->getTriggeredCameraPoint(_inputCameraPointKey);
 	const auto& cameraDatas = camera->getDatas();
 
-	int newIndex = std::clamp(_cameraDataIndex + _cameraDataIndexInput, 0, static_cast<int>(cameraDatas.size() - 1));
+	_cameraDataIndex = std::clamp(_cameraDataIndex + _cameraDataIndexInput, 0, static_cast<int>(cameraDatas.size() - 1));
 	_cameraDataIndexInput = 0;
 	
-	getCameraData(cameraDatas[newIndex], camera->getType(), _cameraInputPosition, _cameraInputUpVector, _cameraInputDirection);
+	getCameraData(cameraDatas[_cameraDataIndex], camera->getType(), _cameraInputPosition, _cameraInputRotationQuat);
 }
 
 const DirectX::XMFLOAT4X4& Camera::getViewMatrix(void) const noexcept
@@ -249,42 +244,39 @@ int Camera::updateCameraDataIndexInput(const std::vector<const CameraPoint*>& ca
 void Camera::getCameraData(const CameraPointData& cameraData,
 	CameraPointType type,
 	DirectX::XMFLOAT3& position,
-	DirectX::XMFLOAT3& upVector,
-	DirectX::XMFLOAT3& direction) const noexcept
+	DirectX::XMFLOAT4& rotationQuat) const noexcept
 {
 	using namespace DirectX;
 	check(SMGFramework::getStageManager() != nullptr);
 	check(SMGFramework::getStageManager()->getPlayerActor() != nullptr);
 
 	XMVECTOR playerPosition = XMLoadFloat3(&SMGFramework::getStageManager()->getPlayerActor()->getPosition());
-
+	XMVECTOR upVector, direction, rightVector;
 	switch (type)
 	{
 		case CameraPointType::Fixed:
 		case CameraPointType::PathCamera:
 		{
 			position = cameraData._position;
-			upVector = cameraData._upVector;
-			direction = cameraData._direction;
+			upVector = XMLoadFloat3(&cameraData._upVector);
+			direction = XMLoadFloat3(&cameraData._direction);
 		}
 		break;
 		case CameraPointType::PlayerFocus:
 		{
-			upVector = cameraData._upVector;
-			direction = cameraData._direction;
+			upVector = XMLoadFloat3(&cameraData._upVector);
+			direction = XMLoadFloat3(&cameraData._direction);
 			
-			XMVECTOR positionV = playerPosition - XMLoadFloat3(&direction) * cameraData._distance;
+			XMVECTOR positionV = playerPosition - direction * cameraData._distance;
 			XMStoreFloat3(&position, positionV);
 		}
 		break;
 		case CameraPointType::PlayerFocusFixed:
 		{
 			position = cameraData._position;
-			upVector = cameraData._upVector;
+			upVector = XMLoadFloat3(&cameraData._upVector);
 
-			XMVECTOR directionV = XMVector3Normalize(playerPosition - XMLoadFloat3(&position));
-			XMStoreFloat3(&direction, directionV);
-			
+			direction = XMVector3Normalize(playerPosition - XMLoadFloat3(&position));
 		}
 		break;
 		case CameraPointType::Count:
@@ -294,6 +286,16 @@ void Camera::getCameraData(const CameraPointData& cameraData,
 			check(false, "타입 추가시 확인");
 		}
 	}
+
+	rightVector = XMVector3Cross(upVector, direction);
+	upVector = XMVector3Cross(direction, rightVector);
+
+	XMMATRIX rotationMatrix;
+	rotationMatrix.r[0] = rightVector;
+	rotationMatrix.r[1] = upVector;
+	rotationMatrix.r[2] = direction;
+	rotationMatrix.r[3] = XMVectorSet(0, 0, 0, 1);
+	XMStoreFloat4(&rotationQuat, XMQuaternionRotationMatrix(rotationMatrix));
 }
 
 int Camera::getNearestCameraDataIndex(const CameraPoint* cameraPoint) const noexcept
@@ -305,11 +307,13 @@ int Camera::getNearestCameraDataIndex(const CameraPoint* cameraPoint) const noex
 	int index = -1;
 	for (int i=0;i<cameraDatas.size();++i)
 	{
-		DirectX::XMFLOAT3 position, upVector, direction;
-		getCameraData(cameraDatas[i], cameraPoint->getType(), position, upVector, direction);
+		using namespace DirectX;
+		XMFLOAT3 position;
+		XMFLOAT4 rotationQuat;
+		getCameraData(cameraDatas[i], cameraPoint->getType(), position, rotationQuat);
 
-		float distance = MathHelper::length(MathHelper::sub(direction, _cameraInputDirection));
-		//float distance = MathHelper::length(MathHelper::sub(position, _cameraInputPosition));
+		float distance = XMVectorGetX(XMQuaternionLength(XMLoadFloat4(&rotationQuat) - XMLoadFloat4(&_cameraInputRotationQuat)));
+		distance *= MathHelper::length(MathHelper::sub(position, _cameraInputPosition));
 		if (distance < minDistance)
 		{
 			minDistance = distance;

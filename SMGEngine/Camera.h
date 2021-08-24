@@ -21,20 +21,21 @@ public:
 	void getCameraData(const CameraPointData& cameraData, 
 						CameraPointType type,
 						DirectX::XMFLOAT3& position, 
-						DirectX::XMFLOAT3& upVector,
-						DirectX::XMFLOAT3& direction) const noexcept;
+						DirectX::XMFLOAT4& rotationQuat) const noexcept;
 	int getNearestCameraDataIndex(const CameraPoint* cameraDatas) const noexcept;
 private:
 	// Ä«¸Þ¶ó
 	DirectX::XMFLOAT3 _cameraInputPosition;
-	DirectX::XMFLOAT3 _cameraInputUpVector;
-	DirectX::XMFLOAT3 _cameraInputDirection;
+	//DirectX::XMFLOAT3 _cameraInputUpVector;
+	//DirectX::XMFLOAT3 _cameraInputDirection;
+	DirectX::XMFLOAT4 _cameraInputRotationQuat;
 	int _cameraDataIndexInput;
 	
 	float _cameraPositionSpeed;
 	float _cameraAngleSpeed;
 
 	DirectX::XMFLOAT3 _cameraPosition;
+	DirectX::XMFLOAT4 _cameraRotationQuat;
 	DirectX::XMFLOAT3 _cameraUpVector;
 	DirectX::XMFLOAT3 _cameraDirection;
 	DirectX::XMFLOAT3 _cameraRightVector;

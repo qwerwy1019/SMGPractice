@@ -67,7 +67,7 @@ D3DApp::D3DApp()
 	, _projectionMatrix(MathHelper::Identity4x4)
 	, _viewPort()
 	, _scissorRect()
-	, _sceneBounds(XMFLOAT3(0, 0, 0), 3000.f)
+	, _sceneBounds(XMFLOAT3(0, 0, 0), 600.f)
 	, _mainLightViewMatrix(MathHelper::Identity4x4)
 	, _mainLightProjectionMatrix(MathHelper::Identity4x4)
 	, _shadowTransform(MathHelper::Identity4x4)
@@ -579,7 +579,7 @@ void D3DApp::Draw(void)
 				_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::GameObjectDev].Get());
 				//return;
 #else
-				return;
+				continue;
 #endif
 			}
 			break;
@@ -1044,7 +1044,7 @@ void D3DApp::createGameObjectDev(Actor* actor)
 	check(actor != nullptr);
 	check(actor->getGameObject() != nullptr);
 	check(actor->getCharacterInfo() != nullptr);
-	return;
+	
 	// collision boundary
 	const CharacterInfo* characterInfo = actor->getCharacterInfo();
 	GeneratedMeshData meshData;
@@ -1101,7 +1101,6 @@ void D3DApp::createGameObjectDev(Actor* actor)
 
 void D3DApp::createGameObjectDev(GameObject* gameObject)
 {
-	return;
 	// normal vector
 	GeneratedMeshData normalLineMeshData;
 	
@@ -1675,9 +1674,9 @@ void D3DApp::buildPipelineStateObject(void)
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescShadow = psoDescNormal;
 
-		psoDescShadow.RasterizerState.DepthBias = 50000;
+		psoDescShadow.RasterizerState.DepthBias = 10000;
 		psoDescShadow.RasterizerState.DepthBiasClamp = 0.f;
- 		psoDescShadow.RasterizerState.SlopeScaledDepthBias = 0.5f;
+ 		psoDescShadow.RasterizerState.SlopeScaledDepthBias = 0.05f;
 		psoDescShadow.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		psoDescShadow.VS =
 		{

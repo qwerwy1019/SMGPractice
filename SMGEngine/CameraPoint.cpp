@@ -60,7 +60,7 @@ bool CameraPoint::checkInRange(const DirectX::XMFLOAT3& position) const noexcept
 float CameraPoint::getWeight(const DirectX::XMFLOAT3& position) const noexcept
 {
 	float distance = MathHelper::length(MathHelper::sub(position, _position));
-	return (_radius - distance) / _radius;
+	return (_radius - distance) * (_radius - distance) / (_radius * _radius);
 }
 
 const std::vector<CameraPointData>& CameraPoint::getDatas(void) const noexcept
@@ -84,7 +84,7 @@ CameraPointData::CameraPointData(CameraPointType type, const XMLReaderNode& node
 			node.loadAttribute("UpVector", _upVector);
 			node.loadAttribute("Direction", _direction);
 			XMVECTOR direction = XMVector3Normalize(XMLoadFloat3(&_direction));
-			XMVECTOR rightVector = XMVector3Cross(XMLoadFloat3(&_upVector), direction);
+			XMVECTOR rightVector = XMVector3Normalize(XMVector3Cross(XMLoadFloat3(&_upVector), direction));
 			XMVECTOR upVector = XMVector3Cross(direction, rightVector);
 			XMStoreFloat3(&_upVector, upVector);
 			XMStoreFloat3(&_direction, direction);
@@ -97,7 +97,7 @@ CameraPointData::CameraPointData(CameraPointType type, const XMLReaderNode& node
 			node.loadAttribute("Distance", _distance);
 
 			XMVECTOR direction = XMVector3Normalize(XMLoadFloat3(&_direction));
-			XMVECTOR rightVector = XMVector3Cross(XMLoadFloat3(&_upVector), direction);
+			XMVECTOR rightVector = XMVector3Normalize(XMVector3Cross(XMLoadFloat3(&_upVector), direction));
 			XMVECTOR upVector = XMVector3Cross(direction, rightVector);
 			XMStoreFloat3(&_upVector, upVector);
 			XMStoreFloat3(&_direction, direction);

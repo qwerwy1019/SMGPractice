@@ -76,6 +76,7 @@ private:
 	DirectX::XMFLOAT3 _max;
 	bool _isGround;
 	bool _isWall;
+	float _size;
 private:
 	void makeAABBTree(void);
 	uint16_t XM_CALLCONV makeAABBTreeXXX(std::vector<TerrainAABBNode::DataType::Leaf>& terrainIndexList,

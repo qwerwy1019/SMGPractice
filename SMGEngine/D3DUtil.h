@@ -53,7 +53,10 @@ public:
 		while (cursor < input.length())
 		{
 			size_t newCursor = std::min(input.find(token, cursor), input.length());
-			rv.emplace_back(input.substr(cursor, newCursor - cursor));
+			if (newCursor != cursor)
+			{
+				rv.emplace_back(input.substr(cursor, newCursor - cursor));
+			}
 			cursor = newCursor + 1;
 		}
 		return rv;
