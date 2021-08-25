@@ -28,6 +28,8 @@ public:
 	void rotateQuat(const DirectX::XMFLOAT4& rotationQuat) noexcept;
 	DirectX::XMFLOAT4 getRotationQuat(const TickCount64& deltaTick) const noexcept;
 	void setPath(int key) noexcept;
+	const Path* getPath(void) const noexcept;
+	bool isPathEnd(void) const noexcept;
 public:
 	TickCount64 getLocalTickCount(void) const noexcept;
 	const DirectX::XMFLOAT3& getPosition(void) const noexcept;
@@ -65,7 +67,7 @@ public:
 	void setRotateType(const RotateType rotateType, const float rotateAngleOffset, const float speed) noexcept;
 	void setAcceleration(const float acceleration, const float targetSpeed, MoveType moveType) noexcept;
 	void setVerticalSpeed(const float speed) noexcept;
-	void setTargetVerticalSpeed(const float targetVerticalSpeed) noexcept;
+	void setTargetVerticalSpeed(float targetVerticalSpeed, float acceleration) noexcept;
 	const CharacterInfo* getCharacterInfo(void) const noexcept;
 	const GameObject* getGameObject(void) const noexcept;
 	const DirectX::XMINT3& getSectorCoord(void) const noexcept;
@@ -73,6 +75,8 @@ public:
 	void setCulled(void) noexcept;
 	void setActionChartVariable(const std::string& name, int value) noexcept;
 	int getActionChartVariable(const std::string& name) const noexcept;
+	int getActionIndex(void) const noexcept;
+	void setGravityOn(bool on) noexcept;
 private:
 	DirectX::XMFLOAT3 _position;
 	//DirectX::XMFLOAT4 _rotationQuat;
@@ -89,6 +93,7 @@ private:
 	float _moveDirectionOffset;
 	float _acceleration;
 	float _targetSpeed;
+	float _verticalAcceleration;
 	float _targetVerticalSpeed;
 
 	DirectX::XMFLOAT3 _additionalMoveVector;
@@ -103,6 +108,7 @@ private:
 	float _rotateSpeed;
 
 	const GravityPoint* _gravityPoint;
+	bool _isGravityOn;
 
 	GameObject* _gameObject;
 
@@ -111,6 +117,7 @@ private:
 	const ActionChart* _actionChart;
 	const ActionState* _currentActionState;
 	std::unordered_map<std::string, int> _actionChartVariables;
+	int _actionIndex;
 	
 	TickCount64 _localTickCount;
 

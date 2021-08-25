@@ -79,6 +79,7 @@ void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
 		childNodes[i].loadAttribute("Direction", _spawnInfo[i]._direction);
 		childNodes[i].loadAttribute("UpVector", _spawnInfo[i]._upVector);
 		childNodes[i].loadAttribute("Size", _spawnInfo[i]._size);
+		childNodes[i].loadAttribute("ActionIndex", _spawnInfo[i]._actionIndex);
 	}
 }
 
@@ -138,7 +139,15 @@ const GravityPoint* StageInfo::getGravityPointAt(const DirectX::XMFLOAT3& positi
 	}
 	return nullptr;
 }
-
+const GravityPoint* StageInfo::getGravityPoint(int key) const noexcept
+{
+	auto it = _gravityPoints.find(key);
+	if (it == _gravityPoints.end())
+	{
+		return nullptr;
+	}
+	return it->second.get();
+}
 const std::vector<Light>& StageInfo::getLights(void) const noexcept
 {
 	return _lightInfo;
@@ -213,6 +222,7 @@ void StageInfo::loadXmlGravityPointInfo(const XMLReaderNode& node)
 		childNodes[i].loadAttribute("Gravity", gravityPoint->_gravity);
 		gravityPoint->_gravity *= 0.001f;//ACCELERATION_UNIT;
 		childNodes[i].loadAttribute("Radius", gravityPoint->_radius);
+		childNodes[i].loadAttribute("MinRadius", gravityPoint->_minRadius);
 		childNodes[i].loadAttribute("Position", gravityPoint->_position);
 
 		_gravityPoints.emplace(key, std::move(gravityPoint));
@@ -332,6 +342,7 @@ SpawnInfo::SpawnInfo() noexcept
 	, _direction(0.f, 0.f, 0.f)
 	, _upVector(0.f, 0.f, 0.f)
 	, _size(0.f)
+	, _actionIndex(0)
 {
 
 }
@@ -353,6 +364,7 @@ GravityPoint::GravityPoint() noexcept
 	, _gravity(0.f)
 	, _radius(0.f)
 	, _position(0.f, 0.f, 0.f)
+	, _minRadius(0.f)
 {
 
 }

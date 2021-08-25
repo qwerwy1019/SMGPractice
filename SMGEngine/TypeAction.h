@@ -16,6 +16,10 @@ enum class ActionConditionType
 	CharacterType,
 	CheckSpeed,
 	Variable,
+	CheckVerticalSpeed,
+	ActionIndex,
+	HasPath,
+	PathEnd,
 
 	Count,
 };
@@ -29,6 +33,9 @@ enum class FrameEventType
 	SpawnCharacter,
 	Effect,
 	SetVariable,
+	FallSpeed,
+	SetPath,
+	Gravity,
 
 	Count,
 };

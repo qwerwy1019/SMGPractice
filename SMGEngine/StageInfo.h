@@ -16,6 +16,7 @@ struct SpawnInfo
 	DirectX::XMFLOAT3 _direction;
 	DirectX::XMFLOAT3 _upVector;
 	float _size;
+	int _actionIndex;
 };
 
 struct TerrainObjectInfo
@@ -38,6 +39,7 @@ struct GravityPoint
 
 	float _gravity;
 	float _radius;
+	float _minRadius;
 
 	DirectX::XMFLOAT3 _position;
 };
@@ -65,7 +67,7 @@ public:
 	const DirectX::XMINT3& getSectorUnitNumber(void) const noexcept;
 	const DirectX::XMINT3& getSectorSize(void) const noexcept;
 	const GravityPoint* getGravityPointAt(const DirectX::XMFLOAT3& position) const noexcept;
-
+	const GravityPoint* getGravityPoint(int key) const noexcept;
 	const std::vector<Light>& getLights(void) const noexcept;
 	const DirectX::XMFLOAT4& getAmbientLight(void) const noexcept;
 

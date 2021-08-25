@@ -206,9 +206,25 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	{
 		condition = std::make_unique<ActionCondition_Variable>(conditionArgs);
 	}
+	else if (conditionTypeString == "CheckVerticalSpeed")
+	{
+		condition = std::make_unique<ActionCondition_CheckVerticalSpeed>(conditionArgs);
+	}
+	else if (conditionTypeString == "ActionIndex")
+	{
+		condition = std::make_unique<ActionCondition_ActionIndex>(conditionArgs);
+	}
+	else if (conditionTypeString == "HasPath")
+	{
+		condition = std::make_unique<ActionCondition_HasPath>(conditionArgs);
+	}
+	else if (conditionTypeString == "PathEnd")
+	{
+		condition = std::make_unique<ActionCondition_PathEnd>(conditionArgs);
+	}
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 13, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 17, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -514,4 +530,55 @@ bool ActionCondition_Variable::checkCondition(const Actor& actor) const noexcept
 		return true;
 	}
 	return false;
+}
+
+ActionCondition_CheckVerticalSpeed::ActionCondition_CheckVerticalSpeed(const std::string& args)
+{
+	const auto& tokenized = D3DUtil::tokenizeString(args, '_');
+	if (tokenized.size() != 2)
+	{
+		ThrowErrCode(ErrCode::ActionChartLoadFail, "ActionCondition_CheckSpeed" + args);
+	}
+	_min = std::stof(tokenized[0]);
+	_max = std::stof(tokenized[1]);
+
+}
+
+bool ActionCondition_CheckVerticalSpeed::checkCondition(const Actor& actor) const noexcept
+{
+	if (actor.getVerticalSpeed() < _min || actor.getVerticalSpeed() > _max)
+	{
+		return false;
+	}
+	return true;
+}
+
+ActionCondition_ActionIndex::ActionCondition_ActionIndex(const std::string& args)
+{
+	_actionIndex = std::stoi(args);
+}
+
+bool ActionCondition_ActionIndex::checkCondition(const Actor& actor) const noexcept
+{
+	return (actor.getActionIndex() == _actionIndex);
+}
+
+ActionCondition_HasPath::ActionCondition_HasPath(const std::string& args)
+{
+
+}
+
+bool ActionCondition_HasPath::checkCondition(const Actor& actor) const noexcept
+{
+	return (actor.getPath() != nullptr);
+}
+
+ActionCondition_PathEnd::ActionCondition_PathEnd(const std::string& args)
+{
+
+}
+
+bool ActionCondition_PathEnd::checkCondition(const Actor& actor) const noexcept
+{
+	return actor.isPathEnd();
 }

@@ -57,6 +57,7 @@ public:
 private:
 	float _speed;
 	float _targetFallSpeed;
+	float _acceleration;
 };
 
 class FrameEvent_Die : public FrameEvent
@@ -105,4 +106,39 @@ public:
 private:
 	std::string _name;
 	int _value;
+};
+
+class FrameEvent_FallSpeed : public FrameEvent
+{
+public:
+	FrameEvent_FallSpeed(const XMLReaderNode& node);
+	virtual ~FrameEvent_FallSpeed() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::FallSpeed; }
+private:
+	float _targetFallSpeed;
+	float _acceleration;
+};
+
+
+class FrameEvent_SetPath : public FrameEvent
+{
+public:
+	FrameEvent_SetPath(const XMLReaderNode& node);
+	virtual ~FrameEvent_SetPath() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::SetPath; }
+private:
+	int _pathKey;
+};
+
+class FrameEvent_Gravity : public FrameEvent
+{
+public:
+	FrameEvent_Gravity(const XMLReaderNode& node);
+	virtual ~FrameEvent_Gravity() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::Gravity; }
+private:
+	bool _on;
 };

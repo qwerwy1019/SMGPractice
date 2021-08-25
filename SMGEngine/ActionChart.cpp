@@ -93,6 +93,11 @@ ActionState* ActionChart::getActionState(const std::string& name) const noexcept
 
 void ActionChart::checkValid(void) const
 {
+	auto it = _actionStates.find("IDLE");
+	if (it == _actionStates.end())
+	{
+		ThrowErrCode(ErrCode::ActionChartLoadFail, "IDLE 액션이 없습니다.");
+	}
 	for (const auto& actionState : _actionStates)
 	{
 		actionState.second->checkValid(this);

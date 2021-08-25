@@ -89,6 +89,11 @@ void Path::getPathRotationAtTime(const TickCount64& currentMoveTick, DirectX::XM
 	}
 }
 
+const TickCount64& Path::getMoveTick(void) const noexcept
+{
+	return _moveTick;
+}
+
 void Path::getPathPositionAtTimeCurve(float t, DirectX::XMFLOAT3& position) const noexcept
 {
 	using namespace DirectX;

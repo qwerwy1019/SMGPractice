@@ -25,6 +25,7 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _moveDirectionOffset(0.f)
 	, _acceleration(0.f)
 	, _targetSpeed(0.f)
+	, _verticalAcceleration(0.f)
 	, _targetVerticalSpeed(10.f)
 	, _additionalMoveVector(0, 0, 0)
 	, _sectorCoord(0, 0, 0)
@@ -34,6 +35,10 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _rotateAngleOffset(0.f)
 	, _rotateSpeed(0.f)
 	, _gravityPoint(nullptr)
+	, _isGravityOn(true)
+	, _actionChart(nullptr)
+	, _currentActionState(nullptr)
+	, _actionIndex(0)
 	, _localTickCount(0)
 	, _onGround(false)
 {
@@ -44,14 +49,17 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 		ThrowErrCode(ErrCode::InvalidXmlData, "캐릭터키가 비정상입니다. " + spawnInfo._key);
 	}
 	_actionChart = SMGFramework::getStageManager()->loadActionChartFromXML(_characterInfo->getActionChartFileName());
-	_currentActionState = _actionChart->getActionState("IDLE");
-	if (nullptr == _currentActionState)
+	const auto& idleAction = _actionChart->getActionState("IDLE");
+	if (nullptr == idleAction)
 	{
 		ThrowErrCode(ErrCode::InvalidXmlData, _characterInfo->getActionChartFileName() + " : IDLE 이 없습니다.");
 	}
 	_actionChartVariables = _actionChart->getVariables();
+	_actionIndex = spawnInfo._actionIndex;
 	
 	_gameObject = SMGFramework::getD3DApp()->createObjectFromXML(_characterInfo->getObjectFileName());
+
+	setActionState("IDLE");
 
 	if (_currentActionState == nullptr)
 	{
@@ -165,6 +173,12 @@ DirectX::XMFLOAT4 Actor::getRotationQuat(const TickCount64& deltaTick) const noe
 
 void Actor::setPath(int key) noexcept
 {
+	if (key < 0)
+	{
+		_path = nullptr;
+		_pathTime = 0;
+		return;
+	}
 	auto path = SMGFramework::getStageManager()->getStageInfo()->getPath(key);
 	if (path == nullptr)
 	{
@@ -174,6 +188,20 @@ void Actor::setPath(int key) noexcept
 
 	_path = path;
 	_pathTime = 0;
+}
+
+const Path* Actor::getPath(void) const noexcept
+{
+	return _path;
+}
+
+bool Actor::isPathEnd(void) const noexcept
+{
+	if (_path == nullptr || _path->getMoveTick() < _pathTime)
+	{
+		return true;
+	}
+	return false;
 }
 
 float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
@@ -287,7 +315,7 @@ bool Actor::getGravityDirection(DirectX::XMFLOAT3& gravityDirection) const noexc
 			XMVECTOR actorPosition = XMLoadFloat3(&_position);
 			XMVECTOR toGravityPoint = XMLoadFloat3(&_gravityPoint->_position) - actorPosition;
 			float toGravityPointLength = XMVectorGetX(XMVector3Length(toGravityPoint));
-			if (MathHelper::equal(toGravityPointLength, 0))
+			if (toGravityPointLength < _gravityPoint->_minRadius)
 			{
 				return false;
 			}
@@ -336,12 +364,12 @@ void Actor::updateActor(const TickCount64& deltaTick) noexcept
 	{
 		if (_verticalSpeed < _targetVerticalSpeed)
 		{
-			_verticalSpeed += _gravityPoint->_gravity * deltaTick;
+			_verticalSpeed += _gravityPoint->_gravity * _verticalAcceleration * deltaTick;
 			_verticalSpeed = std::min(_verticalSpeed, _targetVerticalSpeed);
 		}
 		else
 		{
-			_verticalSpeed -= _gravityPoint->_gravity * deltaTick;
+			_verticalSpeed -= _gravityPoint->_gravity * _verticalAcceleration * deltaTick;
 			_verticalSpeed = std::max(_verticalSpeed, _targetVerticalSpeed);
 		}
 	}
@@ -687,7 +715,6 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 		case MoveType::Path:
 		{
 			check(_path != nullptr);
-			check(MathHelper::equal(_speed, 1.f));
 			XMFLOAT3 position;
 			_path->getPathPositionAtTime(_pathTime, position);
 			// 중간에 리턴하는게 나을지, 이렇게 처리하는게 나을지... [8/25/2021 qwerw]
@@ -708,7 +735,7 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 		direction = XMVector3Transform(direction, rotateMatrix);
 	}
 	XMFLOAT3 resultVector;
-	XMStoreFloat3(&resultVector, direction * _speed + XMLoadFloat3(&_additionalMoveVector));
+	XMStoreFloat3(&resultVector, direction * _speed /** deltaTick*/ + XMLoadFloat3(&_additionalMoveVector));
 
 	return resultVector;
 }
@@ -720,7 +747,10 @@ void Actor::setPosition(const DirectX::XMFLOAT3& toPosition) noexcept
 	_sectorCoord = SMGFramework::getStageManager()->getSectorCoord(toPosition);
 	if (_gravityPoint == nullptr || MathHelper::length(MathHelper::sub(_gravityPoint->_position, toPosition)) > _gravityPoint->_radius)
 	{
-		_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(toPosition);
+		if (_isGravityOn)
+		{
+			_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(toPosition);
+		}
 	}
 }
 
@@ -794,14 +824,15 @@ void Actor::setAcceleration(const float acceleration, const float targetSpeed, M
 	_moveType = moveType;
 }
 
-void Actor::setVerticalSpeed(const float speed) noexcept
+void Actor::setVerticalSpeed(float speed) noexcept
 {
 	_verticalSpeed = speed;
 }
 
-void Actor::setTargetVerticalSpeed(const float targetVerticalSpeed) noexcept
+void Actor::setTargetVerticalSpeed(float targetVerticalSpeed, float acceleration) noexcept
 {
 	_targetVerticalSpeed = targetVerticalSpeed;
+	_verticalAcceleration = acceleration;
 }
 
 const CharacterInfo* Actor::getCharacterInfo(void) const noexcept
@@ -852,6 +883,26 @@ int Actor::getActionChartVariable(const std::string& name) const noexcept
 		return 0;
 	}
 	return it->second;
+}
+
+int Actor::getActionIndex(void) const noexcept
+{
+	return _actionIndex;
+}
+
+void Actor::setGravityOn(bool on) noexcept
+{
+	check(SMGFramework::getStageManager() != nullptr);
+
+	_isGravityOn = on;
+	if (on)
+	{
+		_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(_position);
+	}
+	else
+	{
+		_gravityPoint = nullptr;
+	}
 }
 
 float Actor::getResistanceDistance(const Actor& selfActor, const Actor& targetActor) noexcept

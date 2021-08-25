@@ -76,9 +76,21 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_SetVariable>(node);
 	}
+	else if (typeString == "FallSpeed")
+	{
+		return std::make_unique<FrameEvent_FallSpeed>(node);
+	}
+	else if (typeString == "SetPath")
+	{
+		return std::make_unique<FrameEvent_SetPath>(node);
+	}
+	else if (typeString == "Gravity")
+	{
+		return std::make_unique<FrameEvent_Gravity>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 7, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 10, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -165,12 +177,13 @@ FrameEvent_Jump::FrameEvent_Jump(const XMLReaderNode& node)
 {
 	node.loadAttribute("Speed", _speed);
 	node.loadAttribute("TargetFallSpeed", _targetFallSpeed);
+	node.loadAttribute("Acceleration", _acceleration);
 }
 
 void FrameEvent_Jump::process(Actor& actor) const noexcept
 {
 	actor.setVerticalSpeed(_speed);
-	actor.setTargetVerticalSpeed(_targetFallSpeed);
+	actor.setTargetVerticalSpeed(_targetFallSpeed, _acceleration);
 }
 
 FrameEvent_Die::FrameEvent_Die(const XMLReaderNode& node)
@@ -241,4 +254,38 @@ FrameEvent_SetVariable::FrameEvent_SetVariable(const XMLReaderNode& node)
 void FrameEvent_SetVariable::process(Actor& actor) const noexcept
 {
 	actor.setActionChartVariable(_name, _value);
+}
+
+FrameEvent_FallSpeed::FrameEvent_FallSpeed(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("TargetFallSpeed", _targetFallSpeed);
+	node.loadAttribute("Acceleration", _acceleration);
+}
+
+void FrameEvent_FallSpeed::process(Actor& actor) const noexcept
+{
+	actor.setTargetVerticalSpeed(_targetFallSpeed, _acceleration);
+}
+
+FrameEvent_SetPath::FrameEvent_SetPath(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("PathKey", _pathKey);
+}
+
+void FrameEvent_SetPath::process(Actor& actor) const noexcept
+{
+	actor.setPath(_pathKey);
+}
+
+FrameEvent_Gravity::FrameEvent_Gravity(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("On", _on);
+}
+
+void FrameEvent_Gravity::process(Actor& actor) const noexcept
+{
+	actor.setGravityOn(_on);
 }

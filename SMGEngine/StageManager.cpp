@@ -146,10 +146,6 @@ bool StageManager::applyGravity(Actor* actor, const TickCount64& deltaTick) noex
 	}
 
 	moveVector = MathHelper::mul(moveVector, t);
-// 	if (checkCollision(actor, moveVector))
-// 	{
-// 		//return true;
-// 	}
 
 	moveActorXXX(actor, moveVector);
 
@@ -294,11 +290,6 @@ bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcep
 		return true;
 	}
 	moveVector = MathHelper::mul(moveVector, t);
-
-// 	if (checkCollision(actor, moveVector))
-// 	{
-// 		//return false;
-// 	}
 
 	moveActorXXX(actor, moveVector);
 	return true;

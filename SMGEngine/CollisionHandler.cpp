@@ -76,6 +76,10 @@ CollisionHandler::CollisionHandler(const XMLReaderNode& node)
 	{
 		_case = CollisionCase::Lower;
 	}
+	else if (caseString == "All")
+	{
+		_case = CollisionCase::All;
+	}
 	else
 	{
 		static_assert(static_cast<int>(CollisionCase::All) == 3);

@@ -172,3 +172,46 @@ private:
 	std::string _name;
 	int _value;
 };
+
+class ActionCondition_CheckVerticalSpeed : public ActionCondition
+{
+public:
+	ActionCondition_CheckVerticalSpeed(const std::string& args);
+	virtual ~ActionCondition_CheckVerticalSpeed() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::CheckVerticalSpeed; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	float _min;
+	float _max;
+};
+
+class ActionCondition_ActionIndex : public ActionCondition
+{
+public:
+	ActionCondition_ActionIndex(const std::string& args);
+	virtual ~ActionCondition_ActionIndex() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::ActionIndex; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	int _actionIndex;
+};
+
+class ActionCondition_HasPath : public ActionCondition
+{
+public:
+	ActionCondition_HasPath(const std::string& args);
+	virtual ~ActionCondition_HasPath() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::HasPath; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+};
+
+class ActionCondition_PathEnd : public ActionCondition
+{
+public:
+	ActionCondition_PathEnd(const std::string& args);
+	virtual ~ActionCondition_PathEnd() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::PathEnd; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+};
