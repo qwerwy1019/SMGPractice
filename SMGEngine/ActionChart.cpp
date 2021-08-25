@@ -46,13 +46,31 @@ ActionChart::ActionChart(const XMLReaderNode& node)
 	const auto& actionStates = childIter->second.getChildNodes();
 	for (const auto& actionState : actionStates)
 	{
-		_actionStates.emplace(actionState.getNodeName(), new ActionState(actionState));
+		auto it = _actionStates.emplace(actionState.getNodeName(), new ActionState(actionState));
+		if (it.second == false)
+		{
+			ThrowErrCode(ErrCode::ActionChartLoadFail, actionState.getNodeName());
+		}
 	}
 	childIter = childNodes.find("CollisionHandlers");
 	const auto& collisionHandlers = childIter->second.getChildNodes();
 	for (const auto& collisionHandler : collisionHandlers)
 	{
 		_collisionHandlers.emplace_back(new CollisionHandler(collisionHandler));
+	}
+	childIter = childNodes.find("Variables");
+	const auto& variables = childIter->second.getChildNodes();
+	for (const auto& variable : variables)
+	{
+		std::string name;
+		variable.loadAttribute("Name", name);
+		int value;
+		variable.loadAttribute("Value", value);
+		auto it = _variables.emplace(name, value);
+		if (it.second == false)
+		{
+			ThrowErrCode(ErrCode::ActionChartLoadFail, name);
+		}
 	}
 	checkValid();
 }
@@ -95,6 +113,11 @@ void ActionChart::processCollisionHandlers(Actor& selfActor, const Actor& target
 			break;
 		}
 	}
+}
+
+const std::unordered_map<std::string, int>& ActionChart::getVariables(void) const noexcept
+{
+	return _variables;
 }
 
 ActionState::ActionState(const XMLReaderNode& node)

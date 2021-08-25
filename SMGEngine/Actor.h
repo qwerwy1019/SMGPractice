@@ -8,6 +8,7 @@ class ActionState;
 struct SpawnInfo;
 struct GravityPoint;
 class GameObject;
+class Path;
 
 class Actor
 {
@@ -23,6 +24,10 @@ public:
 	float getVerticalSpeed() const noexcept;
 	void setActorOnGround(bool onGround) noexcept;
 	bool isOnGround(void) const noexcept;
+	bool isQuaternionRotate(void) const noexcept;
+	void rotateQuat(const DirectX::XMFLOAT4& rotationQuat) noexcept;
+	DirectX::XMFLOAT4 getRotationQuat(const TickCount64& deltaTick) const noexcept;
+	void setPath(int key) noexcept;
 public:
 	TickCount64 getLocalTickCount(void) const noexcept;
 	const DirectX::XMFLOAT3& getPosition(void) const noexcept;
@@ -66,7 +71,8 @@ public:
 	const DirectX::XMINT3& getSectorCoord(void) const noexcept;
 	void processCollision(const Actor* collidingActor, CollisionCase collisionCase) noexcept;
 	void setCulled(void) noexcept;
-
+	void setActionChartVariable(const std::string& name, int value) noexcept;
+	int getActionChartVariable(const std::string& name) const noexcept;
 private:
 	DirectX::XMFLOAT3 _position;
 	//DirectX::XMFLOAT4 _rotationQuat;
@@ -88,6 +94,9 @@ private:
 	DirectX::XMFLOAT3 _additionalMoveVector;
 	DirectX::XMINT3 _sectorCoord;
 
+	const Path* _path;
+	TickCount64 _pathTime;
+
 	// 캐릭터 회전
 	RotateType _rotateType;
 	float _rotateAngleOffset;
@@ -101,6 +110,7 @@ private:
 
 	const ActionChart* _actionChart;
 	const ActionState* _currentActionState;
+	std::unordered_map<std::string, int> _actionChartVariables;
 	
 	TickCount64 _localTickCount;
 

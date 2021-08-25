@@ -71,11 +71,9 @@ void Camera::update(void) noexcept
 		rotationQuat = inputRotationQuat;
 	}
 
-	XMMATRIX cameraRotateMatrix = XMMatrixRotationQuaternion(rotationQuat);
-	XMVECTOR rightVector = cameraRotateMatrix.r[0];
-	XMVECTOR upVector = cameraRotateMatrix.r[1];
-	XMVECTOR direction = cameraRotateMatrix.r[2];
-
+	XMVECTOR upVector, direction, rightVector;
+	MathHelper::getRotatedAxis(rotationQuat, upVector, direction, rightVector);
+	
 	check(!isnan(XMVectorGetX(position)));
 	check(!isnan(XMVectorGetX(upVector)));
 	check(!isnan(XMVectorGetX(direction)));
@@ -287,15 +285,9 @@ void Camera::getCameraData(const CameraPointData& cameraData,
 		}
 	}
 
-	rightVector = XMVector3Cross(upVector, direction);
-	upVector = XMVector3Cross(direction, rightVector);
-
-	XMMATRIX rotationMatrix;
-	rotationMatrix.r[0] = rightVector;
-	rotationMatrix.r[1] = upVector;
-	rotationMatrix.r[2] = direction;
-	rotationMatrix.r[3] = XMVectorSet(0, 0, 0, 1);
-	XMStoreFloat4(&rotationQuat, XMQuaternionRotationMatrix(rotationMatrix));
+	XMVECTOR rotationQuatV = MathHelper::getQuaternion(upVector, direction);
+	
+	XMStoreFloat4(&rotationQuat, rotationQuatV);
 }
 
 int Camera::getNearestCameraDataIndex(const CameraPoint* cameraPoint) const noexcept

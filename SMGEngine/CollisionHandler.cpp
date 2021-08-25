@@ -34,9 +34,13 @@ std::unique_ptr<CollisionEvent> CollisionEvent::loadXMLCollisionEvent(const XMLR
 	{
 		return std::make_unique<CollisionEvent_SetAction>(node);
 	}
+	else if (typeString == "SetVariableFromTarget")
+	{
+		return std::make_unique<CollisionEvent_SetVariableFromTarget>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(CollisionEventType::Count) == 2, "타입추가시 확인할것");
+		static_assert(static_cast<int>(CollisionEventType::Count) == 3, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -160,4 +164,15 @@ void CollisionHandler::processEvents(Actor& selfActor, const Actor& targetActor)
 	{
 		collisionEvent->process(selfActor, targetActor);
 	}
+}
+
+CollisionEvent_SetVariableFromTarget::CollisionEvent_SetVariableFromTarget(const XMLReaderNode& node)
+{
+	node.loadAttribute("Name", _name);
+}
+
+void CollisionEvent_SetVariableFromTarget::process(Actor& selfActor, const Actor& targetActor) const noexcept
+{
+	int targetValue = targetActor.getActionChartVariable(_name);
+	selfActor.setActionChartVariable(_name, targetValue);
 }

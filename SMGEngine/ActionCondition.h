@@ -160,3 +160,15 @@ private:
 	float _min;
 	float _max;
 };
+
+class ActionCondition_Variable : public ActionCondition
+{
+public:
+	ActionCondition_Variable(const std::string& args);
+	virtual ~ActionCondition_Variable() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::Variable; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	std::string _name;
+	int _value;
+};

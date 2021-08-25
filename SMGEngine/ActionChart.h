@@ -47,7 +47,9 @@ public:
 	ActionState* getActionState(const std::string& name) const noexcept;
 	void checkValid(void) const;
 	void processCollisionHandlers(Actor& selfActor, const Actor& targetActor, CollisionCase collisionCase) const noexcept;
+	const std::unordered_map<std::string, int>& getVariables(void) const noexcept;
 private:
 	std::unordered_map<std::string, std::unique_ptr<ActionState>> _actionStates;
 	std::vector<std::unique_ptr<CollisionHandler>> _collisionHandlers;
+	std::unordered_map<std::string, int> _variables;
 };

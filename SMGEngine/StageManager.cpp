@@ -90,14 +90,24 @@ void StageManager::moveActorXXX(Actor* actor, const DirectX::XMFLOAT3& moveVecto
 
 bool StageManager::rotateActor(Actor* actor, const TickCount64& deltaTick) const noexcept
 {
-	float rotateAngle = actor->getRotateAngleDelta(deltaTick);
-	if (MathHelper::equal(rotateAngle, 0.f))
+	if (actor->isQuaternionRotate())
 	{
-		return false;
-	}
-	// 회전시 충돌을 고려하는 부분은 나중에 필요하면[5/12/2021 qwerwy]
+		DirectX::XMFLOAT4 rotationQuat = actor->getRotationQuat(deltaTick);
 
-	actor->rotateOnPlane(rotateAngle);
+		actor->rotateQuat(rotationQuat);
+	}
+	else
+	{
+		float rotateAngle = actor->getRotateAngleDelta(deltaTick);
+		if (MathHelper::equal(rotateAngle, 0.f))
+		{
+			return false;
+		}
+		// 회전시 충돌을 고려하는 부분은 나중에 필요하면[5/12/2021 qwerwy]
+
+		actor->rotateOnPlane(rotateAngle);
+	}
+
 	return true;
 }
 

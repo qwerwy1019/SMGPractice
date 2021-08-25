@@ -94,3 +94,15 @@ private:
 	DirectX::XMFLOAT3 _positionOffset;
 	float _size;
 };
+
+class FrameEvent_SetVariable : public FrameEvent
+{
+public:
+	FrameEvent_SetVariable(const XMLReaderNode& node);
+	virtual ~FrameEvent_SetVariable() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::SetVariable; }
+private:
+	std::string _name;
+	int _value;
+};

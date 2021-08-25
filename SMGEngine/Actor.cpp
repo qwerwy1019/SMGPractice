@@ -12,6 +12,7 @@
 #include <algorithm>
 #include "GameObject.h"
 #include "Camera.h"
+#include "Path.h"
 
 Actor::Actor(const SpawnInfo& spawnInfo)
 	: _position(spawnInfo._position)
@@ -26,6 +27,9 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _targetSpeed(0.f)
 	, _targetVerticalSpeed(10.f)
 	, _additionalMoveVector(0, 0, 0)
+	, _sectorCoord(0, 0, 0)
+	, _path(nullptr)
+	, _pathTime(0)
 	, _rotateType(RotateType::Fixed)
 	, _rotateAngleOffset(0.f)
 	, _rotateSpeed(0.f)
@@ -45,6 +49,7 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	{
 		ThrowErrCode(ErrCode::InvalidXmlData, _characterInfo->getActionChartFileName() + " : IDLE 이 없습니다.");
 	}
+	_actionChartVariables = _actionChart->getVariables();
 	
 	_gameObject = SMGFramework::getD3DApp()->createObjectFromXML(_characterInfo->getObjectFileName());
 
@@ -108,8 +113,72 @@ void Actor::rotateUpVector(const DirectX::XMFLOAT3& toUpVector) noexcept
 	XMStoreFloat3(&_direction, XMVector3Normalize(newDirection));
 }
 
+void Actor::rotateQuat(const DirectX::XMFLOAT4& rotationQuat) noexcept
+{
+	XMVECTOR upVector, direction, rightVector;
+	MathHelper::getRotatedAxis(XMLoadFloat4(&rotationQuat), upVector, direction, rightVector);
+
+	XMStoreFloat3(&_upVector, upVector);
+	XMStoreFloat3(&_direction, direction);
+}
+
+DirectX::XMFLOAT4 Actor::getRotationQuat(const TickCount64& deltaTick) const noexcept
+{
+	using namespace DirectX;
+	check(isQuaternionRotate());
+	XMVECTOR rotationQuat = XMVectorZero();
+	switch (_rotateType)
+	{
+		case RotateType::Path:
+		{
+			check(_path != nullptr);
+			XMFLOAT4 rotationQuatF;
+			_path->getPathRotationAtTime(_pathTime, rotationQuatF);
+			rotationQuat = XMLoadFloat4(&rotationQuatF);
+		}
+		break;
+		default:
+		{
+			static_assert(static_cast<int>(RotateType::Count) == 6, "타입 추가시 확인");
+			check(false, "타입 추가시 확인");
+		}
+	}
+
+	float maxAngle = _rotateSpeed * deltaTick;
+	XMVECTOR upVector = XMLoadFloat3(&_upVector);
+	XMVECTOR direction = XMLoadFloat3(&_direction);
+	XMVECTOR rotationQuatOrigin = MathHelper::getQuaternion(upVector, direction);
+	float deltaAngle = XMVectorGetX(XMQuaternionLength(rotationQuatOrigin - rotationQuat));
+	
+	XMFLOAT4 rotationQuatF;
+	if (maxAngle < deltaAngle)
+	{
+		XMStoreFloat4(&rotationQuatF,
+			XMQuaternionSlerp(rotationQuatOrigin, rotationQuat, deltaAngle / maxAngle));
+	}
+	else
+	{
+		XMStoreFloat4(&rotationQuatF, rotationQuat);
+	}
+	return rotationQuatF;
+}
+
+void Actor::setPath(int key) noexcept
+{
+	auto path = SMGFramework::getStageManager()->getStageInfo()->getPath(key);
+	if (path == nullptr)
+	{
+		check(false, std::to_string(key) + " path가 없습니다.");
+		return;
+	}
+
+	_path = path;
+	_pathTime = 0;
+}
+
 float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 {
+	check(!isQuaternionRotate());
 	float deltaAngle = 0.f;
 	
 	switch (_rotateType)
@@ -132,11 +201,6 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 
 				deltaAngle = MathHelper::getDeltaAngleToVector(upVector, direction, toPlayer);
 			}
-		}
-		break;
-		case RotateType::Path:
-		{
-			check(false, "미구현");
 		}
 		break;
 		case RotateType::JoystickInput:
@@ -281,6 +345,10 @@ void Actor::updateActor(const TickCount64& deltaTick) noexcept
 			_verticalSpeed = std::max(_verticalSpeed, _targetVerticalSpeed);
 		}
 	}
+	if (_path != nullptr)
+	{
+		_pathTime += deltaTick;
+	}
 }
 
 float Actor::getVerticalSpeed() const noexcept
@@ -302,6 +370,12 @@ void Actor::setActorOnGround(bool onGround) noexcept
 bool Actor::isOnGround(void) const noexcept
 {
 	return _onGround;
+}
+
+bool Actor::isQuaternionRotate(void) const noexcept
+{
+	static_assert(static_cast<int>(RotateType::Count) == 6, "타입 추가시 확인");
+	return _rotateType == RotateType::Path;
 }
 
 TickCount64 Actor::getLocalTickCount(void) const noexcept
@@ -371,7 +445,7 @@ bool Actor::checkCollision(const Actor* lhs, const Actor* rhs) noexcept
 		break;
 		case CollisionShape::Box:
 		{
-			switch (lhs->_characterInfo->getCollisionShape())
+			switch (rhs->_characterInfo->getCollisionShape())
 			{
 				case CollisionShape::Sphere:
 				{
@@ -529,7 +603,7 @@ bool Actor::checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexce
 
 	XMVECTOR boxDirection = XMLoadFloat3(&lhs->_direction);
 	XMVECTOR boxUpVector = XMLoadFloat3(&lhs->_upVector);
-	XMVECTOR axis[3] = { boxDirection, boxUpVector, XMVector3Cross(boxDirection, boxUpVector) };
+	XMVECTOR axis[3] = { boxDirection, boxUpVector, XMVector3Cross(boxUpVector, boxDirection) };
 
 	float size[3] = { lhs->getSizeX(), lhs->getSizeY(), lhs->getSizeZ() };
 
@@ -548,8 +622,10 @@ bool Actor::checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexce
 		{
 			axis[i] *= -1;
 		}
+		apex += axis[i] * size[i];
 	}
-	XMVECTOR apexToSphere = spherePosition - (boxPosition + axis[0] + axis[1] + axis[2]);
+	
+	XMVECTOR apexToSphere = spherePosition - apex;
 	if (XMVectorGetX(XMVector3Dot(axis[0], apexToSphere)) > 0 &&
 		XMVectorGetX(XMVector3Dot(axis[1], apexToSphere)) > 0 &&
 		XMVectorGetX(XMVector3Dot(axis[2], apexToSphere)) > 0)
@@ -610,7 +686,12 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 		break;
 		case MoveType::Path:
 		{
-			check(false, "미구현");
+			check(_path != nullptr);
+			check(MathHelper::equal(_speed, 1.f));
+			XMFLOAT3 position;
+			_path->getPathPositionAtTime(_pathTime, position);
+			// 중간에 리턴하는게 나을지, 이렇게 처리하는게 나을지... [8/25/2021 qwerw]
+			direction = (XMLoadFloat3(&position) - XMLoadFloat3(&_position)) / _speed;
 		}
 		break;
 		case MoveType::Count:
@@ -751,6 +832,28 @@ void Actor::setCulled(void) noexcept
 	_gameObject->setCulled();
 }
 
+void Actor::setActionChartVariable(const std::string& name, int value) noexcept
+{
+	auto it = _actionChartVariables.find(name);
+	if (it == _actionChartVariables.end())
+	{
+		check(false, name);
+		return;
+	}
+	it->second = value;
+}
+
+int Actor::getActionChartVariable(const std::string& name) const noexcept
+{
+	auto it = _actionChartVariables.find(name);
+	if (it == _actionChartVariables.end())
+	{
+		check(false, name);
+		return 0;
+	}
+	return it->second;
+}
+
 float Actor::getResistanceDistance(const Actor& selfActor, const Actor& targetActor) noexcept
 {
 	switch (selfActor.getCharacterInfo()->getCollisionType())
@@ -766,12 +869,12 @@ float Actor::getResistanceDistance(const Actor& selfActor, const Actor& targetAc
 			{
 				case CollisionType::SolidObject:
 				{
-					return 0.05f;
+					return 0.1f;
 				}
 				break;
 				case CollisionType::Character:
 				{
-					return 0.025f;
+					return 0.05f;
 				}
 				break;
 				case CollisionType::Item:

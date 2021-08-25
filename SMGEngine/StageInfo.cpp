@@ -4,6 +4,7 @@
 #include "FileHelper.h"
 #include "MathHelper.h"
 #include "CameraPoint.h"
+#include "Path.h"
 
 StageInfo::StageInfo(void) noexcept
 	: _landscapeType(LandscapeType::Basic)
@@ -62,6 +63,9 @@ void StageInfo::loadXml(const XMLReaderNode& rootNode)
 
 	childIter = childNodes.find("CameraPoints");
 	loadXmlCameraInfo(childIter->second);
+
+	childIter = childNodes.find("Paths");
+	loadXmlPaths(childIter->second);
 }
 
 void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
@@ -148,6 +152,16 @@ const DirectX::XMFLOAT4& StageInfo::getAmbientLight(void) const noexcept
 const std::vector<std::string>& StageInfo::getEffectFileNames(void) const noexcept
 {
 	return _effectFileNames;
+}
+
+const Path* StageInfo::getPath(int key) const noexcept
+{
+	auto it = _paths.find(key);
+	if (it == _paths.end())
+	{
+		return nullptr;
+	}
+	return it->second.get();
 }
 
 void StageInfo::loadXmlTerrainObjectInfo(const XMLReaderNode& node)
@@ -298,6 +312,17 @@ void StageInfo::loadXmlAutoCameraInfo(const XMLReaderNode& node)
 	for (const auto& childNode : childNodes)
 	{
 		_autoCameraPoints.emplace_back(std::make_unique<CameraPoint>(childNode));
+	}
+}
+
+void StageInfo::loadXmlPaths(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	for (const auto& childNode : childNodes)
+	{
+		int key;
+		childNode.loadAttribute("Key", key);
+		_paths.emplace(key, std::make_unique<Path>(childNode));
 	}
 }
 

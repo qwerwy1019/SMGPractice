@@ -140,7 +140,8 @@ namespace MathHelper
 
 		XMMATRIX translation = XMMatrixTranslation(position.x, position.y, position.z);
 
-		XMMATRIX rotation = XMMatrixSet(direction.y * upVector.z - direction.z * upVector.y,
+		XMMATRIX rotation = XMMatrixSet(
+			direction.y * upVector.z - direction.z * upVector.y,
 			direction.z * upVector.x - direction.x * upVector.z,
 			direction.x * upVector.y - direction.y * upVector.x, 0,
 			upVector.x, upVector.y, upVector.z, 0,
@@ -570,5 +571,32 @@ namespace MathHelper
 		{
 			return -deltaAngle;
 		}
+	}
+
+	static DirectX::XMVECTOR XM_CALLCONV getQuaternion(DirectX::FXMVECTOR upVector, DirectX::FXMVECTOR direction) noexcept
+	{
+		using namespace DirectX;
+		XMVECTOR rightVector = XMVector3Normalize(XMVector3Cross(upVector, direction));
+		XMVECTOR upVectorApplied = XMVector3Cross(direction, rightVector);
+
+		XMMATRIX rotationMatrix;
+		rotationMatrix.r[0] = -rightVector;
+		rotationMatrix.r[1] = upVectorApplied;
+		rotationMatrix.r[2] = -direction;
+		rotationMatrix.r[3] = XMVectorSet(0, 0, 0, 1);
+
+		return XMQuaternionRotationMatrix(rotationMatrix);
+	}
+
+	static void XM_CALLCONV getRotatedAxis(DirectX::FXMVECTOR quaternion, 
+										DirectX::XMVECTOR& upVector,
+										DirectX::XMVECTOR& direction,
+										DirectX::XMVECTOR& rightVector) noexcept
+	{
+		using namespace DirectX;
+		XMMATRIX cameraRotateMatrix = XMMatrixRotationQuaternion(quaternion);
+		rightVector = -cameraRotateMatrix.r[0];
+		upVector = cameraRotateMatrix.r[1];
+		direction = -cameraRotateMatrix.r[2];
 	}
 };

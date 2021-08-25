@@ -72,9 +72,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_Effect>(node);
 	}
+	else if (typeString == "SetVariable")
+	{
+		return std::make_unique<FrameEvent_SetVariable>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 6, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 7, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -91,7 +95,7 @@ FrameEvent_Rotate::FrameEvent_Rotate(const XMLReaderNode& node)
 	{
 		_rotateType = RotateType::Fixed;
 	}
-	else if (typeString == "ToTarget")
+	else if (typeString == "ToPlayer")
 	{
 		_rotateType = RotateType::ToPlayer;
 	}
@@ -225,4 +229,16 @@ void FrameEvent_Effect::process(Actor& actor) const noexcept
 
 	EffectInstance instance(position, _size);
 	SMGFramework::getD3DApp()->addEffectInstance(_effectName, std::move(instance));
+}
+
+FrameEvent_SetVariable::FrameEvent_SetVariable(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("Name", _name);
+	node.loadAttribute("Value", _value);
+}
+
+void FrameEvent_SetVariable::process(Actor& actor) const noexcept
+{
+	actor.setActionChartVariable(_name, _value);
 }

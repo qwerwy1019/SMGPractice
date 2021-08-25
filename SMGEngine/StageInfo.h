@@ -6,6 +6,7 @@
 
 class XMLReaderNode;
 class CameraPoint;
+class Path;
 
 struct SpawnInfo
 {
@@ -55,7 +56,7 @@ public:
 	void loadXmlCameraInfo(const XMLReaderNode& node);
 	void loadXmlTriggeredCameraInfo(const XMLReaderNode& node);
 	void loadXmlAutoCameraInfo(const XMLReaderNode& node);
-
+	void loadXmlPaths(const XMLReaderNode& node);
 
 	std::vector<const CameraPoint*> getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept;
 	const CameraPoint* getTriggeredCameraPoint(int key) const noexcept;
@@ -69,6 +70,7 @@ public:
 	const DirectX::XMFLOAT4& getAmbientLight(void) const noexcept;
 
 	const std::vector<std::string>& getEffectFileNames(void) const noexcept;
+	const Path* getPath(int key) const noexcept;
 private:
 	LandscapeType _landscapeType;
 	std::vector<std::unique_ptr<CameraPoint>> _autoCameraPoints;
@@ -77,6 +79,7 @@ private:
 	std::vector<TerrainObjectInfo> _terrainObjectInfo;
 	std::unordered_map<int, std::unique_ptr<GravityPoint>> _gravityPoints;
 	std::vector<std::string> _effectFileNames;
+	std::unordered_map<int, std::unique_ptr<Path>> _paths;
 
 	DirectX::XMFLOAT4 _ambientLight;
 	std::vector<Light> _lightInfo;

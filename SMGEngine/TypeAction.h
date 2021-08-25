@@ -15,6 +15,7 @@ enum class ActionConditionType
 	CheckAction,
 	CharacterType,
 	CheckSpeed,
+	Variable,
 
 	Count,
 };
@@ -27,6 +28,7 @@ enum class FrameEventType
 	Die,
 	SpawnCharacter,
 	Effect,
+	SetVariable,
 
 	Count,
 };
@@ -80,6 +82,7 @@ enum class CollisionEventType
 {
 	RotateToTarget,
 	SetAction,
+	SetVariableFromTarget,
 
 	Count,
 };

@@ -202,9 +202,13 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	{
 		condition = std::make_unique<ActionCondition_CheckSpeed>(conditionArgs);
 	}
+	else if (conditionTypeString == "Variable")
+	{
+		condition = std::make_unique<ActionCondition_Variable>(conditionArgs);
+	}
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 12, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 13, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -490,4 +494,24 @@ bool ActionCondition_CheckSpeed::checkCondition(const Actor& actor) const noexce
 		return false;
 	}
 	return true;
+}
+
+ActionCondition_Variable::ActionCondition_Variable(const std::string& args)
+{
+	const auto& tokenized = D3DUtil::tokenizeString(args, '_');
+	if (tokenized.size() != 2)
+	{
+		ThrowErrCode(ErrCode::ActionChartLoadFail, "ActionCondition_CheckSpeed" + args);
+	}
+	_name = tokenized[0];
+	_value = std::stoi(tokenized[1]);
+}
+
+bool ActionCondition_Variable::checkCondition(const Actor& actor) const noexcept
+{
+	if (_value == actor.getActionChartVariable(_name))
+	{
+		return true;
+	}
+	return false;
 }

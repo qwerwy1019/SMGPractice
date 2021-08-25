@@ -39,6 +39,17 @@ private:
 	std::string _actionState;
 };
 
+class CollisionEvent_SetVariableFromTarget : public CollisionEvent
+{
+public:
+	CollisionEvent_SetVariableFromTarget(const XMLReaderNode& node);
+	virtual ~CollisionEvent_SetVariableFromTarget() = default;
+	virtual void process(Actor& selfActor, const Actor& targetActor) const noexcept override;
+	virtual CollisionEventType getType(void) const noexcept { return CollisionEventType::SetVariableFromTarget; }
+private:
+	std::string _name;
+};
+
 class CollisionHandler
 {
 public:
