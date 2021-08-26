@@ -8,11 +8,12 @@ Path::Path(const XMLReaderNode& node)
 {
 	using namespace MathHelper;
 	node.loadAttribute("IsCurve", _isCurve);
+	node.loadAttribute("HasDirection", _hasDirection);
 	node.loadAttribute("MoveTick", _moveTick);
 	const auto& childNodes = node.getChildNodes();
 	for (const auto& childNode : childNodes)
 	{
-		_points.emplace_back(childNode);
+		_points.emplace_back(childNode, _hasDirection);
 	}
 
 	// ∞À¡ı
@@ -145,28 +146,57 @@ void Path::getPathRotationAtTimeCurve(float t, DirectX::XMFLOAT4& quaternion) co
 	float localT = (t - startT) / (endT - startT);
 	float localMidT = (midT - startT) / (endT - startT);
 
-	XMVECTOR p0 = XMLoadFloat3(&_points[index]._position);
-	XMVECTOR p1 = XMLoadFloat3(&_points[index + 1]._position);
-	XMVECTOR p2 = XMLoadFloat3(&_points[index + 2]._position);
-
-	XMVECTOR direction = XMVector3Normalize(((1 - localT) * (p1 - p0)) + (localT * (p2 - p1)));
-	XMVECTOR upVector;
-	if (localT < localMidT)
+	if (_hasDirection)
 	{
-		XMVECTOR u0 = XMLoadFloat3(&_points[index]._upVector);
-		XMVECTOR u1 = XMLoadFloat3(&_points[index + 1]._upVector);
-		float d = localT / localMidT;
-		upVector = XMVectorLerp(u0, u1, d);
+		XMVECTOR u0, u1, d0, d1;
+		float d;
+		if (localT < localMidT)
+		{
+			u0 = XMLoadFloat3(&_points[index]._upVector);
+			u1 = XMLoadFloat3(&_points[index + 1]._upVector);
+			d0 = XMLoadFloat3(&_points[index]._direction);
+			d1 = XMLoadFloat3(&_points[index + 1]._direction);
+			d = localT / localMidT;
+		}
+		else
+		{
+			u0 = XMLoadFloat3(&_points[index + 1]._upVector);
+			u1 = XMLoadFloat3(&_points[index + 2]._upVector);
+			d0 = XMLoadFloat3(&_points[index + 1]._direction);
+			d1 = XMLoadFloat3(&_points[index + 2]._direction);
+			d = localT / localMidT;
+		}
+		XMVECTOR r0 = MathHelper::getQuaternion(u0, d0);
+		XMVECTOR r1 = MathHelper::getQuaternion(u1, d1);
+
+		XMStoreFloat4(&quaternion, XMQuaternionSlerp(r0, r1, d));
 	}
 	else
 	{
-		XMVECTOR u0 = XMLoadFloat3(&_points[index + 1]._upVector);
-		XMVECTOR u1 = XMLoadFloat3(&_points[index + 2]._upVector);
-		float d = (localT - localMidT) / (1 - localMidT);
-		upVector = XMVectorLerp(u0, u1, d);
-	}
+		XMVECTOR p0 = XMLoadFloat3(&_points[index]._position);
+		XMVECTOR p1 = XMLoadFloat3(&_points[index + 1]._position);
+		XMVECTOR p2 = XMLoadFloat3(&_points[index + 2]._position);
 
-	XMStoreFloat4(&quaternion, MathHelper::getQuaternion(upVector, direction));
+		XMVECTOR direction = XMVector3Normalize(((1 - localT) * (p1 - p0)) + (localT * (p2 - p1)));
+
+		XMVECTOR u0, u1;
+		float d;
+		if (localT < localMidT)
+		{
+			u0 = XMLoadFloat3(&_points[index]._upVector);
+			u1 = XMLoadFloat3(&_points[index + 1]._upVector);
+			d = localT / localMidT;
+		}
+		else
+		{
+			u0 = XMLoadFloat3(&_points[index + 1]._upVector);
+			u1 = XMLoadFloat3(&_points[index + 2]._upVector);
+			d = (localT - localMidT) / (1 - localMidT);
+		}
+
+		XMVECTOR upVector = MathHelper::lerpAxisVector(u0, u1, d);
+		XMStoreFloat4(&quaternion, MathHelper::getQuaternion(upVector, direction));
+	}
 }
 
 void Path::getPathPositionAtTimeLine(float t, DirectX::XMFLOAT3& position) const noexcept
@@ -205,18 +235,32 @@ void Path::getPathRotationAtTimeLine(float t, DirectX::XMFLOAT4& quaternion) con
 	float localT = (t - it0->_time) / (it1->_time - it0->_time);
 
 	XMVECTOR upVector = XMLoadFloat3(&it0->_upVector);
+	XMVECTOR direction;
+	if (_hasDirection)
+	{
+		direction = XMLoadFloat3(&it0->_direction);
+	}
+	else
+	{
+		XMVECTOR position0 = XMLoadFloat3(&it0->_position);
+		XMVECTOR position1 = XMLoadFloat3(&it1->_position);
 
-	XMVECTOR position0 = XMLoadFloat3(&it0->_position);
-	XMVECTOR position1 = XMLoadFloat3(&it1->_position);
-
-	XMVECTOR direction = XMVector3Normalize(position1 - position0);
+		direction = XMVector3Normalize(position1 - position0);
+	}
 
 	XMStoreFloat4(&quaternion, MathHelper::getQuaternion(upVector, direction));
 }
 
-PathPoint::PathPoint(const XMLReaderNode& node)
+PathPoint::PathPoint(const XMLReaderNode& node, bool hasDirection)
+	: _direction(0, 0, 0)
 {
 	node.loadAttribute("Position", _position);
 	node.loadAttribute("UpVector", _upVector);
+	XMStoreFloat3(&_upVector, DirectX::XMVector3Normalize(XMLoadFloat3(&_upVector)));
+	if (hasDirection)
+	{
+		node.loadAttribute("Direction", _direction);
+		XMStoreFloat3(&_direction, DirectX::XMVector3Normalize(XMLoadFloat3(&_direction)));
+	}
 	node.loadAttribute("Time", _time);
 }

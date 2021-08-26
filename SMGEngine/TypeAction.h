@@ -36,6 +36,7 @@ enum class FrameEventType
 	FallSpeed,
 	SetPath,
 	Gravity,
+	SetCamera,
 
 	Count,
 };

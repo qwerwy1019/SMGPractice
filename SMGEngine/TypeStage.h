@@ -7,7 +7,7 @@ enum class CameraPointType
 	Fixed,
 	PlayerFocus,
 	PlayerFocusFixed,
-	PathCamera,
+	Path,
 
 	Count,
 };

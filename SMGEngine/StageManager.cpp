@@ -69,7 +69,6 @@ void StageManager::update()
 	processActorCollision();
 	killActors();
 	spawnRequested();
-	setCulled();
 }
 
 void StageManager::moveActorXXX(Actor* actor, const DirectX::XMFLOAT3& moveVector) noexcept
@@ -514,7 +513,6 @@ int StageManager::getCameraIndex() const noexcept
 
 void StageManager::setCulled(void) noexcept
 {
-	//여기서 절두체 계산을 한번만 하고싶다... 절두체를 그냥 d3d에 박아버리면?
 	for (auto& t : _terrains)
 	{
 		t.setCulled();

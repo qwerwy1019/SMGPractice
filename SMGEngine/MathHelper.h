@@ -556,6 +556,8 @@ namespace MathHelper
 	static float XM_CALLCONV getDeltaAngleToVector(DirectX::FXMVECTOR planeNormal, DirectX::FXMVECTOR originVectorNormal, DirectX::FXMVECTOR toVector) noexcept
 	{
 		using namespace DirectX;
+		check(equal(XMVectorGetX(XMVector3Dot(planeNormal, originVectorNormal)), 0, 0.1f));
+
 		XMVECTOR toVectorOrth = toVector - XMVector3Dot(planeNormal, toVector) * planeNormal;
 		if (XMVector3Equal(toVectorOrth, XMVectorZero()))
 		{
@@ -571,6 +573,24 @@ namespace MathHelper
 		{
 			return -deltaAngle;
 		}
+	}
+	
+	static DirectX::XMVECTOR XM_CALLCONV lerpAxisVector(DirectX::FXMVECTOR v0, DirectX::FXMVECTOR v1, float t) noexcept
+	{
+		using namespace DirectX;
+		XMVECTOR normal = XMVector3Normalize(XMVector3Cross(v0, v1));
+		if (XMVector3Equal(normal, XMVectorZero()))
+		{
+			check(false);
+			return v0;
+		}
+		float deltaAngle = getDeltaAngleToVector(normal, v0, v1);
+		deltaAngle *= t;
+		XMMATRIX rotateMatrix = XMMatrixRotationNormal(normal, deltaAngle);
+		
+		XMVECTOR rv = XMVector3Transform(v0, rotateMatrix);
+
+		return rv;
 	}
 
 	static DirectX::XMVECTOR XM_CALLCONV getQuaternion(DirectX::FXMVECTOR upVector, DirectX::FXMVECTOR direction) noexcept

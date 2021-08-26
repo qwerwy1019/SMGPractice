@@ -142,3 +142,14 @@ public:
 private:
 	bool _on;
 };
+
+class FrameEvent_SetCamera : public FrameEvent
+{
+public:
+	FrameEvent_SetCamera(const XMLReaderNode& node);
+	virtual ~FrameEvent_SetCamera() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::SetCamera; }
+private:
+	int _cameraKey;
+};

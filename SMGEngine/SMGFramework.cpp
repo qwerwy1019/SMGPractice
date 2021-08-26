@@ -246,8 +246,8 @@ int SMGFramework::Run(void)
 				
 				if (_timer.getDeltaTickCount() != 0)
 				{
-					_camera->update();
 					_stageManager->update();
+					_camera->update();
 					_d3dApp->Update();
 				}
 

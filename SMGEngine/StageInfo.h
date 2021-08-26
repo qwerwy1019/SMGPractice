@@ -61,6 +61,7 @@ public:
 	void loadXmlPaths(const XMLReaderNode& node);
 
 	std::vector<const CameraPoint*> getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept;
+	const CameraPoint* getNearestCameraPoint(const DirectX::XMFLOAT3& position) const noexcept;
 	const CameraPoint* getTriggeredCameraPoint(int key) const noexcept;
 	const std::vector<SpawnInfo>& getSpawnInfos(void) const noexcept;
 	const std::vector<TerrainObjectInfo>& getTerrainObjectInfos(void) const noexcept;

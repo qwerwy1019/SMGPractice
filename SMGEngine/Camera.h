@@ -9,40 +9,51 @@ class Camera
 public:
 	Camera();
 	void update() noexcept;
-	void updateByPlayerPosition() noexcept;
-	void updateByCameraInput() noexcept;
 	const DirectX::XMFLOAT4X4& getViewMatrix(void) const noexcept;
 	const DirectX::XMFLOAT4X4& getInvViewMatrix(void) const noexcept;
 	const DirectX::XMFLOAT3& getPosition(void) const noexcept;
 	const DirectX::XMFLOAT3& getDirection(void) const noexcept;
 	const DirectX::XMFLOAT3& getUpVector(void) const noexcept;
 	const DirectX::XMFLOAT3& getRightVector(void) const noexcept;
-	int updateCameraDataIndexInput(const std::vector<const CameraPoint*>& cameraList) noexcept;
-	void getCameraData(const CameraPointData& cameraData, 
-						CameraPointType type,
-						DirectX::XMFLOAT3& position, 
-						DirectX::XMFLOAT4& rotationQuat) const noexcept;
-	int getNearestCameraDataIndex(const CameraPoint* cameraDatas) const noexcept;
+	int getCameraIndex(void) const noexcept;
+	const TickCount64& getCurrentTick(void) const noexcept;
+	void setInputCameraPointKey(int key) noexcept;
+private:
+	void updateCameraPosition(void) noexcept;
+	void updateCameraPoint(void) noexcept;
+	void setCameraPoint(const CameraPoint* cameraPoint) noexcept;
+	void setCameraIndex(int index) noexcept;
+	int updateCameraInput(void) noexcept;
 private:
 	// Ä«¸Þ¶ó
-	DirectX::XMFLOAT3 _cameraInputPosition;
+	const CameraPoint* _cameraPoint;
+	DirectX::XMFLOAT3 _cameraBlendPosition;
 	//DirectX::XMFLOAT3 _cameraInputUpVector;
 	//DirectX::XMFLOAT3 _cameraInputDirection;
-	DirectX::XMFLOAT4 _cameraInputRotationQuat;
-	int _cameraDataIndexInput;
+	DirectX::XMFLOAT4 _cameraBlendRotationQuat;
+	TickCount64 _blendTick;
+	TickCount64 _currentTick;
+	//int _cameraDataIndexInput;
 	
 	float _cameraPositionSpeed;
 	float _cameraAngleSpeed;
 
 	DirectX::XMFLOAT3 _cameraPosition;
 	DirectX::XMFLOAT4 _cameraRotationQuat;
+
 	DirectX::XMFLOAT3 _cameraUpVector;
 	DirectX::XMFLOAT3 _cameraDirection;
 	DirectX::XMFLOAT3 _cameraRightVector;
-	int _cameraDataIndex;
+
 
 	DirectX::XMFLOAT4X4 _viewMatrix;
 	DirectX::XMFLOAT4X4 _invViewMatrix;
 
 	int _inputCameraPointKey;
+	// PlayerFocus
+	int _cameraIndex;
+
+	TickCount64 _keyInputTime;
+	static constexpr TickCount64 KEY_INPUT_INTERVAL = 200;
+	bool _cameraMoveFailed;
 };

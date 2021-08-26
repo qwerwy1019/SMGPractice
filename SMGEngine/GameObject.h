@@ -20,6 +20,7 @@ public:
 						const DirectX::XMFLOAT3& direction, 
 						const DirectX::XMFLOAT3& upVector,
 						float size) noexcept;
+	DirectX::XMVECTOR XM_CALLCONV transformLocalToWorld(DirectX::FXMVECTOR vector) const noexcept;
 	bool popDirtyFrame(void) noexcept;
 
 	inline uint16_t getObjectConstantBufferIndex(void) const noexcept { return _objConstantBufferIndex; }

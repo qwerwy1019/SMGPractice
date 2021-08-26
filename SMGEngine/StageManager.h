@@ -53,6 +53,8 @@ public:
 
 	DirectX::XMINT3 getSectorCoord(const DirectX::XMFLOAT3& position) const noexcept;
 	void killActor(Actor* actor) noexcept;
+
+	void setCulled(void) noexcept;
 private:
 	void killActors(void) noexcept;
 	int sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept;
@@ -63,7 +65,6 @@ private:
 	int getCameraCount() const noexcept;
 	int getCameraIndex() const noexcept;
 
-	void setCulled(void) noexcept;
 private:
 	std::vector<Terrain> _terrains;
 	DirectX::XMINT3 _sectorSize;

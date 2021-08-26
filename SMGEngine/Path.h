@@ -4,9 +4,10 @@ class XMLReaderNode;
 
 struct PathPoint
 {
-	PathPoint(const XMLReaderNode& node);
+	PathPoint(const XMLReaderNode& node, bool hasDirection);
 	DirectX::XMFLOAT3 _position;
 	DirectX::XMFLOAT3 _upVector;
+	DirectX::XMFLOAT3 _direction;
 	float _time;
 };
 class Path
@@ -31,4 +32,5 @@ private:
 	std::vector<PathPoint> _points;
 	TickCount64 _moveTick;
 	bool _isCurve;
+	bool _hasDirection;
 };

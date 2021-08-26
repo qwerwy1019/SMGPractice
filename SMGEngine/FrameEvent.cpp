@@ -12,6 +12,7 @@
 #include "D3DApp.h"
 #include "GameObject.h"
 #include "Effect.h"
+#include "Camera.h"
 
 FrameEvent::FrameEvent(const XMLReaderNode& node)
 {
@@ -88,9 +89,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_Gravity>(node);
 	}
+	else if (typeString == "SetCamera")
+	{
+		return std::make_unique<FrameEvent_SetCamera>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 10, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 11, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -236,9 +241,10 @@ FrameEvent_Effect::FrameEvent_Effect(const XMLReaderNode& node)
 
 void FrameEvent_Effect::process(Actor& actor) const noexcept
 {
-	XMMATRIX world = XMLoadFloat4x4(&actor.getGameObject()->getWorldMatrix());
+	XMVECTOR offsetWorld = actor.getGameObject()->transformLocalToWorld(XMLoadFloat3(&_positionOffset));
+
 	XMFLOAT3 position;
-	XMStoreFloat3(&position, XMVector3Transform(XMLoadFloat3(&_positionOffset), world));
+	XMStoreFloat3(&position, offsetWorld);
 
 	EffectInstance instance(position, _size);
 	SMGFramework::getD3DApp()->addEffectInstance(_effectName, std::move(instance));
@@ -288,4 +294,17 @@ FrameEvent_Gravity::FrameEvent_Gravity(const XMLReaderNode& node)
 void FrameEvent_Gravity::process(Actor& actor) const noexcept
 {
 	actor.setGravityOn(_on);
+}
+
+FrameEvent_SetCamera::FrameEvent_SetCamera(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("CameraKey", _cameraKey);
+}
+
+void FrameEvent_SetCamera::process(Actor& actor) const noexcept
+{
+	check(SMGFramework::getCamera() != nullptr);
+
+	SMGFramework::getCamera()->setInputCameraPointKey(_cameraKey);
 }

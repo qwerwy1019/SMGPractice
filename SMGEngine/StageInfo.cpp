@@ -80,6 +80,9 @@ void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
 		childNodes[i].loadAttribute("UpVector", _spawnInfo[i]._upVector);
 		childNodes[i].loadAttribute("Size", _spawnInfo[i]._size);
 		childNodes[i].loadAttribute("ActionIndex", _spawnInfo[i]._actionIndex);
+
+		XMStoreFloat3(&_spawnInfo[i]._upVector, DirectX::XMVector3Normalize(XMLoadFloat3(&_spawnInfo[i]._upVector)));
+		XMStoreFloat3(&_spawnInfo[i]._direction, DirectX::XMVector3Normalize(XMLoadFloat3(&_spawnInfo[i]._direction)));
 	}
 }
 
@@ -99,6 +102,22 @@ std::vector<const CameraPoint*> StageInfo::getNearCameraPoints(const DirectX::XM
 		}
 	}
 	return rv;
+}
+
+const CameraPoint* StageInfo::getNearestCameraPoint(const DirectX::XMFLOAT3& position) const noexcept
+{
+	float minDistanceSq = std::numeric_limits<float>::max();
+	const CameraPoint* cameraPoint = nullptr;
+	for (const auto& camera : _autoCameraPoints)
+	{
+		float distanceSq = camera->getDistanceSq(position);
+		if (distanceSq < minDistanceSq)
+		{
+			cameraPoint = camera.get();
+			minDistanceSq = distanceSq;
+		}
+	}
+	return cameraPoint;
 }
 
 const CameraPoint* StageInfo::getTriggeredCameraPoint(int key) const noexcept
@@ -312,7 +331,7 @@ void StageInfo::loadXmlTriggeredCameraInfo(const XMLReaderNode& node)
 		{
 			ThrowErrCode(ErrCode::InvalidXmlData, std::to_string(key));
 		}
-		_triggeredCmeraPoints.emplace(key, std::make_unique<CameraPoint>(childNode));
+		_triggeredCmeraPoints.emplace(key, CameraPoint::loadXMLCameraPoint(childNode, false));
 	}
 }
 
@@ -321,7 +340,7 @@ void StageInfo::loadXmlAutoCameraInfo(const XMLReaderNode& node)
 	const auto& childNodes = node.getChildNodes();
 	for (const auto& childNode : childNodes)
 	{
-		_autoCameraPoints.emplace_back(std::make_unique<CameraPoint>(childNode));
+		_autoCameraPoints.emplace_back(CameraPoint::loadXMLCameraPoint(childNode, true));
 	}
 }
 

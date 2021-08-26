@@ -44,6 +44,12 @@ void GameObject::setWorldMatrix(const DirectX::XMFLOAT3& position, const DirectX
 	_dirtyFrames = FRAME_RESOURCE_COUNT;
 }
 
+XMVECTOR GameObject::transformLocalToWorld(DirectX::FXMVECTOR vector) const noexcept
+{
+	XMMATRIX world = XMLoadFloat4x4(&_worldMatrix);
+	return XMVector3Transform(vector, world);
+}
+
 const DirectX::XMFLOAT4X4& GameObject::getWorldMatrix(void) const noexcept
 {
 	return _worldMatrix;
