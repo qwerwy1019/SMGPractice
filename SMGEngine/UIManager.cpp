@@ -39,7 +39,7 @@ void UIManager::updateUI()
 		UIGroup* uiGroup = groupIt->second.get();
 		UIElementText* textElement = static_cast<UIElementText*>(uiGroup->findElement("fpsText"));
 		//std::wstring text = "frame: " + std::to_wstring(D3DApp::getApp()->getSelectedCharacter);
-		//textElement->setText(text);
+		textElement->setText(L"hello");
 	}
 }
 

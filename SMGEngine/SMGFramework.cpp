@@ -10,13 +10,14 @@
 
 SMGFramework::SMGFramework(HINSTANCE hInstance)
 	: _clientWidth(1280)
-	, _clientHeight(1024)
+	, _clientHeight(720)
 	, _minimized(false)
 	, _maximized(false)
 	, _resizing(false)
 	, _hInstance(hInstance)
 	, _hMainWnd(nullptr)
 	, _mousePos{ 0, 0 }
+	, _drawCollisionBox(true)
 {
 	check(hInstance != nullptr, "hInstance is null");
 	for (int i = 0; i < static_cast<int>(ButtonInputType::Count); ++i)
@@ -30,7 +31,7 @@ SMGFramework::SMGFramework(HINSTANCE hInstance)
 	}
 }
 
-SMGFramework* SMGFramework::_instance = nullptr;
+std::unique_ptr<SMGFramework> SMGFramework::_instance = nullptr;
 
 SMGFramework::~SMGFramework()
 {
@@ -39,7 +40,7 @@ SMGFramework::~SMGFramework()
 void SMGFramework::Create(HINSTANCE hInstance)
 {
 	check(_instance == nullptr);
-	_instance = new SMGFramework(hInstance);
+	_instance = std::make_unique<SMGFramework>(hInstance);
 	_instance->initMainWindow();
 
 	_instance->_d3dApp = std::make_unique<D3DApp>();
@@ -49,12 +50,19 @@ void SMGFramework::Create(HINSTANCE hInstance)
 	_instance->_camera = std::make_unique<Camera>();
 
 	_instance->_stageManager->loadStage();
+	_instance->_uiManager->loadUI();
 }
 
 
 void SMGFramework::Destroy(void)
 {
-	delete _instance;
+	_instance->_camera = nullptr;
+	_instance->_uiManager = nullptr;
+	_instance->_stageManager = nullptr;
+	_instance->_characterInfoManager = nullptr;
+	_instance->_d3dApp = nullptr;
+
+	_instance = nullptr;
 }
 
 SMGFramework& SMGFramework::Get(void)
@@ -520,6 +528,13 @@ void SMGFramework::onKeyboardInput(void) noexcept
 	{
 		setButtonInput(ButtonInputType::ZR, false);
 	}
+
+#if defined DEBUG | defined _DEBUG
+	if (GetAsyncKeyState('0') && 0x8000)
+	{
+		_drawCollisionBox = !_drawCollisionBox;
+	}
+#endif
 }
 
 void SMGFramework::onMouseDown(WPARAM buttonState, int x, int y, ButtonInputType type) noexcept

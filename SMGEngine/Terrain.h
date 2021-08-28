@@ -54,6 +54,7 @@ public:
 	bool isGround(void) const noexcept;
 	bool isWall(void) const noexcept;
 	Terrain(const TerrainObjectInfo& terrainInfo);
+	~Terrain();
 	bool checkCollision(const Actor& actor, const DirectX::XMFLOAT3& velocity, float& collisionTime) const noexcept;
 	float XM_CALLCONV checkCollisionXXX(int nodeIndex, 
 										DirectX::FXMVECTOR min,

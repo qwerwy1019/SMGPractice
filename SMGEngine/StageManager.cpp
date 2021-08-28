@@ -13,6 +13,7 @@
 #include <algorithm>
 #include "MeshGeometry.h"
 #include "Terrain.h"
+#include "BackgroundObject.h"
 
 StageManager::StageManager()
 	: _sectorSize(100, 100, 100)
@@ -30,6 +31,8 @@ StageManager::~StageManager()
 {
 	_actorsBySector.clear();
 	_actors.clear();
+	_terrains.clear();
+	_backgroundObjects.clear();
 }
 
 void StageManager::loadStage(void)
@@ -169,7 +172,7 @@ ActionChart* StageManager::loadActionChartFromXML(const std::string& actionChart
 	XMLReader xmlActionChart;
 	xmlActionChart.loadXMLFile(filePath);
 
-	auto it = _actionchartMap.emplace(actionChartName, new ActionChart(xmlActionChart.getRootNode()));
+	auto it = _actionchartMap.emplace(actionChartName, std::make_unique<ActionChart>(xmlActionChart.getRootNode()));
 	if (it.second == false)
 	{
 		ThrowErrCode(ErrCode::KeyDuplicated, actionChartName);
@@ -513,6 +516,10 @@ int StageManager::getCameraIndex() const noexcept
 
 void StageManager::setCulled(void) noexcept
 {
+	for (auto& backgroundObject : _backgroundObjects)
+	{
+		backgroundObject.setCulled();
+	}
 	for (auto& t : _terrains)
 	{
 		t.setCulled();
@@ -528,6 +535,15 @@ void StageManager::createMap(void)
 	_sectorSize = _stageInfo->getSectorSize();
 	_sectorUnitNumber = _stageInfo->getSectorUnitNumber();
 	_actorsBySector.resize(static_cast<size_t>(_sectorUnitNumber.x) * _sectorUnitNumber.y * _sectorUnitNumber.z);
+
+	SMGFramework::getD3DApp()->setBackgroundColor(_stageInfo->getBackgroundColor());
+
+	const auto& backgroundObjectInfos = _stageInfo->getBackgroundObjectInfos();
+	_backgroundObjects.reserve(backgroundObjectInfos.size());
+	for (const auto& backgroundObjectInfo : backgroundObjectInfos)
+	{
+		_backgroundObjects.emplace_back(backgroundObjectInfo);
+	}
 
 	const auto& terrainObjectInfos = _stageInfo->getTerrainObjectInfos();
 	_terrains.reserve(terrainObjectInfos.size());

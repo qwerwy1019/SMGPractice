@@ -5,6 +5,7 @@
 #include "D3DApp.h"
 #include "SMGFramework.h"
 #include "MeshGeometry.h"
+#include "Camera.h"
 
 GameObject::GameObject(const MeshGeometry* meshGeometry,
 						uint16_t objConstantBufferIndex,
@@ -17,6 +18,7 @@ GameObject::GameObject(const MeshGeometry* meshGeometry,
 	, _dirtyFrames(FRAME_RESOURCE_COUNT)
 	, _skinnedConstantBufferIndex(skinnedConstantBufferIndex)
 	, _skinnedModelInstance(skinnedModelInstance)
+	, _isCulled(false)
 {
 	check(_skinnedModelInstance != nullptr || _skinnedConstantBufferIndex == std::numeric_limits<uint16_t>::max());
 }
@@ -79,21 +81,15 @@ void GameObject::setAnimation(const std::string& animationName, const TickCount6
 void GameObject::setCulled(void) noexcept
 {
 	XMMATRIX worldMat = XMLoadFloat4x4(&_worldMatrix);
-	if (SMGFramework::getD3DApp()->checkCulled(_meshGeometry->getBoundingBox(), worldMat))
-	{
-		for (const auto& r : _renderItems)
-		{
-			r->_isCulled = true;
-		}
-	}
-	else
-	{
-		for (const auto& r : _renderItems)
-		{
-			r->_isCulled = false;
-		}
-	}
-	
+	_isCulled = SMGFramework::getD3DApp()->checkCulled(_meshGeometry->getBoundingBox(), worldMat);
+}
+
+void GameObject::setCulledBackground() noexcept
+{
+	XMMATRIX worldMat = XMLoadFloat4x4(&_worldMatrix);
+	XMVECTOR camPosition = XMLoadFloat3(&SMGFramework::getCamera()->getPosition());
+	XMMATRIX camPositionMatrix = XMMatrixTranslationFromVector(camPosition);
+	_isCulled = SMGFramework::getD3DApp()->checkCulled(_meshGeometry->getBoundingBox(), worldMat * camPositionMatrix);
 }
 
 void GameObject::setRenderItemsXXX(std::vector<RenderItem*>&& renderItems) noexcept

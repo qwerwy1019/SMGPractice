@@ -87,7 +87,7 @@ CameraPoint_PlayerFocus::CameraPoint_PlayerFocus(const XMLReaderNode& node, bool
 		XMFLOAT3 upVector, direction;
 		childNode.loadAttribute("UpVector", upVector);
 		childNode.loadAttribute("Direction", direction);
-		XMVECTOR rotationQuat = MathHelper::getQuaternion(XMLoadFloat3(&upVector), XMLoadFloat3(&direction));
+		XMVECTOR rotationQuat = MathHelper::getQuaternion(XMLoadFloat3(&upVector), XMVector3Normalize(XMLoadFloat3(&direction)));
 		XMStoreFloat4(&data._rotationQuat, rotationQuat);
 
 		childNode.loadAttribute("Distance", data._distance);
@@ -175,7 +175,7 @@ CameraPoint_Fixed::CameraPoint_Fixed(const XMLReaderNode& node, bool isAutoCamer
 	XMFLOAT3 upVector, direction;
 	node.loadAttribute("UpVector", upVector);
 	node.loadAttribute("Direction", direction);
-	XMVECTOR rotationQuat = MathHelper::getQuaternion(XMLoadFloat3(&upVector), XMLoadFloat3(&direction));
+	XMVECTOR rotationQuat = MathHelper::getQuaternion(XMLoadFloat3(&upVector), XMVector3Normalize(XMLoadFloat3(&direction)));
 	XMStoreFloat4(&_rotationQuat, rotationQuat);
 }
 

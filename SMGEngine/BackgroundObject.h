@@ -1,0 +1,13 @@
+#pragma once
+class GameObject;
+struct BackgroundObjectInfo;
+
+class BackgroundObject
+{
+public:
+	BackgroundObject(const BackgroundObjectInfo& backgroundObjectInfo);
+	~BackgroundObject();
+	void setCulled() noexcept;
+private:
+	GameObject* _gameObject;
+};

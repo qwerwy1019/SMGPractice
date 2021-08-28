@@ -7,10 +7,10 @@
 #include "Path.h"
 
 StageInfo::StageInfo(void) noexcept
-	: _landscapeType(LandscapeType::Basic)
-	, _sectorUnitNumber(0, 0, 0)
+	: _sectorUnitNumber(0, 0, 0)
 	, _sectorSize(0, 0, 0)
 	, _ambientLight(0, 0, 0, 0)
+	, _backgroundColor(0, 0, 0)
 {
 
 }
@@ -28,23 +28,6 @@ void StageInfo::loadXml(const XMLReaderNode& rootNode)
 
 	const auto& childNodes = rootNode.getChildNodesWithName();
 	auto childIter = childNodes.end();
-
-	childIter = childNodes.find("Landscape");
-	if (childIter == childNodes.end())
-	{
-		ThrowErrCode(ErrCode::NodeNotFound, "Landscape 노드가 없습니다.");
-	}
-	std::string typeString;
-	childIter->second.loadAttribute("Type", typeString);
-	if (typeString == "Basic")
-	{
-		_landscapeType = LandscapeType::Basic;
-	}
-	else if (typeString == "Galaxy")
-	{
-		_landscapeType = LandscapeType::Galaxy;
-	}
-	static_assert(static_cast<int>(LandscapeType::Count) == 2, "타입 추가시 확인");
 
 	childIter = childNodes.find("SpawnInfo");
 	loadXmlSpawnInfo(childIter->second);
@@ -66,6 +49,35 @@ void StageInfo::loadXml(const XMLReaderNode& rootNode)
 
 	childIter = childNodes.find("Paths");
 	loadXmlPaths(childIter->second);
+
+	childIter = childNodes.find("Background");
+	loadXmlBackgroundInfo(childIter->second);
+}
+
+void StageInfo::loadXmlBackgroundInfo(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodesWithName();
+	auto childIter = childNodes.end();
+
+	childIter = childNodes.find("Color");
+	childIter->second.loadAttribute("Value", _backgroundColor);
+
+	childIter = childNodes.find("Objects");
+	loadXmlBackgroundObjectInfo(childIter->second);
+}
+
+void StageInfo::loadXmlBackgroundObjectInfo(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	_backgroundObjectInfo.resize(childNodes.size());
+	for (int i = 0; i < childNodes.size(); ++i)
+	{
+		childNodes[i].loadAttribute("ObjectFile", _backgroundObjectInfo[i]._objectFileName);
+		childNodes[i].loadAttribute("Position", _backgroundObjectInfo[i]._position);
+		childNodes[i].loadAttribute("Direction", _backgroundObjectInfo[i]._direction);
+		childNodes[i].loadAttribute("UpVector", _backgroundObjectInfo[i]._upVector);
+		childNodes[i].loadAttribute("Size", _backgroundObjectInfo[i]._size);
+	}
 }
 
 void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
@@ -110,6 +122,10 @@ const CameraPoint* StageInfo::getNearestCameraPoint(const DirectX::XMFLOAT3& pos
 	const CameraPoint* cameraPoint = nullptr;
 	for (const auto& camera : _autoCameraPoints)
 	{
+		if (!camera->checkInRange(position))
+		{
+			continue;
+		}
 		float distanceSq = camera->getDistanceSq(position);
 		if (distanceSq < minDistanceSq)
 		{
@@ -175,6 +191,16 @@ const std::vector<Light>& StageInfo::getLights(void) const noexcept
 const DirectX::XMFLOAT4& StageInfo::getAmbientLight(void) const noexcept
 {
 	return _ambientLight;
+}
+
+const std::vector<BackgroundObjectInfo>& StageInfo::getBackgroundObjectInfos(void) const noexcept
+{
+	return _backgroundObjectInfo;
+}
+
+const DirectX::XMFLOAT3& StageInfo::getBackgroundColor(void) const noexcept
+{
+	return _backgroundColor;
 }
 
 const std::vector<std::string>& StageInfo::getEffectFileNames(void) const noexcept
@@ -357,21 +383,13 @@ void StageInfo::loadXmlPaths(const XMLReaderNode& node)
 
 SpawnInfo::SpawnInfo() noexcept
 	: _key(std::numeric_limits<CharacterKey>::max())
-	, _position(0.f, 0.f, 0.f)
-	, _direction(0.f, 0.f, 0.f)
-	, _upVector(0.f, 0.f, 0.f)
-	, _size(0.f)
 	, _actionIndex(0)
 {
 
 }
 
 TerrainObjectInfo::TerrainObjectInfo() noexcept
-	: _position(0.f, 0.f, 0.f)
-	, _direction(0.f, 0.f, 0.f)
-	, _upVector(0.f, 0.f, 0.f)
-	, _size(0.f)
-	, _isGround(false)
+	: _isGround(false)
 	, _isWall(false)
 {
 
@@ -384,6 +402,15 @@ GravityPoint::GravityPoint() noexcept
 	, _radius(0.f)
 	, _position(0.f, 0.f, 0.f)
 	, _minRadius(0.f)
+{
+
+}
+
+ObjectInfo::ObjectInfo() noexcept
+	: _position(0.f, 0.f, 0.f)
+	, _direction(0.f, 0.f, 0.f)
+	, _upVector(0.f, 0.f, 0.f)
+	, _size(0.f)
 {
 
 }

@@ -12,14 +12,6 @@ enum class CameraPointType
 	Count,
 };
 
-enum class LandscapeType
-{
-	Basic,
-	Galaxy,
-
-	Count,
-};
-
 enum class GravityPointType
 {
 	Fixed,

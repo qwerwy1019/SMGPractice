@@ -750,6 +750,7 @@ void Actor::setPosition(const DirectX::XMFLOAT3& toPosition) noexcept
 		if (_isGravityOn)
 		{
 			_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(toPosition);
+			_verticalSpeed = 0.f;
 		}
 	}
 }
@@ -898,6 +899,7 @@ void Actor::setGravityOn(bool on) noexcept
 	if (on)
 	{
 		_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(_position);
+		_verticalSpeed = 0.f;
 	}
 	else
 	{

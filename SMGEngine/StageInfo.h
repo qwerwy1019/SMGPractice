@@ -8,25 +8,33 @@ class XMLReaderNode;
 class CameraPoint;
 class Path;
 
-struct SpawnInfo
+struct ObjectInfo
+{
+	ObjectInfo() noexcept;
+	DirectX::XMFLOAT3 _position;
+	DirectX::XMFLOAT3 _direction;
+	DirectX::XMFLOAT3 _upVector;
+	float _size;
+};
+
+struct BackgroundObjectInfo : public ObjectInfo
+{
+	std::string _objectFileName;
+};
+
+struct SpawnInfo : public ObjectInfo
 {
 	SpawnInfo() noexcept;
 	CharacterKey _key;
-	DirectX::XMFLOAT3 _position;
-	DirectX::XMFLOAT3 _direction;
-	DirectX::XMFLOAT3 _upVector;
-	float _size;
+
 	int _actionIndex;
 };
 
-struct TerrainObjectInfo
+struct TerrainObjectInfo : public ObjectInfo
 {
 	TerrainObjectInfo() noexcept;
 	std::string _objectFileName;
-	DirectX::XMFLOAT3 _position;
-	DirectX::XMFLOAT3 _direction;
-	DirectX::XMFLOAT3 _upVector;
-	float _size;
+
 	bool _isGround;
 	bool _isWall;
 };
@@ -50,6 +58,8 @@ public:
 	StageInfo(void) noexcept;
 	~StageInfo();
 	void loadXml(const XMLReaderNode& rootNode);
+	void loadXmlBackgroundInfo(const XMLReaderNode& node);
+	void loadXmlBackgroundObjectInfo(const XMLReaderNode& node);
 	void loadXmlSpawnInfo(const XMLReaderNode& node);
 	void loadXmlTerrainObjectInfo(const XMLReaderNode& node);
 	void loadXmlGravityPointInfo(const XMLReaderNode& node);
@@ -71,20 +81,23 @@ public:
 	const GravityPoint* getGravityPoint(int key) const noexcept;
 	const std::vector<Light>& getLights(void) const noexcept;
 	const DirectX::XMFLOAT4& getAmbientLight(void) const noexcept;
+	const std::vector<BackgroundObjectInfo>& getBackgroundObjectInfos(void) const noexcept;
+	const DirectX::XMFLOAT3& getBackgroundColor(void) const noexcept;
 
 	const std::vector<std::string>& getEffectFileNames(void) const noexcept;
 	const Path* getPath(int key) const noexcept;
 private:
-	LandscapeType _landscapeType;
 	std::vector<std::unique_ptr<CameraPoint>> _autoCameraPoints;
 	std::unordered_map<int, std::unique_ptr<CameraPoint>> _triggeredCmeraPoints;
 	std::vector<SpawnInfo> _spawnInfo;
 	std::vector<TerrainObjectInfo> _terrainObjectInfo;
+	std::vector<BackgroundObjectInfo> _backgroundObjectInfo;
 	std::unordered_map<int, std::unique_ptr<GravityPoint>> _gravityPoints;
 	std::vector<std::string> _effectFileNames;
 	std::unordered_map<int, std::unique_ptr<Path>> _paths;
 
 	DirectX::XMFLOAT4 _ambientLight;
+	DirectX::XMFLOAT3 _backgroundColor;
 	std::vector<Light> _lightInfo;
 
 	DirectX::XMINT3 _sectorUnitNumber;

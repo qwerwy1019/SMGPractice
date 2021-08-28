@@ -36,14 +36,19 @@ Terrain::Terrain(const TerrainObjectInfo& terrainInfo)
 		terrainInfo._upVector,
 		terrainInfo._size);
 	_size = terrainInfo._size;
-#if defined DEBUG | defined _DEBUG
-	SMGFramework::getD3DApp()->createGameObjectDev(_gameObject);
-#endif
+// #if defined DEBUG | defined _DEBUG
+// 	SMGFramework::getD3DApp()->createGameObjectDev(_gameObject);
+// #endif
 
 	if (_isGround || _isWall)
 	{
 		makeAABBTree();
 	}
+}
+
+Terrain::~Terrain()
+{
+	SMGFramework::getD3DApp()->removeGameObject(_gameObject);
 }
 
 void Terrain::makeAABBTree(void)
@@ -463,12 +468,12 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 		{
 			collisionInfo._shape = CollisionShape::Box;
 
-			XMVECTOR direction = XMLoadFloat3(&actor.getDirection());
-			XMVECTOR upVector = XMLoadFloat3(&actor.getUpVector());
-			XMVECTOR rightVector = XMVector3Cross(upVector, direction);
-			collisionInfo._boxZ = XMVector3Transform(-direction, inverseMatrix);
-			collisionInfo._boxY = XMVector3Transform(upVector, inverseMatrix);
-			collisionInfo._boxX = XMVector3Transform(rightVector, inverseMatrix);
+			XMVECTOR direction = XMVectorSetW(XMLoadFloat3(&actor.getDirection()), 0.f);
+			XMVECTOR upVector = XMVectorSetW(XMLoadFloat3(&actor.getUpVector()), 0.f);
+			XMVECTOR rightVector = XMVectorSetW(XMVector3Cross(upVector, direction), 0.f);
+			collisionInfo._boxZ = XMVector4Transform(-direction, inverseMatrix);
+			collisionInfo._boxY = XMVector4Transform(upVector, inverseMatrix);
+			collisionInfo._boxX = XMVector4Transform(rightVector, inverseMatrix);
 
 			collisionInfo._boxX *= actor.getSizeX();
 			collisionInfo._boxY *= actor.getSizeY();
@@ -502,5 +507,6 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 	collisionTime = (collisionTimeRaw * (adjustingDistance + speed) - adjustingDistance) / speed;
 
 	check(collisionTime < 1.05);
+
 	return true;
 }

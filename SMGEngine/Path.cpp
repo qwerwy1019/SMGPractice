@@ -102,7 +102,7 @@ void Path::getPathPositionAtTimeCurve(float t, DirectX::XMFLOAT3& position) cons
 
 	auto it = lower_bound(_points.begin(), _points.end(), t, [](const PathPoint& itor, float t) {
 		return itor._time < t; });
-	if (it == _points.end() || next(it) == _points.end());
+	if (it == _points.end() || next(it) == _points.end())
 	{
 		it = prev(prev(_points.end()));
 	}
@@ -132,7 +132,7 @@ void Path::getPathRotationAtTimeCurve(float t, DirectX::XMFLOAT4& quaternion) co
 
 	auto it = lower_bound(_points.begin(), _points.end(), t, [](const PathPoint& itor, float t) {
 		return itor._time < t; });
-	if (it == _points.end() || next(it) == _points.end());
+	if (it == _points.end() || next(it) == _points.end())
 	{
 		it = prev(prev(_points.end()));
 	}
@@ -206,7 +206,7 @@ void Path::getPathPositionAtTimeLine(float t, DirectX::XMFLOAT3& position) const
 
 	auto it0 = lower_bound(_points.begin(), _points.end(), t, [](const PathPoint& itor, float t) {
 		return itor._time < t; });
-	if(it0 == _points.end() || next(it0) == _points.end());
+	if (it0 == _points.end() || next(it0) == _points.end())
 	{
 		it0 = prev(prev(_points.end()));
 	}
@@ -226,7 +226,7 @@ void Path::getPathRotationAtTimeLine(float t, DirectX::XMFLOAT4& quaternion) con
 
 	auto it0 = lower_bound(_points.begin(), _points.end(), t, [](const PathPoint& itor, float t) {
 		return itor._time < t; });
-	if (it0 == _points.end() || next(it0) == _points.end());
+	if (it0 == _points.end() || next(it0) == _points.end())
 	{
 		it0 = prev(prev(_points.end()));
 	}

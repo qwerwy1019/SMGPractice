@@ -5,7 +5,7 @@
 #include "SMGFramework.h"
 #include "D3DApp.h"
 
-Material::Material(const int materialCBIndex, const XMLReaderNode& node)
+Material::Material(int materialCBIndex, const XMLReaderNode& node)
 	: _materialCBIndex(materialCBIndex)
 	, _normalSRVHeapIndex(0)
 	, _dirtyFrames(FRAME_RESOURCE_COUNT)
@@ -43,6 +43,10 @@ Material::Material(const int materialCBIndex, const XMLReaderNode& node)
 	{
 		_renderLayer = RenderLayer::Transparent;
 	}
+	else if (renderLayerString == "Background")
+	{
+		_renderLayer = RenderLayer::Background;
+	}
 	else if (renderLayerString == "GameObjectDev")
 	{
 		_renderLayer = RenderLayer::GameObjectDev;
@@ -50,6 +54,6 @@ Material::Material(const int materialCBIndex, const XMLReaderNode& node)
 	else
 	{
 		ThrowErrCode(ErrCode::UndefinedType, renderLayerString);
-		static_assert(static_cast<int>(RenderLayer::Count) == 6, "타입 추가시 확인");
+		static_assert(static_cast<int>(RenderLayer::Count) == 7, "타입 추가시 확인");
 	}
 }

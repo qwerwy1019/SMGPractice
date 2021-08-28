@@ -166,12 +166,6 @@ void Camera::updateCameraPosition(void) noexcept
 	XMFLOAT4 rotationQuat;
 	_cameraPoint->getData(this, position, rotationQuat);
 
-		std::string debugString = std::to_string(position.x) + " " +
-			std::to_string(position.y) + " " +
-			std::to_string(position.z) + "\n";
-		OutputDebugStringA(debugString.c_str());
-
-
 	if (_currentTick < _blendTick)
 	{
 		float t = static_cast<float>(_currentTick) / _blendTick;

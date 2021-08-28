@@ -10,6 +10,7 @@
 #include "DirectX/DDSTextureLoader12.h"
 #include "MathHelper.h"
 #include <DirectXColors.h>
+#include <dxgidebug.h>
 
 #include <msxml.h>
 #include <atlconv.h>
@@ -78,6 +79,12 @@ D3DApp::~D3DApp()
 {
 	if (_deviceD3d12 != nullptr)
 		flushCommandQueue();
+
+	check(_gameObjects.empty());
+	for (int i = 0; i < static_cast<int>(RenderLayer::Count); ++i)
+	{
+		check(_renderItems[i].empty());
+	}
 }
 
 void D3DApp::logAdapters(void) noexcept
@@ -108,8 +115,10 @@ void D3DApp::logAdapters(void) noexcept
 		OutputDebugString(text.c_str());
 		logAdapterOutput(adapterList[i]);
 		adapterList[i]->Release();
+		adapterList[i] = nullptr;
 	}
 	mdxgiFactory->Release();
+	mdxgiFactory = nullptr;
 }
 
 void D3DApp::logAdapterOutput(IDXGIAdapter* adapter) noexcept
@@ -171,16 +180,26 @@ void D3DApp::checkFeatureSupport(void) noexcept
 
 void D3DApp::initDirect3D()
 {
+	UINT dxgiFactoryFlag = 0;
 #if defined(DEBUG) || defined(_DEBUG)
 	{
 		WComPtr<ID3D12Debug> debugController;
 		ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
 		debugController->EnableDebugLayer();
 
+		WComPtr<IDXGIInfoQueue> dxgiInfoQueue;
+		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(dxgiInfoQueue.GetAddressOf()))))
+		{
+			dxgiFactoryFlag = DXGI_CREATE_FACTORY_DEBUG;
+
+			dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true);
+			dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true);
+		}
+
 		logAdapters();
 	}
 #endif
-	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&_factory)));
+	ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlag, IID_PPV_ARGS(&_factory)));
 
 	HRESULT hardwareResult = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&_deviceD3d12));
 	if (FAILED(hardwareResult))
@@ -223,23 +242,25 @@ void D3DApp::initDirect2D(void)
 
 	WComPtr<IDXGIDevice> deviceDxgi;
 	WComPtr<ID3D11Device> deviceD3d11;
-	WComPtr<ID3D11Device4> deviceD3d114;
-	IUnknown* commandQueue = nullptr;
 
-	ThrowIfFailed(_commandQueue->QueryInterface(&commandQueue));
 	unsigned __int32 DeviceFlags = ::D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 	D3D11On12CreateDevice(_deviceD3d12.Get(),
-		DeviceFlags, nullptr, 0, &commandQueue, 1, 0x00000001, &deviceD3d11, nullptr, nullptr);
+		DeviceFlags,
+		nullptr, 
+		0, 
+		reinterpret_cast<IUnknown**>(_commandQueue.GetAddressOf()),
+		1, 
+		0x00000001,
+		&deviceD3d11,
+		&_d3d11Context, 
+		nullptr);
 
-	ThrowIfFailed(deviceD3d11->QueryInterface(deviceD3d114.GetAddressOf()));
+	ThrowIfFailed(deviceD3d11.As(&_deviceD3d11On12));
 
-	ThrowIfFailed(deviceD3d114->QueryInterface(_deviceD3d11On12.GetAddressOf()));
-	ThrowIfFailed(_deviceD3d11On12->QueryInterface(deviceDxgi.GetAddressOf()));
-	_d2dFactory->CreateDevice(deviceDxgi.Get(), _deviceD2d.GetAddressOf());
+	ThrowIfFailed(_deviceD3d11On12.As(&deviceDxgi));
+	_d2dFactory->CreateDevice(deviceDxgi.Get(), &_deviceD2d);
 
 	ThrowIfFailed(_deviceD2d->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, &_d2dContext));
-
-	deviceD3d114->GetImmediateContext3(_immediateContext.GetAddressOf());
 
 	ThrowIfFailed(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), (IUnknown**)&_writeFactory));
 
@@ -374,7 +395,7 @@ void D3DApp::OnResize(void)
 		_backBufferWrapped[i].Reset();
 		_backBufferBitmap[i].Reset();
 	}
-	_immediateContext->Flush();
+	_d3d11Context->Flush();
 
 	ThrowIfFailed(_commandList->Reset(_commandAlloc.Get(), nullptr), "error!");
 	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
@@ -533,7 +554,8 @@ void D3DApp::Draw(void)
 			D3D12_RESOURCE_STATE_RENDER_TARGET);
 	_commandList->ResourceBarrier(1, &transitionBarrier1);
 	
-	const float backgroundColor[4] = { 25 / 256.f, 31 / 256.f, 72 / 256.f };
+	
+	const float backgroundColor[4] = { _backgroundColor.x, _backgroundColor.y, _backgroundColor.z, 1.f };
 	_commandList->ClearRenderTargetView(getCurrentBackBufferView(), backgroundColor, 0, nullptr);
 	_commandList->ClearDepthStencilView(getDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
@@ -573,11 +595,19 @@ void D3DApp::Draw(void)
 				_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
 			}
 			break;
+			case RenderLayer::Background:
+			{
+				_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Background].Get());
+			}
+			break;
 			case RenderLayer::GameObjectDev:
 			{
 #if defined(DEBUG) | defined(_DEBUG)
+				if (!SMGFramework::Get()._drawCollisionBox)
+				{
+					continue;
+				}
 				_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::GameObjectDev].Get());
-				//return;
 #else
 				continue;
 #endif
@@ -586,8 +616,8 @@ void D3DApp::Draw(void)
 			case RenderLayer::Count:
 			default:
 			{
-				static_assert(static_cast<int>(RenderLayer::Count) == 6, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
-				static_assert(static_cast<int>(PSOType::Count) == 9, "PSO 타입이 추가되었다면 확인해주세요");
+				static_assert(static_cast<int>(RenderLayer::Count) == 7, "RenderLayer가 어떤 PSO를 사용할지 정해야합니다.");
+				static_assert(static_cast<int>(PSOType::Count) == 10, "PSO 타입이 추가되었다면 확인해주세요");
 				ThrowErrCode(ErrCode::UndefinedType, "비정상입니다");
 			}
 		}
@@ -811,8 +841,8 @@ void D3DApp::updatePassConstantBuffer()
 	const float height = static_cast<float>(SMGFramework::Get().getClientHeight());
 	_passConstants._renderTargetSize = XMFLOAT2(static_cast<float>(width), static_cast<float>(height));
 	_passConstants._invRenderTargetSize = XMFLOAT2(1.0f / width, 1.0f / height);
-	_passConstants._nearZ = 1.0f;
-	_passConstants._farZ = 5000.0f;
+	_passConstants._nearZ = 10.0f;
+	_passConstants._farZ = 50000.0f;
 	_passConstants._totalTime = SMGFramework::Get().getTimer().getTotalTime();
 	_passConstants._deltaTime = SMGFramework::Get().getTimer().getDeltaTime();
 
@@ -850,7 +880,7 @@ Material* D3DApp::loadXmlMaterial(const std::string& fileName, const std::string
 		{
 			ThrowErrCode(ErrCode::MemoryIsFull, "MaterialConstantBuffer가 " + std::to_string(MATERIAL_MAX) + "를 넘어갑니다.");
 		}
-		_materials.emplace(name, new Material(_materials.size(), nodes[i]));
+		_materials.emplace(name, std::make_unique<Material>(static_cast<int>(_materials.size()), nodes[i]));
 	}
 
 	findIt = _materials.find(materialKey);
@@ -876,7 +906,7 @@ BoneInfo* D3DApp::loadXMLBoneInfo(const std::string& fileName)
 	XMLReader xmlSkeleton;
 	xmlSkeleton.loadXMLFile(filePath);
 
-	auto it = _boneInfoMap.emplace(fileName, new BoneInfo(xmlSkeleton.getRootNode()));
+	auto it = _boneInfoMap.emplace(fileName, std::make_unique<BoneInfo>(xmlSkeleton.getRootNode()));
 	return it.first->second.get();
 }
 
@@ -894,7 +924,7 @@ MeshGeometry* D3DApp::loadXMLMeshGeometry(const std::string& fileName)
 	xmlMeshGeometry.loadXMLFile(filePath);
 
 	auto it = _geometries.emplace(fileName, 
-		new MeshGeometry(xmlMeshGeometry.getRootNode(), _deviceD3d12.Get(), _commandList.Get()));
+		std::make_unique<MeshGeometry>(xmlMeshGeometry.getRootNode(), _deviceD3d12.Get(), _commandList.Get()));
 
 	return it.first->second.get();
 }
@@ -910,7 +940,7 @@ AnimationInfo* D3DApp::loadXMLAnimationInfo(const std::string& fileName)
 	XMLReader xmlAnimation;
 	xmlAnimation.loadXMLFile(filePath);
 
-	auto it = _animationInfoMap.emplace(fileName, new AnimationInfo(xmlAnimation.getRootNode()));
+	auto it = _animationInfoMap.emplace(fileName, std::make_unique<AnimationInfo>(xmlAnimation.getRootNode()));
 	return it.first->second.get();
 }
 
@@ -926,7 +956,7 @@ SkinnedModelInstance* D3DApp::createSkinnedInstance(uint16_t& skinnedBufferIndex
 {
 	skinnedBufferIndex = popSkinnedContantBufferIndex();
 
-	unique_ptr<SkinnedModelInstance> newSkinnedInstance(new SkinnedModelInstance(skinnedBufferIndex, boneInfo, animationInfo));
+	unique_ptr<SkinnedModelInstance> newSkinnedInstance(std::make_unique<SkinnedModelInstance>(skinnedBufferIndex, boneInfo, animationInfo));
 	SkinnedModelInstance* skinnedInstancePtr = newSkinnedInstance.get();
 	_skinnedInstance.emplace_back(move(newSkinnedInstance));
 
@@ -935,7 +965,7 @@ SkinnedModelInstance* D3DApp::createSkinnedInstance(uint16_t& skinnedBufferIndex
 
 const MeshGeometry* D3DApp::createMeshGeometry(const std::string& meshName, const GeneratedMeshData& meshData)
 {
-	auto it = _geometries.emplace(meshName, new MeshGeometry(meshData, _deviceD3d12.Get(), _commandList.Get()));
+	auto it = _geometries.emplace(meshName, std::make_unique<MeshGeometry>(meshData, _deviceD3d12.Get(), _commandList.Get()));
 	if (it.second == false)
 	{
 		ThrowErrCode(ErrCode::KeyDuplicated, meshName);
@@ -1076,7 +1106,7 @@ void D3DApp::createGameObjectDev(Actor* actor)
 		}
 	}
 	auto meshIt = _geometries.emplace(actor->getCharacterInfo()->getName() + "_CollisionBox",
-		new MeshGeometry(meshData, _deviceD3d12.Get(), _commandList.Get()));
+		std::make_unique<MeshGeometry>(meshData, _deviceD3d12.Get(), _commandList.Get()));
 
 	auto parentObject = const_cast<GameObject*>(actor->getGameObject());
 	auto object = parentObject->_devObjects.emplace_back(
@@ -1122,7 +1152,7 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 	}
 
 	auto meshIt = _geometries.emplace("NormalVector" + std::to_string(gameObject->getObjectConstantBufferIndex()),
-		new MeshGeometry(normalLineMeshData, _deviceD3d12.Get(), _commandList.Get()));
+		std::make_unique<MeshGeometry>(normalLineMeshData, _deviceD3d12.Get(), _commandList.Get()));
 
 	auto object = gameObject->_devObjects.emplace_back(
 			std::make_unique<GameObject>(
@@ -1160,7 +1190,7 @@ void D3DApp::drawUI(void)
 
 	_deviceD3d11On12->ReleaseWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);
 
-	_immediateContext->Flush();
+	_d3d11Context->Flush();
 }
 
 void D3DApp::drawSceneToShadowMap(void)
@@ -1189,7 +1219,7 @@ void D3DApp::drawSceneToShadowMap(void)
 	_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::ShadowSkinned].Get());
 	drawRenderItems(RenderLayer::OpaqueSkinned);
 
-	static_assert(static_cast<int>(RenderLayer::Count) == 6, "그림자가 생겨야하는 레이어라면 추가해주세요.");
+	static_assert(static_cast<int>(RenderLayer::Count) == 7, "그림자가 생겨야하는 레이어라면 추가해주세요.");
 
 	CD3DX12_RESOURCE_BARRIER readBarrier = CD3DX12_RESOURCE_BARRIER::Transition(_shadowMap->getResource(),
 		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -1207,17 +1237,6 @@ void D3DApp::drawEffects(void)
 	_commandList->IASetIndexBuffer(&ibv);
 	_commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-// 	D3D12_GPU_VIRTUAL_ADDRESS objectCBaddress = objectCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_parentObject->getObjectConstantBufferIndex()) * objectCBByteSize;
-// 	_commandList->SetGraphicsRootConstantBufferView(0, objectCBaddress);
-
-// 	auto skinnedIndex = renderItem->_parentObject->getSkinnedConstantBufferIndex();
-// 	if (skinnedIndex != SKINNED_UNDEFINED)
-// 	{
-// 		D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAdress = skinnedCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(skinnedIndex) * skinnedCBByteSize;
-// 		_commandList->SetGraphicsRootConstantBufferView(1, skinnedCBAdress);
-// 	}
-// 	D3D12_GPU_VIRTUAL_ADDRESS materialCBAddress = materialCBBaseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(renderItem->_material->getMaterialCBIndex()) * materialCBByteSize;
-// 	_commandList->SetGraphicsRootConstantBufferView(2, materialCBAddress);
 	auto instanceBufferAddress = _frameResources[_frameIndex]->getEffectBufferVirtualAddress();
 	_commandList->SetGraphicsRootShaderResourceView(6, instanceBufferAddress);
 	const auto& subMesh = meshGeometry->_subMeshList[0];
@@ -1323,6 +1342,11 @@ void D3DApp::createEffectMeshGeometry(void)
 	_effectManager->createEffectMeshGeometry();
 }
 
+void D3DApp::setBackgroundColor(const DirectX::XMFLOAT3& color) noexcept
+{
+	_backgroundColor = color;
+}
+
 void D3DApp::updateMaterialConstantBuffer(void)
 {
 	auto& currentFrameResource = _frameResources[_frameIndex];
@@ -1410,7 +1434,7 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 	{
 		auto renderItem = _renderItems[renderLayerIdx][rIdx].get();
 		check(renderItem != nullptr, "비정상입니다.");
-		if (renderItem->_isCulled)
+		if (renderItem->_parentObject->isCulled())
 		{
 			continue;
 		}
@@ -1545,15 +1569,18 @@ void D3DApp::buildRootSignature(void)
 
 void D3DApp::buildShaders(void)
 {
-	_shaders["defaultVS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultVertexShader", "vs_5_1");
-	_shaders["skinnedVS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForSkinnedVertexShader, "DefaultVertexShader", "vs_5_1");
-	_shaders["defaultPS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultPixelShader", "ps_5_1");
-	_shaders["shadowVS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForShader, "ShadowVertexShader", "vs_5_1");
-	_shaders["shadowPS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForShader, "ShadowPixelShader", "ps_5_1");
-	_shaders["shadowSkinnedVS"] = D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForSkinnedVertexShader, "ShadowVertexShader", "vs_5_1");
-	_shaders["effectVS"] = D3DUtil::CompileShader(L"Shaders\\Effect.hlsl", definesForShader, "EffectVertexShader", "vs_5_1");
-	_shaders["effectGS"] = D3DUtil::CompileShader(L"Shaders\\Effect.hlsl", definesForShader, "EffectGeoShader", "gs_5_1");
-	_shaders["effectPS"] = D3DUtil::CompileShader(L"Shaders\\Effect.hlsl", definesForShader, "EffectPixelShader", "ps_5_1");
+	_shaders["defaultVS"]			= D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultVertexShader", "vs_5_1");
+	_shaders["skinnedVS"]			= D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForSkinnedVertexShader, "DefaultVertexShader", "vs_5_1");
+	_shaders["defaultPS"]			= D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForShader, "DefaultPixelShader", "ps_5_1");
+	_shaders["shadowVS"]			= D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForShader, "ShadowVertexShader", "vs_5_1");
+	_shaders["shadowAlphaTestPS"]	= D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForAlphaTestShader, "ShadowPixelShader", "ps_5_1");
+	_shaders["shadowSkinnedVS"]		= D3DUtil::CompileShader(L"Shaders\\Shadow.hlsl", definesForSkinnedVertexShader, "ShadowVertexShader", "vs_5_1");
+	_shaders["effectVS"]			= D3DUtil::CompileShader(L"Shaders\\Effect.hlsl", definesForShader, "EffectVertexShader", "vs_5_1");
+	_shaders["effectGS"]			= D3DUtil::CompileShader(L"Shaders\\Effect.hlsl", definesForShader, "EffectGeoShader", "gs_5_1");
+	_shaders["effectPS"]			= D3DUtil::CompileShader(L"Shaders\\Effect.hlsl", definesForShader, "EffectPixelShader", "ps_5_1");
+	_shaders["alphaTestPS"]			= D3DUtil::CompileShader(L"Shaders\\Default.hlsl", definesForAlphaTestShader, "DefaultPixelShader", "ps_5_1");
+	_shaders["backgroundVS"]		= D3DUtil::CompileShader(L"Shaders\\Background.hlsl", definesForShader, "BackgroundVertexShader", "vs_5_1");
+	_shaders["backgroundPS"]		= D3DUtil::CompileShader(L"Shaders\\Background.hlsl", definesForShader, "BackgroundPixelShader", "ps_5_1");
 }
 
 void D3DApp::buildPipelineStateObject(void)
@@ -1643,6 +1670,11 @@ void D3DApp::buildPipelineStateObject(void)
 			reinterpret_cast<BYTE*>(_shaders["skinnedVS"]->GetBufferPointer()),
 			_shaders["skinnedVS"]->GetBufferSize()
 		};
+		psoDescSkinned.PS =
+		{
+			reinterpret_cast<BYTE*>(_shaders["alphaTestPS"]->GetBufferPointer()),
+			_shaders["alphaTestPS"]->GetBufferSize()
+		};
 		auto skinnedPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Skinned, nullptr));
 		check(skinnedPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Skinned");
 
@@ -1652,6 +1684,11 @@ void D3DApp::buildPipelineStateObject(void)
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescBackSideNotCulling = psoDescNormal;
 		psoDescBackSideNotCulling.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		psoDescBackSideNotCulling.PS =
+		{
+			reinterpret_cast<BYTE*>(_shaders["alphaTestPS"]->GetBufferPointer()),
+			_shaders["alphaTestPS"]->GetBufferSize()
+		};
 		auto backSideNotCullingPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::BackSideNotCulling, nullptr));
 		check(backSideNotCullingPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::BackSideNotCulling");
 
@@ -1685,8 +1722,8 @@ void D3DApp::buildPipelineStateObject(void)
 		};
 		psoDescShadow.PS =
 		{
-			reinterpret_cast<BYTE*>(_shaders["shadowPS"]->GetBufferPointer()),
-			_shaders["shadowPS"]->GetBufferSize()
+			reinterpret_cast<BYTE*>(_shaders["shadowAlphaTestPS"]->GetBufferPointer()),
+			_shaders["shadowAlphaTestPS"]->GetBufferSize()
 		};
 
 		psoDescShadow.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
@@ -1741,6 +1778,28 @@ void D3DApp::buildPipelineStateObject(void)
 
 	}
 	{
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescBackground = psoDescNormal;
+
+		psoDescBackground.BlendState.RenderTarget[0] = blendDesc;
+		psoDescBackground.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+		psoDescBackground.VS = 
+		{
+			reinterpret_cast<BYTE*>(_shaders["backgroundVS"]->GetBufferPointer()),
+			_shaders["backgroundVS"]->GetBufferSize()
+		};
+		psoDescBackground.PS =
+		{
+			reinterpret_cast<BYTE*>(_shaders["backgroundPS"]->GetBufferPointer()),
+			_shaders["backgroundPS"]->GetBufferSize()
+		};
+		psoDescBackground.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		auto backgroundPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::Background, nullptr));
+		check(backgroundPSO.second == true, "PSO가 중복 생성되었습니다 PSOType::Background");
+
+		ThrowIfFailed(_deviceD3d12->CreateGraphicsPipelineState(&psoDescBackground, IID_PPV_ARGS(&backgroundPSO.first->second)),
+			"PSO 생성 실패! PSOType::Background");
+	}
+	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDescUI = psoDescNormal;
 
 		auto UIPSO = _pipelineStateObjectMap.insert(make_pair(PSOType::UI, nullptr));
@@ -1762,7 +1821,7 @@ void D3DApp::buildPipelineStateObject(void)
 			"PSO 생성 실패! PSOType::GameObjectDev");
 	}
 #endif
-	static_assert(static_cast<int>(PSOType::Count) == 9, "PSO 타입이 추가되었다면 확인해주세요.");
+	static_assert(static_cast<int>(PSOType::Count) == 10, "PSO 타입이 추가되었다면 확인해주세요.");
 }
 
 bool D3DApp::Initialize(void)
@@ -1869,7 +1928,6 @@ RenderItem::RenderItem(const GameObject* parentObject,
 	, _primitive(primitive)
 	, _renderLayer(renderLayer)
 	, _subMeshIndex(subMeshIndex)
-	, _isCulled(false)
 {
 }
 

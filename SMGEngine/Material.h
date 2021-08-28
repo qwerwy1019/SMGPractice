@@ -7,7 +7,7 @@ class XMLReaderNode;
 class Material
 {
 public:
-	Material(const int materialCBIndex, const XMLReaderNode& node);
+	Material(int materialCBIndex, const XMLReaderNode& node);
 
 	inline int getMaterialCBIndex(void) const noexcept { return _materialCBIndex; }
 	inline int getDiffuseSRVHeapIndex(void) const noexcept { return _textureIndex; }

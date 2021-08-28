@@ -35,6 +35,8 @@ public:
 	bool isAnimationEnd() const noexcept;
 	void setAnimation(const std::string& animationName, const TickCount64& blendTick) noexcept;
 	void setCulled() noexcept;
+	void setCulledBackground() noexcept;
+	bool isCulled() const noexcept { return _isCulled; }
 private:
 	DirectX::XMFLOAT4X4 _worldMatrix;
 	DirectX::XMFLOAT4X4 _textureTransform;
@@ -46,6 +48,7 @@ private:
 	const MeshGeometry* _meshGeometry;
 
 	std::vector<RenderItem*> _renderItems;
+	bool _isCulled;
 
 #if defined DEBUG | defined _DEBUG
 public:

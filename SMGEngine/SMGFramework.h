@@ -47,7 +47,7 @@ private:
 	SMGFramework& operator=(const SMGFramework&) = delete;
 	SMGFramework& operator=(SMGFramework&&) = delete;
 
-	static SMGFramework* _instance;
+	static std::unique_ptr<SMGFramework> _instance;
 	// 주요기능 매니저
 	std::unique_ptr<D3DApp> _d3dApp;
 	std::unique_ptr<UIManager> _uiManager;
@@ -79,6 +79,8 @@ private:
 
 		Count,
 	};
+public:
+	bool _drawCollisionBox;
 
 	// 키보드/마우스 입력
 	

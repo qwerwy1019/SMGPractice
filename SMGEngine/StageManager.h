@@ -12,6 +12,7 @@ class ActionChart;
 struct GravityPoint;
 class Terrain;
 struct SpawnInfo;
+class BackgroundObject;
 
 
 class StageManager
@@ -67,6 +68,7 @@ private:
 
 private:
 	std::vector<Terrain> _terrains;
+	std::vector<BackgroundObject> _backgroundObjects;
 	DirectX::XMINT3 _sectorSize;
 	DirectX::XMINT3 _sectorUnitNumber;
 	std::vector<std::unordered_set<Actor*>> _actorsBySector;

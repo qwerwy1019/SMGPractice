@@ -46,7 +46,7 @@ ActionChart::ActionChart(const XMLReaderNode& node)
 	const auto& actionStates = childIter->second.getChildNodes();
 	for (const auto& actionState : actionStates)
 	{
-		auto it = _actionStates.emplace(actionState.getNodeName(), new ActionState(actionState));
+		auto it = _actionStates.emplace(actionState.getNodeName(), std::make_unique<ActionState>(actionState));
 		if (it.second == false)
 		{
 			ThrowErrCode(ErrCode::ActionChartLoadFail, actionState.getNodeName());
@@ -56,7 +56,7 @@ ActionChart::ActionChart(const XMLReaderNode& node)
 	const auto& collisionHandlers = childIter->second.getChildNodes();
 	for (const auto& collisionHandler : collisionHandlers)
 	{
-		_collisionHandlers.emplace_back(new CollisionHandler(collisionHandler));
+		_collisionHandlers.emplace_back(std::make_unique<CollisionHandler>(collisionHandler));
 	}
 	childIter = childNodes.find("Variables");
 	const auto& variables = childIter->second.getChildNodes();
@@ -173,7 +173,7 @@ void ActionState::processFrameEvents(Actor& actor, const TickCount64& lastProces
 		{
 			if (progressedTick < tick)
 			{
-				break;
+				continue;
 			}
 			if (frameEvent->checkConditions(actor))
 			{

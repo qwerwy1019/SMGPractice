@@ -16,7 +16,7 @@ struct VertexOut
 	float4 _posHCS : SV_POSITION;
 	float2 _textureCoord : TEXTURE;
 };
-// Shadow Buffer에 깊이값만 쓰면 되기 때문에 vs, ps에서 최소한의 작업만 한다.
+
 VertexOut ShadowVertexShader(VertexIn vIn)
 {
 #ifdef SKINNED
@@ -42,7 +42,7 @@ VertexOut ShadowVertexShader(VertexIn vIn)
 	VertexOut vOut = (VertexOut)0.0f;;
 
 	float4 posWorld = mul(float4(vIn._posLocal, 1.0f), gWorld);
-	
+
 	vOut._posHCS = mul(posWorld, gViewProj);
 	float4 textureCoord = mul(float4(vIn._textureCoord, 0.f, 1.f), gTextureTransform);
 	vOut._textureCoord = mul(textureCoord, gMaterialTransform).xy;
@@ -53,7 +53,7 @@ void ShadowPixelShader(VertexOut pIn)
 {
 	float4 diffuseAlbedo = gDiffuseAlbedo * gDiffuseMap[gDiffuseMapIndex].Sample(gsamAnisotropicWrap, pIn._textureCoord);
 
-//#ifdef ALPHA_TEST
+#ifdef ALPHA_TEST
 	clip(diffuseAlbedo.a - 0.1f);
-//#endif
+#endif
 }

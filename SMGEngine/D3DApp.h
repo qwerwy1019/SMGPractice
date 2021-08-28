@@ -45,15 +45,12 @@ enum class PSOType : uint8_t
 {
 	Normal,
 	Skinned,
-	//WireFrame,
 	BackSideNotCulling,
-	//MirrorStencil,
-	//ReflectedOpaque,
-	//ReflectedTransparent,
 	Transparent,
 	Shadow,
 	ShadowSkinned,
 	Effect,
+	Background,
 	UI,
 	GameObjectDev,
 	Count,
@@ -74,7 +71,6 @@ struct RenderItem
 
 	RenderLayer _renderLayer;
 	uint8_t _subMeshIndex;
-	bool _isCulled;
 	
 	const SubMeshGeometry& getSubMesh() const noexcept;
 };
@@ -121,6 +117,7 @@ public:
 	bool hasEffect(const std::string& effectName) const noexcept;
 	void loadXMLEffectFile(const std::string& effectFileName);
 	void createEffectMeshGeometry(void);
+	void setBackgroundColor(const DirectX::XMFLOAT3& color) noexcept;
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보
@@ -255,6 +252,8 @@ private:
 	DirectX::XMFLOAT4X4 _mainLightProjectionMatrix;
 	DirectX::XMFLOAT4X4 _shadowTransform;
 
+	DirectX::XMFLOAT3 _backgroundColor;
+
 	// UI & D2D
 	WComPtr<ID3D11Resource> _backBufferWrapped[SWAP_CHAIN_BUFFER_COUNT];
 	WComPtr<ID2D1Bitmap1> _backBufferBitmap[SWAP_CHAIN_BUFFER_COUNT];
@@ -267,7 +266,8 @@ private:
 	std::array<WComPtr<IDWriteTextFormat>, static_cast<int>(TextFormatType::Count)> _textFormats;
 	std::array<WComPtr<ID2D1Brush>, static_cast<int>(TextBrushType::Count)> _textBrushes;
 
-	WComPtr<ID3D11DeviceContext3> _immediateContext;
+	//WComPtr<ID3D11DeviceContext3> _immediateContext;
+	WComPtr<ID3D11DeviceContext> _d3d11Context;
 	unique_ptr<EffectManager> _effectManager;
 
 	//_resourceManager : 스테이지매니저가 요청한 자료들을 로드/언로드한다. 멀티스레드 적용이 되었으면 좋겠음.

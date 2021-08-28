@@ -33,8 +33,13 @@ const D3D_SHADER_MACRO definesForShader[] =
 //	"NUM_POINT_LIGHTS", NUM_POINT_LIGHTS_LPCSTR,
 //	"NUM_SPOT_LIGHTS", NUM_SPOT_LIGHTS_LPCSTR,
 //	"FOG", "1",
-//	"ALPHA_TEST", "1",
-//	"CARTOON_RENDER", "1",
+	"TEXTURE_MAX", TEXTURE_MAX_LPCSTR,
+	NULL, NULL
+};
+const D3D_SHADER_MACRO definesForAlphaTestShader[] =
+{
+	"NUM_DIR_LIGHTS", NUM_DIR_LIGHTS_LPCSTR,
+	"ALPHA_TEST", "1",
 	"TEXTURE_MAX", TEXTURE_MAX_LPCSTR,
 	NULL, NULL
 };
@@ -43,6 +48,13 @@ const D3D_SHADER_MACRO definesForSkinnedVertexShader[] =
 	"NUM_DIR_LIGHTS", NUM_DIR_LIGHTS_LPCSTR,
 	"SKINNED", "1",
 	"TEXTURE_MAX", TEXTURE_MAX_LPCSTR,
+	NULL, NULL
+};
+const D3D_SHADER_MACRO definesForBackgroundShader[] =
+{
+	"NUM_DIR_LIGHTS", NUM_DIR_LIGHTS_LPCSTR,
+	"TEXTURE_MAX", TEXTURE_MAX_LPCSTR,
+	"BACKGROUND", "1",
 	NULL, NULL
 };
 
@@ -55,10 +67,8 @@ enum class RenderLayer : uint8_t
 	OpaqueSkinned,
 	AlphaTested,
 	Shadow,
-	//MirrorStencil,
-	//ReflectedOpaque,
-	//ReflectedTransparent,
 	Transparent,
+	Background,
 	GameObjectDev,
 	Count,
 };
@@ -68,10 +78,8 @@ constexpr RenderLayer RenderLayers[] =
 	RenderLayer::OpaqueSkinned,
 	RenderLayer::AlphaTested,
 	RenderLayer::Shadow,
-	//RenderLayer::MirrorStencil,
-	//RenderLayer::ReflectedOpaque,
-	//RenderLayer::ReflectedTransparent,
 	RenderLayer::Transparent,
+	RenderLayer::Background,
 	RenderLayer::GameObjectDev,
 };
 static_assert(sizeof(RenderLayers) == static_cast<int>(RenderLayer::Count), "RenderLayer 추가 시 수정해주세요.");
@@ -81,5 +89,5 @@ constexpr RenderLayer HasShadowLayers[] =
 	RenderLayer::OpaqueSkinned,
 	RenderLayer::AlphaTested,
 };
-static_assert(static_cast<int>(RenderLayer::Count) == 6, "그림자가 생겨야 하는 레이어라면 추가해주세요.");
+static_assert(static_cast<int>(RenderLayer::Count) == 7, "그림자가 생겨야 하는 레이어라면 추가해주세요.");
 constexpr uint16_t SKINNED_UNDEFINED = std::numeric_limits<uint16_t>::max();
