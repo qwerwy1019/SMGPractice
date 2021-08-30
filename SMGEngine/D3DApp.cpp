@@ -912,6 +912,7 @@ BoneInfo* D3DApp::loadXMLBoneInfo(const std::string& fileName)
 
 MeshGeometry* D3DApp::loadXMLMeshGeometry(const std::string& fileName)
 {
+	check(!fileName.empty());
 	auto findIt = _geometries.find(fileName);
 	if (findIt != _geometries.end())
 	{
@@ -946,6 +947,9 @@ AnimationInfo* D3DApp::loadXMLAnimationInfo(const std::string& fileName)
 
 GameObject* D3DApp::createGameObject(const MeshGeometry* meshGeometry, SkinnedModelInstance* skinnedInstance, uint16_t skinnedBufferIndex) noexcept
 {
+	check(meshGeometry != nullptr || skinnedInstance == nullptr);
+	check(skinnedInstance != nullptr || skinnedBufferIndex == SKINNED_UNDEFINED);
+
 	UINT objCBIndex = popObjectContantBufferIndex();
 
 	_gameObjects.emplace_back(std::make_unique<GameObject>(meshGeometry, objCBIndex, skinnedBufferIndex, skinnedInstance));
@@ -1019,52 +1023,19 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		ThrowErrCode(ErrCode::NodeNotFound, "Mesh 노드가 없습니다.");
 	}
 	string meshFileName;
+	const MeshGeometry* mesh = nullptr;
 	childIter->second.loadAttribute("FileName", meshFileName);
-	const MeshGeometry* mesh = loadXMLMeshGeometry(meshFileName);
-
+	if (!meshFileName.empty())
+	{
+		mesh = loadXMLMeshGeometry(meshFileName);
+	}
+	
 	GameObject* gameObject = createGameObject(mesh, skinnedInstance, skinnedConstantBufferIndex);
-	const auto& subMeshList = mesh->_subMeshList;
-	const auto& subMeshNodes = childIter->second.getChildNodes();
-
-	std::vector<RenderItem*> renderItems;
-	if (subMeshList.size() > std::numeric_limits<uint8_t>::max())
+	
+	if (mesh != nullptr)
 	{
-		ThrowErrCode(ErrCode::Overflow, "subMesh 갯수가 255개를 넘음");
+		createRenderItems(gameObject, childIter->second);
 	}
-	renderItems.reserve(subMeshNodes.size());
-
-	for (int j = 0; j < subMeshNodes.size(); ++j)
-	{
-		string subMeshName;
-		subMeshNodes[j].loadAttribute("Name", subMeshName);
-		auto subMeshIt = find(subMeshList.begin(), subMeshList.end(), subMeshName);
-		if (subMeshIt == subMeshList.end())
-		{
-			ThrowErrCode(ErrCode::SubMeshNotFound, "SubMeshName : " + subMeshName + "이 " + meshFileName + "에 없습니다.");
-		}
-		string materialFile, materialName;
-		subMeshNodes[j].loadAttribute("MaterialFile", materialFile);
-		subMeshNodes[j].loadAttribute("MaterialName", materialName);
-		Material* material = loadXmlMaterial(materialFile, materialName);
-		if (isSkinned && material->getRenderLayer() != RenderLayer::OpaqueSkinned)
-		{
-			ThrowErrCode(ErrCode::NotSkinnedMaterial, materialFile + "/" + materialName + "in " + fileName);
-		}
-
-		RenderLayer renderLayer = material->getRenderLayer();
-		uint8_t subMeshIndex = subMeshIt - subMeshList.begin();
-		auto renderItem = make_unique<RenderItem>(
-			gameObject,
-			material,
-			D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-			subMeshIndex,
-			renderLayer);
-
-		renderItems.push_back(renderItem.get());
-		_renderItems[static_cast<int>(renderLayer)].emplace_back(std::move(renderItem));
-	}
-
-	gameObject->setRenderItemsXXX(std::move(renderItems));
 	return gameObject;
 }
 
@@ -1173,8 +1144,56 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 	object->setRenderItemsXXX(std::move(renderItems));
 	_renderItems[static_cast<int>(renderItem->_renderLayer)].emplace_back(std::move(renderItem));
 }
-
 #endif
+
+void D3DApp::createRenderItems(GameObject* gameObject, const XMLReaderNode& node)
+{
+	check(gameObject->getMeshGeometry() != nullptr);
+
+	const auto& subMeshList = gameObject->getMeshGeometry()->_subMeshList;
+	const auto& subMeshNodes = node.getChildNodes();
+
+	std::vector<RenderItem*> renderItems;
+	if (subMeshList.size() > std::numeric_limits<uint8_t>::max())
+	{
+		ThrowErrCode(ErrCode::Overflow, "subMesh 갯수가 255개를 넘음");
+	}
+	renderItems.reserve(subMeshNodes.size());
+
+	for (int j = 0; j < subMeshNodes.size(); ++j)
+	{
+		string subMeshName;
+		subMeshNodes[j].loadAttribute("Name", subMeshName);
+		auto subMeshIt = find(subMeshList.begin(), subMeshList.end(), subMeshName);
+		if (subMeshIt == subMeshList.end())
+		{
+			ThrowErrCode(ErrCode::SubMeshNotFound, "SubMeshName : " + subMeshName + "이 없습니다.");
+		}
+		string materialFile, materialName;
+		subMeshNodes[j].loadAttribute("MaterialFile", materialFile);
+		subMeshNodes[j].loadAttribute("MaterialName", materialName);
+		Material* material = loadXmlMaterial(materialFile, materialName);
+		if (gameObject->isSkinnedAnimationObject() && material->getRenderLayer() != RenderLayer::OpaqueSkinned)
+		{
+			ThrowErrCode(ErrCode::NotSkinnedMaterial, materialFile + "/" + materialName);
+		}
+
+		RenderLayer renderLayer = material->getRenderLayer();
+		uint8_t subMeshIndex = subMeshIt - subMeshList.begin();
+		auto renderItem = make_unique<RenderItem>(
+			gameObject,
+			material,
+			D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+			subMeshIndex,
+			renderLayer);
+
+		renderItems.push_back(renderItem.get());
+		_renderItems[static_cast<int>(renderLayer)].emplace_back(std::move(renderItem));
+	}
+
+	gameObject->setRenderItemsXXX(std::move(renderItems));
+}
+
 void D3DApp::drawUI(void)
 {
 	_deviceD3d11On12->AcquireWrappedResources(_backBufferWrapped[_currentBackBuffer].GetAddressOf(), 1);

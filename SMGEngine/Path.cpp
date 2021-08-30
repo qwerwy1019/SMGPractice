@@ -11,6 +11,7 @@ Path::Path(const XMLReaderNode& node)
 	node.loadAttribute("HasDirection", _hasDirection);
 	node.loadAttribute("MoveTick", _moveTick);
 	const auto& childNodes = node.getChildNodes();
+	_points.reserve(childNodes.size());
 	for (const auto& childNode : childNodes)
 	{
 		_points.emplace_back(childNode, _hasDirection);
@@ -34,10 +35,6 @@ Path::Path(const XMLReaderNode& node)
 		if (_points[i + 1]._time <= _points[i]._time)
 		{
 			ThrowErrCode(ErrCode::InvalidTimeInfo, std::to_string(_points[i]._time));
-		}
-		if (equal(_points[i]._position, _points[i + 1]._position))
-		{
-			ThrowErrCode(ErrCode::InvalidXmlData);
 		}
 	}
 
@@ -100,8 +97,8 @@ void Path::getPathPositionAtTimeCurve(float t, DirectX::XMFLOAT3& position) cons
 	using namespace DirectX;
 	check(0 <= t && t <= 1.f);
 
-	auto it = lower_bound(_points.begin(), _points.end(), t, [](const PathPoint& itor, float t) {
-		return itor._time < t; });
+	auto it = prev(upper_bound(_points.begin(), _points.end(), t, [](float t, const PathPoint& itor) {
+		return t < itor._time; }));
 	if (it == _points.end() || next(it) == _points.end())
 	{
 		it = prev(prev(_points.end()));
@@ -112,6 +109,7 @@ void Path::getPathPositionAtTimeCurve(float t, DirectX::XMFLOAT3& position) cons
 
 	float startT = _points[index]._time;
 	float endT = _points[index + 2]._time;
+	check(startT <= t && t <= endT);
 	float localT = (t - startT) / (endT - startT);
 	
 	XMVECTOR p0 = XMLoadFloat3(&_points[index]._position);
@@ -121,7 +119,7 @@ void Path::getPathPositionAtTimeCurve(float t, DirectX::XMFLOAT3& position) cons
 	float b0 = (1 - localT) * (1 - localT);
 	float b1 = 2 * (1 - localT) * localT;
 	float b2 = localT * localT;
-	XMVECTOR positionV = p0 * b0 + p1 * b1 + p2 * b2;
+	XMVECTOR positionV = (p0 * b0) + (p1 * b1) + (p2 * b2);
 	XMStoreFloat3(&position, positionV);
 }
 
@@ -130,8 +128,8 @@ void Path::getPathRotationAtTimeCurve(float t, DirectX::XMFLOAT4& quaternion) co
 	using namespace DirectX;
 	check(0 <= t && t <= 1.f);
 
-	auto it = lower_bound(_points.begin(), _points.end(), t, [](const PathPoint& itor, float t) {
-		return itor._time < t; });
+	auto it = prev(upper_bound(_points.begin(), _points.end(), t, [](float t, const PathPoint& itor) {
+		return t < itor._time; }));
 	if (it == _points.end() || next(it) == _points.end())
 	{
 		it = prev(prev(_points.end()));
@@ -164,7 +162,7 @@ void Path::getPathRotationAtTimeCurve(float t, DirectX::XMFLOAT4& quaternion) co
 			u1 = XMLoadFloat3(&_points[index + 2]._upVector);
 			d0 = XMLoadFloat3(&_points[index + 1]._direction);
 			d1 = XMLoadFloat3(&_points[index + 2]._direction);
-			d = localT / localMidT;
+			d = (localT - localMidT) / (1.f - localMidT);
 		}
 		XMVECTOR r0 = MathHelper::getQuaternion(u0, d0);
 		XMVECTOR r1 = MathHelper::getQuaternion(u1, d1);
@@ -191,7 +189,7 @@ void Path::getPathRotationAtTimeCurve(float t, DirectX::XMFLOAT4& quaternion) co
 		{
 			u0 = XMLoadFloat3(&_points[index + 1]._upVector);
 			u1 = XMLoadFloat3(&_points[index + 2]._upVector);
-			d = (localT - localMidT) / (1 - localMidT);
+			d = (localT - localMidT) / (1.f - localMidT);
 		}
 
 		XMVECTOR upVector = MathHelper::lerpAxisVector(u0, u1, d);
@@ -204,8 +202,8 @@ void Path::getPathPositionAtTimeLine(float t, DirectX::XMFLOAT3& position) const
 	using namespace DirectX;
 	check(0 <= t && t <= 1.f);
 
-	auto it0 = lower_bound(_points.begin(), _points.end(), t, [](const PathPoint& itor, float t) {
-		return itor._time < t; });
+	auto it0 = prev(upper_bound(_points.begin(), _points.end(), t, [](float t, const PathPoint& itor) {
+		return t < itor._time; }));
 	if (it0 == _points.end() || next(it0) == _points.end())
 	{
 		it0 = prev(prev(_points.end()));
@@ -224,8 +222,8 @@ void Path::getPathRotationAtTimeLine(float t, DirectX::XMFLOAT4& quaternion) con
 	using namespace DirectX;
 	check(0 <= t && t <= 1.f);
 
-	auto it0 = lower_bound(_points.begin(), _points.end(), t, [](const PathPoint& itor, float t) {
-		return itor._time < t; });
+	auto it0 = prev(upper_bound(_points.begin(), _points.end(), t, [](float t, const PathPoint& itor) {
+		return t < itor._time; }));
 	if (it0 == _points.end() || next(it0) == _points.end())
 	{
 		it0 = prev(prev(_points.end()));

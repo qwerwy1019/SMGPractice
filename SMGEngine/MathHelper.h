@@ -154,10 +154,6 @@ namespace MathHelper
 
 	// 충돌 처리
 	static constexpr float NO_INTERSECTION = 10.f;
-	static bool isColliding(float rv)
-	{
-		return 0 <= rv && rv < 5.f;
-	}
 
 	static bool isPointInTriangle(DirectX::FXMVECTOR t0,
 		DirectX::FXMVECTOR t1,

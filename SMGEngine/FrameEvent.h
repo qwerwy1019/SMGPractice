@@ -153,3 +153,14 @@ public:
 private:
 	int _cameraKey;
 };
+
+class FrameEvent_Collision : public FrameEvent
+{
+public:
+	FrameEvent_Collision(const XMLReaderNode& node);
+	virtual ~FrameEvent_Collision() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::Collision; }
+private:
+	bool _on;
+};

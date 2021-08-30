@@ -80,12 +80,20 @@ void GameObject::setAnimation(const std::string& animationName, const TickCount6
 
 void GameObject::setCulled(void) noexcept
 {
+	if (_meshGeometry == nullptr)
+	{
+		return;
+	}
 	XMMATRIX worldMat = XMLoadFloat4x4(&_worldMatrix);
 	_isCulled = SMGFramework::getD3DApp()->checkCulled(_meshGeometry->getBoundingBox(), worldMat);
 }
 
 void GameObject::setCulledBackground() noexcept
 {
+	if (_meshGeometry == nullptr)
+	{
+		return;
+	}
 	XMMATRIX worldMat = XMLoadFloat4x4(&_worldMatrix);
 	XMVECTOR camPosition = XMLoadFloat3(&SMGFramework::getCamera()->getPosition());
 	XMMATRIX camPositionMatrix = XMMatrixTranslationFromVector(camPosition);
@@ -94,6 +102,7 @@ void GameObject::setCulledBackground() noexcept
 
 void GameObject::setRenderItemsXXX(std::vector<RenderItem*>&& renderItems) noexcept
 {
+	check(_meshGeometry != nullptr || renderItems.empty(), "Mesh가 없는 gameobject는 rendterItem을 생성할수 없습니다.");
 	check(_renderItems.empty());
 	_renderItems = renderItems;
 }

@@ -37,6 +37,7 @@ enum class FrameEventType
 	SetPath,
 	Gravity,
 	SetCamera,
+	Collision,
 
 	Count,
 };

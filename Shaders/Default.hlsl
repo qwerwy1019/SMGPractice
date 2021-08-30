@@ -74,6 +74,8 @@ float4 DefaultPixelShader(VertexOut pIn) : SV_TARGET
 	float distanceToEye = length(toEye);
 	toEye /= distanceToEye;
 
+	float rimWidth = 0.6f;
+	float rimLightFactor = smoothstep(1.f - rimWidth, 1.f, 1 - max(0, dot(pIn._normalWorld, toEye)));
 	float4 ambient = gAmbientLight * diffuseAlbedo;
 
 	const float shininess = 1.f - gRoughness;
@@ -89,7 +91,8 @@ float4 DefaultPixelShader(VertexOut pIn) : SV_TARGET
 	color = lerp(color, gFogColor, fogAmount);
 #endif
 	// 통상적으로 diffuseAlbedo 알파값에 알파값을 넣는다고함.
+	float4 rimLightColor = { 0.3f, 0.3f, 0.6f, 0 };
 	color.a = diffuseAlbedo.a;
-
+	color += rimLightFactor * rimLightColor;
 	return color;
 }

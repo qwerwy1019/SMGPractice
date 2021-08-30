@@ -132,7 +132,7 @@ bool StageManager::applyGravity(Actor* actor, const TickCount64& deltaTick) noex
 	}
 	XMFLOAT3 moveVector = MathHelper::mul(gravityDirection, speed);
 
-	float t = checkGround(actor, moveVector);
+	float t = actor->isCollisionOn() ? checkGround(actor, moveVector) : 1.f;
 	if (MathHelper::equal(t, 0))
 	{
 		return true;
@@ -286,7 +286,7 @@ bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcep
 	{
 		return false;
 	}
-	float t = checkWall(actor, moveVector);
+	float t = actor->isCollisionOn() ? checkWall(actor, moveVector) : 1.f;
 	if (MathHelper::equal(t, 0))
 	{
 		return true;
@@ -437,6 +437,10 @@ void StageManager::processActorCollisionXXX(int sectorCoord0, int sectorCoord1) 
 				continue;
 			}
 			if (sectorCoord0 == sectorCoord1 && actor1 < actor0)
+			{
+				continue;
+			}
+			if (!actor0->isCollisionOn() || !actor1->isCollisionOn())
 			{
 				continue;
 			}

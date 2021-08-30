@@ -41,6 +41,7 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _actionIndex(0)
 	, _localTickCount(0)
 	, _onGround(false)
+	, _isCollisionOn(true)
 {
 	_characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo._key);
 	// 시작할때 한번 검증하는 부분 만들면 옮겨야함. [5/20/2021 qwerw]
@@ -687,6 +688,7 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 	using namespace DirectX;
 
 	XMVECTOR direction = XMVectorSet(0, 0, 0, 0);
+	bool applySpeed = true;
 
 	switch (_moveType)
 	{
@@ -715,10 +717,12 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 		case MoveType::Path:
 		{
 			check(_path != nullptr);
+			applySpeed = false;
+
 			XMFLOAT3 position;
 			_path->getPathPositionAtTime(_pathTime, position);
-			// 중간에 리턴하는게 나을지, 이렇게 처리하는게 나을지... [8/25/2021 qwerw]
-			direction = (XMLoadFloat3(&position) - XMLoadFloat3(&_position)) / _speed;
+
+			direction = XMLoadFloat3(&position) - XMLoadFloat3(&_position);
 		}
 		break;
 		case MoveType::Count:
@@ -735,13 +739,21 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 		direction = XMVector3Transform(direction, rotateMatrix);
 	}
 	XMFLOAT3 resultVector;
-	XMStoreFloat3(&resultVector, direction * _speed /** deltaTick*/ + XMLoadFloat3(&_additionalMoveVector));
+	if (applySpeed)
+	{
+		direction *= _speed /** deltaTick*/;
+	}
+	XMStoreFloat3(&resultVector, direction + XMLoadFloat3(&_additionalMoveVector));
 
 	return resultVector;
 }
 
 void Actor::setPosition(const DirectX::XMFLOAT3& toPosition) noexcept
 {
+	check(!isnan(toPosition.x));
+	check(!isnan(toPosition.y));
+	check(!isnan(toPosition.z));
+
 	_position = toPosition;
 	_additionalMoveVector = { 0, 0, 0 };
 	_sectorCoord = SMGFramework::getStageManager()->getSectorCoord(toPosition);
@@ -905,6 +917,16 @@ void Actor::setGravityOn(bool on) noexcept
 	{
 		_gravityPoint = nullptr;
 	}
+}
+
+void Actor::setCollisionOn(bool on) noexcept
+{
+	_isCollisionOn = on;
+}
+
+bool Actor::isCollisionOn(void) const noexcept
+{
+	return _isCollisionOn;
 }
 
 float Actor::getResistanceDistance(const Actor& selfActor, const Actor& targetActor) noexcept

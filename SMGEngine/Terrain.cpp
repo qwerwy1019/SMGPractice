@@ -58,7 +58,7 @@ void Terrain::makeAABBTree(void)
 	int totalIndexCount = 0;
 	const auto& renderItems = _gameObject->getRenderItems();
 	auto mesh = _gameObject->getMeshGeometry();
-
+	check(mesh != nullptr);
 	for (const auto& renderItem : renderItems)
 	{
 		totalIndexCount += renderItem->getSubMesh()._indexCount;

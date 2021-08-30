@@ -77,6 +77,8 @@ public:
 	int getActionChartVariable(const std::string& name) const noexcept;
 	int getActionIndex(void) const noexcept;
 	void setGravityOn(bool on) noexcept;
+	void setCollisionOn(bool on) noexcept;
+	bool isCollisionOn(void) const noexcept;
 private:
 	DirectX::XMFLOAT3 _position;
 	//DirectX::XMFLOAT4 _rotationQuat;
@@ -120,6 +122,7 @@ private:
 	int _actionIndex;
 	
 	TickCount64 _localTickCount;
+	bool _isCollisionOn;
 
 	bool _onGround;
 };

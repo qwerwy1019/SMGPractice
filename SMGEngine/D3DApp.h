@@ -118,6 +118,7 @@ public:
 	void loadXMLEffectFile(const std::string& effectFileName);
 	void createEffectMeshGeometry(void);
 	void setBackgroundColor(const DirectX::XMFLOAT3& color) noexcept;
+	void createRenderItems(GameObject* gameObject, const XMLReaderNode& node);
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보

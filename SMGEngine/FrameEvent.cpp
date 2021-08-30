@@ -93,9 +93,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_SetCamera>(node);
 	}
+	else if (typeString == "Collision")
+	{
+		return std::make_unique<FrameEvent_Collision>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 11, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 12, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -307,4 +311,15 @@ void FrameEvent_SetCamera::process(Actor& actor) const noexcept
 	check(SMGFramework::getCamera() != nullptr);
 
 	SMGFramework::getCamera()->setInputCameraPointKey(_cameraKey);
+}
+
+FrameEvent_Collision::FrameEvent_Collision(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("On", _on);
+}
+
+void FrameEvent_Collision::process(Actor& actor) const noexcept
+{
+	actor.setCollisionOn(_on);
 }
