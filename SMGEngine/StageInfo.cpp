@@ -5,6 +5,7 @@
 #include "MathHelper.h"
 #include "CameraPoint.h"
 #include "Path.h"
+#include "ObjectInfo.h"
 
 StageInfo::StageInfo(void) noexcept
 	: _sectorUnitNumber(0, 0, 0)
@@ -69,32 +70,20 @@ void StageInfo::loadXmlBackgroundInfo(const XMLReaderNode& node)
 void StageInfo::loadXmlBackgroundObjectInfo(const XMLReaderNode& node)
 {
 	const auto& childNodes = node.getChildNodes();
-	_backgroundObjectInfo.resize(childNodes.size());
+	_backgroundObjectInfo.reserve(childNodes.size());
 	for (int i = 0; i < childNodes.size(); ++i)
 	{
-		childNodes[i].loadAttribute("ObjectFile", _backgroundObjectInfo[i]._objectFileName);
-		childNodes[i].loadAttribute("Position", _backgroundObjectInfo[i]._position);
-		childNodes[i].loadAttribute("Direction", _backgroundObjectInfo[i]._direction);
-		childNodes[i].loadAttribute("UpVector", _backgroundObjectInfo[i]._upVector);
-		childNodes[i].loadAttribute("Size", _backgroundObjectInfo[i]._size);
+		_backgroundObjectInfo.emplace_back(childNodes[i]);
 	}
 }
 
 void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
 {
 	const auto& childNodes = node.getChildNodes();
-	_spawnInfo.resize(childNodes.size());
+	_spawnInfo.reserve(childNodes.size());
 	for (int i = 0; i < childNodes.size(); ++i)
 	{
-		childNodes[i].loadAttribute("CharacterKey", _spawnInfo[i]._key);
-		childNodes[i].loadAttribute("Position", _spawnInfo[i]._position);
-		childNodes[i].loadAttribute("Direction", _spawnInfo[i]._direction);
-		childNodes[i].loadAttribute("UpVector", _spawnInfo[i]._upVector);
-		childNodes[i].loadAttribute("Size", _spawnInfo[i]._size);
-		childNodes[i].loadAttribute("ActionIndex", _spawnInfo[i]._actionIndex);
-
-		XMStoreFloat3(&_spawnInfo[i]._upVector, DirectX::XMVector3Normalize(XMLoadFloat3(&_spawnInfo[i]._upVector)));
-		XMStoreFloat3(&_spawnInfo[i]._direction, DirectX::XMVector3Normalize(XMLoadFloat3(&_spawnInfo[i]._direction)));
+		_spawnInfo.emplace_back(childNodes[i]);
 	}
 }
 
@@ -221,16 +210,10 @@ const Path* StageInfo::getPath(int key) const noexcept
 void StageInfo::loadXmlTerrainObjectInfo(const XMLReaderNode& node)
 {
 	const auto& childNodes = node.getChildNodes();
-	_terrainObjectInfo.resize(childNodes.size());
+	_terrainObjectInfo.reserve(childNodes.size());
 	for (int i = 0; i < childNodes.size(); ++i)
 	{
-		childNodes[i].loadAttribute("ObjectFile", _terrainObjectInfo[i]._objectFileName);
-		childNodes[i].loadAttribute("Position", _terrainObjectInfo[i]._position);
-		childNodes[i].loadAttribute("Direction", _terrainObjectInfo[i]._direction);
-		childNodes[i].loadAttribute("UpVector", _terrainObjectInfo[i]._upVector);
-		childNodes[i].loadAttribute("Size", _terrainObjectInfo[i]._size);
-		childNodes[i].loadAttribute("IsGround", _terrainObjectInfo[i]._isGround);
-		childNodes[i].loadAttribute("IsWall", _terrainObjectInfo[i]._isWall);
+		_terrainObjectInfo.emplace_back(childNodes[i]);
 	}
 }
 
@@ -381,20 +364,6 @@ void StageInfo::loadXmlPaths(const XMLReaderNode& node)
 	}
 }
 
-SpawnInfo::SpawnInfo() noexcept
-	: _key(std::numeric_limits<CharacterKey>::max())
-	, _actionIndex(0)
-{
-
-}
-
-TerrainObjectInfo::TerrainObjectInfo() noexcept
-	: _isGround(false)
-	, _isWall(false)
-{
-
-}
-
 GravityPoint::GravityPoint() noexcept
 	: _key(-1)
 	, _type(GravityPointType::Count)
@@ -402,15 +371,6 @@ GravityPoint::GravityPoint() noexcept
 	, _radius(0.f)
 	, _position(0.f, 0.f, 0.f)
 	, _minRadius(0.f)
-{
-
-}
-
-ObjectInfo::ObjectInfo() noexcept
-	: _position(0.f, 0.f, 0.f)
-	, _direction(0.f, 0.f, 0.f)
-	, _upVector(0.f, 0.f, 0.f)
-	, _size(0.f)
 {
 
 }

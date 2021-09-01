@@ -85,7 +85,6 @@ ActionState* ActionChart::getActionState(const std::string& name) const noexcept
 	auto it = _actionStates.find(name);
 	if (it == _actionStates.end())
 	{
-		check(false, name + " ActionState를 찾을수 없습니다.");
 		return nullptr;
 	}
 	return it->second.get();

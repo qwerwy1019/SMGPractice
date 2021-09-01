@@ -311,6 +311,11 @@ bool SkinnedModelInstance::isAnimationEnd(void) const noexcept
 	return false;
 }
 
+void SkinnedModelInstance::setAnimationSpeed(float speed) noexcept
+{
+	_animationSpeed = speed;
+}
+
 const AnimationClip* AnimationInfo::getAnimationClip(const std::string& clipName) const noexcept
 {
 	auto it = _animations.find(clipName);

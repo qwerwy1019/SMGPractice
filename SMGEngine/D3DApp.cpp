@@ -621,7 +621,7 @@ void D3DApp::Draw(void)
 				ThrowErrCode(ErrCode::UndefinedType, "비정상입니다");
 			}
 		}
-		drawRenderItems(e);
+		drawRenderItems(e, true);
  	}
 	drawEffects();
 	// drawUI 때문에 삭제함 [2/16/2021 qwerwy]
@@ -926,7 +926,7 @@ MeshGeometry* D3DApp::loadXMLMeshGeometry(const std::string& fileName)
 
 	auto it = _geometries.emplace(fileName, 
 		std::make_unique<MeshGeometry>(xmlMeshGeometry.getRootNode(), _deviceD3d12.Get(), _commandList.Get()));
-
+	check(it.second == true);
 	return it.first->second.get();
 }
 
@@ -1076,13 +1076,23 @@ void D3DApp::createGameObjectDev(Actor* actor)
 			static_assert(static_cast<int>(CollisionShape::Count) == 3);
 		}
 	}
-	auto meshIt = _geometries.emplace(actor->getCharacterInfo()->getName() + "_CollisionBox",
-		std::make_unique<MeshGeometry>(meshData, _deviceD3d12.Get(), _commandList.Get()));
+	const MeshGeometry* mesh = nullptr;
+	auto meshFind = _geometries.find(actor->getCharacterInfo()->getName() + "_CollisionBox");
+	if (meshFind == _geometries.end())
+	{
+		auto meshIt = _geometries.emplace(actor->getCharacterInfo()->getName() + "_CollisionBox",
+			std::make_unique<MeshGeometry>(meshData, _deviceD3d12.Get(), _commandList.Get()));
+		mesh = meshIt.first->second.get();
+	}
+	else
+	{
+		mesh = meshFind->second.get();
+	}
 
 	auto parentObject = const_cast<GameObject*>(actor->getGameObject());
 	auto object = parentObject->_devObjects.emplace_back(
 					std::make_unique<GameObject>(
-						meshIt.first->second.get(),
+						mesh,
 						parentObject->getObjectConstantBufferIndex(),
 						SKINNED_UNDEFINED,
 						nullptr)).get();
@@ -1232,11 +1242,11 @@ void D3DApp::drawSceneToShadowMap(void)
 
 	_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Shadow].Get());
 
-	drawRenderItems(RenderLayer::Opaque);
-	drawRenderItems(RenderLayer::AlphaTested);
+	drawRenderItems(RenderLayer::Opaque, false);
+	drawRenderItems(RenderLayer::AlphaTested, false);
 
 	_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::ShadowSkinned].Get());
-	drawRenderItems(RenderLayer::OpaqueSkinned);
+	drawRenderItems(RenderLayer::OpaqueSkinned, false);
 
 	static_assert(static_cast<int>(RenderLayer::Count) == 7, "그림자가 생겨야하는 레이어라면 추가해주세요.");
 
@@ -1438,7 +1448,7 @@ void D3DApp::pushSkinnedContantBufferIndex(uint16_t index) noexcept
 	_skinnedCBReturned.push(index);
 }
 
-void D3DApp::drawRenderItems(const RenderLayer renderLayer)
+void D3DApp::drawRenderItems(const RenderLayer renderLayer, bool checkCulled)
 {
 	int renderLayerIdx = static_cast<int>(renderLayer);
 	UINT objectCBByteSize = D3DUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
@@ -1453,7 +1463,7 @@ void D3DApp::drawRenderItems(const RenderLayer renderLayer)
 	{
 		auto renderItem = _renderItems[renderLayerIdx][rIdx].get();
 		check(renderItem != nullptr, "비정상입니다.");
-		if (renderItem->_parentObject->isCulled())
+		if (checkCulled && renderItem->_parentObject->isCulled())
 		{
 			continue;
 		}

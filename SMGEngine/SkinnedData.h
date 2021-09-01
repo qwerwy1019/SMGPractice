@@ -122,6 +122,7 @@ public:
 	TickCount64 getLocalTickCount(void) const noexcept { return _currentTick; }
 	void setAnimation(const std::string& animationClipName, const TickCount64& blendTick) noexcept;
 	bool isAnimationEnd(void) const noexcept;
+	void setAnimationSpeed(float speed) noexcept;
 private:
 	TickCount64 _currentTick;
 	std::string _animationClipName;

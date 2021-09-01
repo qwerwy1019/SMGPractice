@@ -10,14 +10,14 @@ public:
 	CameraPoint(const XMLReaderNode& node, bool isAutoCamera);
 	virtual ~CameraPoint() = default;
 	virtual CameraPointType getType(void) const noexcept = 0;
-	virtual void getData(const Camera* camera,
+	virtual bool getData(const Camera* camera,
 					DirectX::XMFLOAT3& position,
 					DirectX::XMFLOAT4& rotationQuat) const noexcept = 0;
 	bool checkInRange(const DirectX::XMFLOAT3& position) const noexcept;
 	float getDistanceSq(const DirectX::XMFLOAT3& position) const noexcept;
 	const TickCount64& getBlendTick(void) const noexcept;
 	static std::unique_ptr<CameraPoint> loadXMLCameraPoint(const XMLReaderNode& node, bool isAutoCamera);
-private:
+protected:
 	DirectX::XMFLOAT3 _pointPosition;
 	float _radius;
 	TickCount64 _blendTick;
@@ -29,7 +29,7 @@ public:
 	CameraPoint_Fixed(const XMLReaderNode& node, bool isAutoCamera);
 	virtual ~CameraPoint_Fixed() = default;
 	virtual CameraPointType getType(void) const noexcept override { return CameraPointType::Fixed; }
-	virtual void getData(const Camera* camera,
+	virtual bool getData(const Camera* camera,
 					DirectX::XMFLOAT3& position,
 					DirectX::XMFLOAT4& rotationQuat) const noexcept override;
 private:
@@ -43,7 +43,7 @@ public:
 	CameraPoint_PlayerFocus(const XMLReaderNode& node, bool isAutoCamera);
 	virtual ~CameraPoint_PlayerFocus() = default;
 	virtual CameraPointType getType(void) const noexcept override { return CameraPointType::PlayerFocus; }
-	virtual void getData(const Camera* camera,
+	virtual bool getData(const Camera* camera,
 					DirectX::XMFLOAT3& position,
 					DirectX::XMFLOAT4& rotationQuat) const noexcept override;
 	int getNearestCameraDataIndex(const DirectX::XMFLOAT3& position,
@@ -66,7 +66,7 @@ public:
 	CameraPoint_PlayerFocusFixed(const XMLReaderNode& node, bool isAutoCamera);
 	virtual ~CameraPoint_PlayerFocusFixed() = default;
 	virtual CameraPointType getType(void) const noexcept override { return CameraPointType::PlayerFocusFixed; }
-	virtual void getData(const Camera* camera,
+	virtual bool getData(const Camera* camera,
 					DirectX::XMFLOAT3& position,
 					DirectX::XMFLOAT4& rotationQuat) const noexcept override;
 private:
@@ -81,9 +81,24 @@ public:
 	CameraPoint_Path(const XMLReaderNode& node, bool isAutoCamera);
 	virtual ~CameraPoint_Path() = default;
 	virtual CameraPointType getType(void) const noexcept override { return CameraPointType::Path; }
-	virtual void getData(const Camera* camera,
+	virtual bool getData(const Camera* camera,
 		DirectX::XMFLOAT3& position,
 		DirectX::XMFLOAT4& rotationQuat) const noexcept override;
 private:
 	std::unique_ptr<Path> _path;
+};
+
+class CameraPoint_CenterFocus : public CameraPoint
+{
+public:
+	CameraPoint_CenterFocus(const XMLReaderNode& node, bool isAutoCamera);
+	virtual ~CameraPoint_CenterFocus() = default;
+	virtual CameraPointType getType(void) const noexcept override { return CameraPointType::CenterFocus; }
+	virtual bool getData(const Camera* camera,
+		DirectX::XMFLOAT3& position,
+		DirectX::XMFLOAT4& rotationQuat) const noexcept override;
+private:
+	DirectX::XMFLOAT3 _upVector;
+	float _distance;
+	float _verticalAngleRange;
 };

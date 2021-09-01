@@ -2,7 +2,8 @@
 #include "TypeGeometry.h"
 #include "TypeAction.h"
 
-struct TerrainObjectInfo;
+class TerrainObjectInfo;
+class ObjectInfo;
 class MeshGeometry;
 class GameObject;
 class Actor;

@@ -7,6 +7,7 @@
 #include <windowsx.h>
 #include "CharacterInfoManager.h"
 #include "Camera.h"
+#include "UserData.h"
 
 SMGFramework::SMGFramework(HINSTANCE hInstance)
 	: _clientWidth(1280)
@@ -48,6 +49,7 @@ void SMGFramework::Create(HINSTANCE hInstance)
 	_instance->_stageManager = std::make_unique<StageManager>();
 	_instance->_uiManager = std::make_unique<UIManager>();
 	_instance->_camera = std::make_unique<Camera>();
+	_instance->_userData = std::make_unique<UserData>();
 
 	_instance->_stageManager->loadStage();
 	_instance->_uiManager->loadUI();

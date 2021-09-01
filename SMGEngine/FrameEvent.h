@@ -81,6 +81,7 @@ private:
 	CharacterKey _characterKey;
 	DirectX::XMFLOAT3 _position;
 	float _size;
+	int _actionIndex;
 };
 
 class FrameEvent_Effect : public FrameEvent
@@ -163,4 +164,33 @@ public:
 	virtual FrameEventType getType() const noexcept override { return FrameEventType::Collision; }
 private:
 	bool _on;
+};
+
+class FrameEvent_TargetPosition : public FrameEvent
+{
+public:
+	FrameEvent_TargetPosition(const XMLReaderNode& node);
+	virtual ~FrameEvent_TargetPosition() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::TargetPosition; }
+private:
+	enum class TargetPositionType
+	{
+		PathStart,
+
+		Count,
+	};
+	TargetPositionType _type;
+	int _key;
+};
+
+class FrameEvent_AnimationSpeed : public FrameEvent
+{
+public:
+	FrameEvent_AnimationSpeed(const XMLReaderNode& node);
+	virtual ~FrameEvent_AnimationSpeed() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::AnimationSpeed; }
+private:
+	float _speed;
 };

@@ -20,6 +20,7 @@ enum class ActionConditionType
 	ActionIndex,
 	HasPath,
 	PathEnd,
+	TargetPositionArrive,
 
 	Count,
 };
@@ -38,6 +39,8 @@ enum class FrameEventType
 	Gravity,
 	SetCamera,
 	Collision,
+	TargetPosition,
+	AnimationSpeed,
 
 	Count,
 };
@@ -56,6 +59,7 @@ enum class MoveType
 	CharacterDirection,
 	JoystickDirection,
 	Path,
+	ToPoint,
 	Count,
 };
 

@@ -110,7 +110,6 @@ ActionCondition_Key::ActionCondition_Key(const std::string& args)
 
 bool ActionCondition_Key::checkCondition(const Actor& actor) const noexcept
 {
-	check(&actor == SMGFramework::getStageManager()->getPlayerActor());
 	if (_buttonState == SMGFramework::Get().getButtonInput(_buttonType))
 	{
 		return true;
@@ -222,9 +221,13 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	{
 		condition = std::make_unique<ActionCondition_PathEnd>(conditionArgs);
 	}
+	else if (conditionTypeString == "TargetPositionArrive")
+	{
+		condition = std::make_unique<ActionCondition_TargetPositionArrive>(conditionArgs);
+	}
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 17, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 18, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -581,4 +584,15 @@ ActionCondition_PathEnd::ActionCondition_PathEnd(const std::string& args)
 bool ActionCondition_PathEnd::checkCondition(const Actor& actor) const noexcept
 {
 	return actor.isPathEnd();
+}
+
+ActionCondition_TargetPositionArrive::ActionCondition_TargetPositionArrive(const std::string& args)
+{
+
+}
+
+bool ActionCondition_TargetPositionArrive::checkCondition(const Actor& actor) const noexcept
+{
+	using namespace MathHelper;
+	return equal(length(sub(actor.getTargetPosition(), actor.getPosition())), 0.f);
 }

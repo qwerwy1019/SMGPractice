@@ -8,6 +8,7 @@
 #include "GameObject.h"
 #include "Actor.h"
 #include "CharacterInfoManager.h"
+#include "ObjectInfo.h"
 
 
 bool Terrain::isGround(void) const noexcept
@@ -26,19 +27,19 @@ Terrain::Terrain(const TerrainObjectInfo& terrainInfo)
 	, _max(0, 0, 0)
 	, _min(0, 0, 0)
 {
-	_isGround = terrainInfo._isGround;
-	_isWall = terrainInfo._isWall;
+	_isGround = terrainInfo.isGround();
+	_isWall = terrainInfo.isWall();
 
-	_gameObject = SMGFramework::getD3DApp()->createObjectFromXML(terrainInfo._objectFileName);
+	_gameObject = SMGFramework::getD3DApp()->createObjectFromXML(terrainInfo.getObjectFileName());
 
-	_gameObject->setWorldMatrix(terrainInfo._position,
-		terrainInfo._direction,
-		terrainInfo._upVector,
-		terrainInfo._size);
-	_size = terrainInfo._size;
-// #if defined DEBUG | defined _DEBUG
-// 	SMGFramework::getD3DApp()->createGameObjectDev(_gameObject);
-// #endif
+	_gameObject->setWorldMatrix(terrainInfo.getPosition(),
+		terrainInfo.getDirection(),
+		terrainInfo.getUpVector(),
+		terrainInfo.getSize());
+	_size = terrainInfo.getSize();
+#if defined DEBUG | defined _DEBUG
+	//SMGFramework::getD3DApp()->createGameObjectDev(_gameObject);
+#endif
 
 	if (_isGround || _isWall)
 	{
@@ -441,11 +442,11 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 	TerrainCollisionInfoXXX collisionInfo;
 	// sliding을 구현하지 않았기 때문에, 겹쳐지는 경우에는 뒤로 보내야해서 미리 반지름만큼 뒤로 보내서 충돌 체크를 할 것임. [7/12/2021 qwerw]
 	float adjustingDistance = actor.getRadius() * 0.5;
-	XMVECTOR velocityWorld = XMLoadFloat3(&velocity);
+	XMVECTOR velocityWorld = XMVectorSetW(XMLoadFloat3(&velocity), 0.f);
 	float speed = XMVectorGetX(XMVector3Length(velocityWorld));
 	XMVECTOR adjustingVelocityWorld = (velocityWorld * adjustingDistance / speed);
 
-	collisionInfo._velocity = XMVector3Transform(velocityWorld + adjustingVelocityWorld, inverseMatrix);
+	collisionInfo._velocity = XMVector4Transform(velocityWorld + adjustingVelocityWorld, inverseMatrix);
 	collisionInfo._position = XMVector3Transform(XMLoadFloat3(&actor.getPosition()) - adjustingVelocityWorld, inverseMatrix);
 
 	switch (actor.getCharacterInfo()->getCollisionShape())

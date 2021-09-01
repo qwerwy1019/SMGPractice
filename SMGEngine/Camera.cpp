@@ -42,6 +42,7 @@ void Camera::update(void) noexcept
 
 	updateCameraPoint();
 	updateCameraPosition();
+	updatePassConstant();
 
 	SMGFramework::getStageManager()->setCulled();
 }
@@ -154,32 +155,9 @@ int Camera::updateCameraInput(void) noexcept
 	_keyInputTime = currentTick;
 }
 
-void Camera::updateCameraPosition(void) noexcept
+void Camera::updatePassConstant() noexcept
 {
-	if (_cameraPoint == nullptr)
-	{
-		return;
-	}
-
 	using namespace DirectX;
-	XMFLOAT3 position;
-	XMFLOAT4 rotationQuat;
-	_cameraPoint->getData(this, position, rotationQuat);
-
-	if (_currentTick < _blendTick)
-	{
-		float t = static_cast<float>(_currentTick) / _blendTick;
-		XMVECTOR positionV = XMVectorLerp(XMLoadFloat3(&_cameraBlendPosition), XMLoadFloat3(&position), t);
-		XMVECTOR rotationQuatV = XMQuaternionSlerp(XMLoadFloat4(&_cameraBlendRotationQuat), XMLoadFloat4(&rotationQuat), t);
-
-		XMStoreFloat3(&_cameraPosition, positionV);
-		XMStoreFloat4(&_cameraRotationQuat, rotationQuatV);
-	}
-	else
-	{
-		_cameraPosition = position;
-		_cameraRotationQuat = rotationQuat;
-	}
 
 	XMVECTOR positionV = XMLoadFloat3(&_cameraPosition);
 	XMVECTOR rotationQuatV = XMLoadFloat4(&_cameraRotationQuat);
@@ -198,6 +176,38 @@ void Camera::updateCameraPosition(void) noexcept
 	XMStoreFloat4x4(&_viewMatrix, view);
 	XMVECTOR viewDet = XMMatrixDeterminant(view);
 	XMStoreFloat4x4(&_invViewMatrix, XMMatrixInverse(&viewDet, view));
+}
+
+void Camera::updateCameraPosition(void) noexcept
+{
+	if (_cameraPoint == nullptr)
+	{
+		return;
+	}
+
+	using namespace DirectX;
+	XMFLOAT3 position;
+	XMFLOAT4 rotationQuat;
+
+	bool success = _cameraPoint->getData(this, position, rotationQuat);
+	if (!success)
+	{
+		return;
+	}
+	if (_currentTick < _blendTick)
+	{
+		float t = static_cast<float>(_currentTick) / _blendTick;
+		XMVECTOR positionV = XMVectorLerp(XMLoadFloat3(&_cameraBlendPosition), XMLoadFloat3(&position), t);
+		XMVECTOR rotationQuatV = XMQuaternionSlerp(XMLoadFloat4(&_cameraBlendRotationQuat), XMLoadFloat4(&rotationQuat), t);
+
+		XMStoreFloat3(&_cameraPosition, positionV);
+		XMStoreFloat4(&_cameraRotationQuat, rotationQuatV);
+	}
+	else
+	{
+		_cameraPosition = position;
+		_cameraRotationQuat = rotationQuat;
+	}
 }
 
 void Camera::updateCameraPoint(void) noexcept

@@ -19,6 +19,7 @@ public:
 	void getPathRotationAtTime(const TickCount64& currentMoveTick,
 		DirectX::XMFLOAT4& quaternion) const noexcept;
 	const TickCount64& getMoveTick(void) const noexcept;
+	const DirectX::XMFLOAT3& getPathStartPosition(void) const noexcept;
 private:
 	void getPathPositionAtTimeCurve(float t,
 		DirectX::XMFLOAT3& position) const noexcept;

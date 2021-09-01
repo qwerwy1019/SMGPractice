@@ -14,6 +14,7 @@
 #include "MeshGeometry.h"
 #include "Terrain.h"
 #include "BackgroundObject.h"
+#include "ObjectInfo.h"
 
 StageManager::StageManager()
 	: _sectorSize(100, 100, 100)
@@ -193,7 +194,7 @@ const StageInfo* StageManager::getStageInfo(void) const noexcept
 void StageManager::spawnActor(const SpawnInfo& spawnInfo)
 {
 	std::unique_ptr<Actor> actor;
-	auto characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo._key);
+	auto characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo.getCharacterKey());
 	check(characterInfo != nullptr);
 	switch (characterInfo->getCharacterType())
 	{
@@ -213,7 +214,7 @@ void StageManager::spawnActor(const SpawnInfo& spawnInfo)
 		default:
 		{
 			static_assert(static_cast<int>(CharacterType::Count) == 3);
-			check(false, "spawnInfo" + std::to_string(spawnInfo._key) + " characterType이 이상합니다.");
+			check(false, "spawnInfo" + std::to_string(spawnInfo.getCharacterKey()) + " characterType이 이상합니다.");
 		}
 	}
 

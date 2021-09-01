@@ -215,3 +215,13 @@ public:
 	virtual bool checkCondition(const Actor& actor) const noexcept override;
 private:
 };
+
+class ActionCondition_TargetPositionArrive : public ActionCondition
+{
+public:
+	ActionCondition_TargetPositionArrive(const std::string& args);
+	virtual ~ActionCondition_TargetPositionArrive() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::TargetPositionArrive; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+};

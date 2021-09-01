@@ -56,4 +56,5 @@ private:
 	TickCount64 _keyInputTime;
 	static constexpr TickCount64 KEY_INPUT_INTERVAL = 200;
 	bool _cameraMoveFailed;
+	void updatePassConstant() noexcept;
 };

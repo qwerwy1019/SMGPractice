@@ -175,7 +175,7 @@ private:
 public:
 	const MeshGeometry* createMeshGeometry(const std::string& meshName, const GeneratedMeshData& meshData);
 private:
-	void drawRenderItems(const RenderLayer renderLayer);
+	void drawRenderItems(const RenderLayer renderLayer, bool checkCulled);
 	void drawUI(void);
 	void drawSceneToShadowMap(void);
 	void drawEffects(void);

@@ -37,6 +37,7 @@ public:
 	void setCulled() noexcept;
 	void setCulledBackground() noexcept;
 	bool isCulled() const noexcept { return _isCulled; }
+	void setAnimationSpeed(float speed) noexcept;
 private:
 	DirectX::XMFLOAT4X4 _worldMatrix;
 	DirectX::XMFLOAT4X4 _textureTransform;

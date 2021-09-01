@@ -50,9 +50,9 @@ CollisionEvent_SetAction::CollisionEvent_SetAction(const XMLReaderNode& node)
 	node.loadAttribute("State", _actionState);
 }
 
-void CollisionEvent_SetAction::process(Actor& selfActor, const Actor&) const noexcept
+void CollisionEvent_SetAction::process(Actor& selfActor, const Actor& targetActor) const noexcept
 {
-	selfActor.setActionState(_actionState);
+	selfActor.setNextActionState(_actionState);
 }
 
 std::string CollisionEvent_SetAction::getActionState(void) const noexcept

@@ -8,6 +8,7 @@ enum class CameraPointType
 	PlayerFocus,
 	PlayerFocusFixed,
 	Path,
+	CenterFocus,
 
 	Count,
 };

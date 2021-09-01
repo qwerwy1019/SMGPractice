@@ -5,7 +5,7 @@
 class CharacterInfo;
 class ActionChart;
 class ActionState;
-struct SpawnInfo;
+class SpawnInfo;
 struct GravityPoint;
 class GameObject;
 class Path;
@@ -30,6 +30,8 @@ public:
 	void setPath(int key) noexcept;
 	const Path* getPath(void) const noexcept;
 	bool isPathEnd(void) const noexcept;
+	void setAnimationSpeed(float speed) noexcept;
+	void setNextActionState(const std::string& actionStateName) noexcept;
 public:
 	TickCount64 getLocalTickCount(void) const noexcept;
 	const DirectX::XMFLOAT3& getPosition(void) const noexcept;
@@ -79,6 +81,8 @@ public:
 	void setGravityOn(bool on) noexcept;
 	void setCollisionOn(bool on) noexcept;
 	bool isCollisionOn(void) const noexcept;
+	void setTargetPosition(const DirectX::XMFLOAT3& position) noexcept;
+	const DirectX::XMFLOAT3& getTargetPosition(void) const noexcept;
 private:
 	DirectX::XMFLOAT3 _position;
 	//DirectX::XMFLOAT4 _rotationQuat;
@@ -104,6 +108,8 @@ private:
 	const Path* _path;
 	TickCount64 _pathTime;
 
+	DirectX::XMFLOAT3 _targetPosition;
+
 	// 캐릭터 회전
 	RotateType _rotateType;
 	float _rotateAngleOffset;
@@ -118,6 +124,7 @@ private:
 
 	const ActionChart* _actionChart;
 	const ActionState* _currentActionState;
+	std::string _nextActionStateName;
 	std::unordered_map<std::string, int> _actionChartVariables;
 	int _actionIndex;
 	

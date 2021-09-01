@@ -7,6 +7,7 @@ class UIManager;
 class StageManager;
 class CharacterInfoManager;
 class Camera;
+class UserData;
 
 class SMGFramework
 {
@@ -56,6 +57,8 @@ private:
 	std::unique_ptr<StageManager> _stageManager;
 	std::unique_ptr<CharacterInfoManager> _characterInfoManager;
 	std::unique_ptr<Camera> _camera;
+
+	std::unique_ptr<UserData> _userData;
 
 	// À©µµ¿ì
 	uint32_t _clientWidth;

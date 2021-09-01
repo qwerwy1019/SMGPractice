@@ -65,10 +65,14 @@ std::unique_ptr<CameraPoint> CameraPoint::loadXMLCameraPoint(const XMLReaderNode
 	{
 		return std::make_unique<CameraPoint_Path>(node, isAutoCamera);
 	}
+	else if (typeString == "CenterFocus")
+	{
+		return std::make_unique<CameraPoint_CenterFocus>(node, isAutoCamera);
+	}
 	else
 	{
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
-		static_assert(static_cast<int>(CameraPointType::Count) == 4, "타입 추가시 확인");
+		static_assert(static_cast<int>(CameraPointType::Count) == 5, "타입 추가시 확인");
 	}
 }
 
@@ -96,7 +100,7 @@ CameraPoint_PlayerFocus::CameraPoint_PlayerFocus(const XMLReaderNode& node, bool
 	}
 }
 
-void CameraPoint_PlayerFocus::getData(const Camera* camera, DirectX::XMFLOAT3& position, DirectX::XMFLOAT4& rotationQuat) const noexcept
+bool CameraPoint_PlayerFocus::getData(const Camera* camera, DirectX::XMFLOAT3& position, DirectX::XMFLOAT4& rotationQuat) const noexcept
 {
 	check(camera != nullptr);
 	check(SMGFramework::getStageManager() != nullptr);
@@ -116,6 +120,8 @@ void CameraPoint_PlayerFocus::getData(const Camera* camera, DirectX::XMFLOAT3& p
 	XMVECTOR focusPosition = playerActor->getGameObject()->transformLocalToWorld(XMLoadFloat3(&_offset));
 	XMStoreFloat3(&position, focusPosition - direction * data._distance);
 	rotationQuat = data._rotationQuat;
+
+	return true;
 }
 
 int CameraPoint_PlayerFocus::getNearestCameraDataIndex(const DirectX::XMFLOAT3& position,
@@ -179,10 +185,12 @@ CameraPoint_Fixed::CameraPoint_Fixed(const XMLReaderNode& node, bool isAutoCamer
 	XMStoreFloat4(&_rotationQuat, rotationQuat);
 }
 
-void CameraPoint_Fixed::getData(const Camera* camera, DirectX::XMFLOAT3& position, DirectX::XMFLOAT4& rotationQuat) const noexcept
+bool CameraPoint_Fixed::getData(const Camera* camera, DirectX::XMFLOAT3& position, DirectX::XMFLOAT4& rotationQuat) const noexcept
 {
 	position = _position;
 	rotationQuat = _rotationQuat;
+	
+	return true;
 }
 
 CameraPoint_PlayerFocusFixed::CameraPoint_PlayerFocusFixed(const XMLReaderNode& node, bool isAutoCamera)
@@ -195,7 +203,7 @@ CameraPoint_PlayerFocusFixed::CameraPoint_PlayerFocusFixed(const XMLReaderNode& 
 	XMStoreFloat3(&_upVector, DirectX::XMVector3Normalize(XMLoadFloat3(&_upVector)));
 }
 
-void CameraPoint_PlayerFocusFixed::getData(const Camera* camera, DirectX::XMFLOAT3& position, DirectX::XMFLOAT4& rotationQuat) const noexcept
+bool CameraPoint_PlayerFocusFixed::getData(const Camera* camera, DirectX::XMFLOAT3& position, DirectX::XMFLOAT4& rotationQuat) const noexcept
 {
 	check(camera != nullptr);
 	check(SMGFramework::getStageManager() != nullptr);
@@ -211,6 +219,8 @@ void CameraPoint_PlayerFocusFixed::getData(const Camera* camera, DirectX::XMFLOA
 	
 	position = _position;
 	XMStoreFloat4(&rotationQuat, rotationQuatV);
+	
+	return true;
 }
 
 CameraPoint_Path::CameraPoint_Path(const XMLReaderNode& node, bool isAutoCamera)
@@ -219,8 +229,64 @@ CameraPoint_Path::CameraPoint_Path(const XMLReaderNode& node, bool isAutoCamera)
 	_path = std::make_unique<Path>(node);
 }
 
-void CameraPoint_Path::getData(const Camera* camera, DirectX::XMFLOAT3& position, DirectX::XMFLOAT4& rotationQuat) const noexcept
+bool CameraPoint_Path::getData(const Camera* camera, DirectX::XMFLOAT3& position, DirectX::XMFLOAT4& rotationQuat) const noexcept
 {
 	_path->getPathPositionAtTime(camera->getCurrentTick(), position);
 	_path->getPathRotationAtTime(camera->getCurrentTick(), rotationQuat);
+
+	return true;
+}
+
+CameraPoint_CenterFocus::CameraPoint_CenterFocus(const XMLReaderNode& node, bool isAutoCamera)
+	: CameraPoint(node, isAutoCamera)
+{
+	node.loadAttribute("UpVector", _upVector);
+	node.loadAttribute("Distance", _distance);
+	node.loadAttribute("VerticalAngleRange", _verticalAngleRange);
+	_verticalAngleRange *= MathHelper::Pi / 180.f;
+
+	XMStoreFloat3(&_upVector, XMVector3Normalize(XMLoadFloat3(&_upVector)));
+	if (!MathHelper::equal(MathHelper::length(_upVector), 1))
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData);
+	}
+	if (_distance < 0)
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData);
+	}
+	if (_verticalAngleRange < 0)
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData);
+	}
+}
+
+bool CameraPoint_CenterFocus::getData(const Camera* camera, DirectX::XMFLOAT3& position, DirectX::XMFLOAT4& rotationQuat) const noexcept
+{
+	check(camera != nullptr);
+	check(SMGFramework::getStageManager() != nullptr);
+	check(SMGFramework::getStageManager()->getPlayerActor() != nullptr);
+	check(SMGFramework::getStageManager()->getPlayerActor()->getGameObject() != nullptr);
+
+	XMVECTOR playerPosition = XMLoadFloat3(&SMGFramework::getStageManager()->getPlayerActor()->getPosition());
+	XMVECTOR centerPosition = XMLoadFloat3(&_pointPosition);
+	XMVECTOR upVector = XMLoadFloat3(&_upVector);
+	XMVECTOR direction = XMVector3Normalize(centerPosition - playerPosition);
+
+	float dot = std::clamp(XMVectorGetX(XMVector3Dot(upVector, direction)), -1.f, 1.f);
+	float verticalAngle = MathHelper::Pi_DIV2 - std::acos(dot);
+	if (dot == 0)
+	{
+		return false;
+	}
+	if (_verticalAngleRange < std::abs(verticalAngle))
+	{
+		float overAngle = (verticalAngle > 0) ? verticalAngle - _verticalAngleRange : verticalAngle + _verticalAngleRange;
+		XMVECTOR right = XMVector3Normalize(XMVector3Cross(upVector, direction));
+		XMMATRIX rotationMatrix = XMMatrixRotationNormal(right, overAngle);
+		direction = XMVector3Transform(direction, rotationMatrix);
+	}
+	
+	XMStoreFloat3(&position, centerPosition - direction * _distance);
+	XMStoreFloat4(&rotationQuat, MathHelper::getQuaternion(upVector, direction));
+	return true;
 }

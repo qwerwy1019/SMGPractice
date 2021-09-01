@@ -577,7 +577,7 @@ namespace MathHelper
 		XMVECTOR normal = XMVector3Normalize(XMVector3Cross(v0, v1));
 		if (XMVector3Equal(normal, XMVectorZero()))
 		{
-			check(false);
+			check(XMVector3Equal(v0, v1));
 			return v0;
 		}
 		float deltaAngle = getDeltaAngleToVector(normal, v0, v1);

@@ -1,6 +1,6 @@
 #pragma once
 class GameObject;
-struct BackgroundObjectInfo;
+class BackgroundObjectInfo;
 
 class BackgroundObject
 {

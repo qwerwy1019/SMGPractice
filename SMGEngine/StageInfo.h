@@ -8,36 +8,10 @@ class XMLReaderNode;
 class CameraPoint;
 class Path;
 
-struct ObjectInfo
-{
-	ObjectInfo() noexcept;
-	DirectX::XMFLOAT3 _position;
-	DirectX::XMFLOAT3 _direction;
-	DirectX::XMFLOAT3 _upVector;
-	float _size;
-};
-
-struct BackgroundObjectInfo : public ObjectInfo
-{
-	std::string _objectFileName;
-};
-
-struct SpawnInfo : public ObjectInfo
-{
-	SpawnInfo() noexcept;
-	CharacterKey _key;
-
-	int _actionIndex;
-};
-
-struct TerrainObjectInfo : public ObjectInfo
-{
-	TerrainObjectInfo() noexcept;
-	std::string _objectFileName;
-
-	bool _isGround;
-	bool _isWall;
-};
+class ObjectInfo;
+class TerrainObjectInfo;
+class SpawnInfo;
+class BackgroundObjectInfo;
 
 struct GravityPoint
 {
@@ -90,6 +64,7 @@ private:
 	std::vector<std::unique_ptr<CameraPoint>> _autoCameraPoints;
 	std::unordered_map<int, std::unique_ptr<CameraPoint>> _triggeredCmeraPoints;
 	std::vector<SpawnInfo> _spawnInfo;
+	std::unordered_map<int, SpawnInfo> _spawnInfoWithKey;
 	std::vector<TerrainObjectInfo> _terrainObjectInfo;
 	std::vector<BackgroundObjectInfo> _backgroundObjectInfo;
 	std::unordered_map<int, std::unique_ptr<GravityPoint>> _gravityPoints;

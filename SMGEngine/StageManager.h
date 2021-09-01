@@ -11,9 +11,15 @@ class PlayerActor;
 class ActionChart;
 struct GravityPoint;
 class Terrain;
-struct SpawnInfo;
+class SpawnInfo;
 class BackgroundObject;
 
+// 추후 Stage script를 작업하게 된다면 옮겨야함 [9/2/2021 qwerw]
+struct StageData
+{
+	uint32_t _keyCount;
+
+};
 
 class StageManager
 {

@@ -13,6 +13,8 @@
 #include "GameObject.h"
 #include "Effect.h"
 #include "Camera.h"
+#include "Path.h"
+#include "ObjectInfo.h"
 
 FrameEvent::FrameEvent(const XMLReaderNode& node)
 {
@@ -97,9 +99,17 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_Collision>(node);
 	}
+	else if (typeString == "TargetPosition")
+	{
+		return std::make_unique<FrameEvent_TargetPosition>(node);
+	}
+	else if (typeString == "AnimationSpeed")
+	{
+		return std::make_unique<FrameEvent_AnimationSpeed>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 12, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 14, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -166,9 +176,13 @@ FrameEvent_Speed::FrameEvent_Speed(const XMLReaderNode& node)
 	{
 		_moveType = MoveType::Path;
 	}
+	else if (typeString == "ToPoint")
+	{
+		_moveType = MoveType::ToPoint;
+	}
 	else
 	{
-		static_assert(static_cast<int>(MoveType::Count) == 3, "타입 추가시 확인");
+		static_assert(static_cast<int>(MoveType::Count) == 4, "타입 추가시 확인");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -214,6 +228,7 @@ FrameEvent_SpawnCharacter::FrameEvent_SpawnCharacter(const XMLReaderNode& node)
 	node.loadAttribute("CharacterKey", _characterKey);
 	node.loadAttribute("Position", _position);
 	node.loadAttribute("Size", _size);
+	node.loadAttribute("ActionIndex", _actionIndex);
 
 	if (nullptr == SMGFramework::getCharacterInfoManager()->getInfo(_characterKey))
 	{
@@ -223,12 +238,13 @@ FrameEvent_SpawnCharacter::FrameEvent_SpawnCharacter(const XMLReaderNode& node)
 
 void FrameEvent_SpawnCharacter::process(Actor& actor) const noexcept
 {
-	SpawnInfo spawnInfo;
-	spawnInfo._key = _characterKey;
-	spawnInfo._position = MathHelper::add(actor.getPosition(), _position);
-	spawnInfo._direction = actor.getDirection();
-	spawnInfo._upVector = actor.getUpVector();
-	spawnInfo._size = _size;
+	DirectX::XMFLOAT3 position = MathHelper::add(actor.getPosition(), _position);
+	SpawnInfo spawnInfo(position,
+						actor.getDirection(),
+						actor.getUpVector(), 
+						_size, 
+						_characterKey, 
+						_actionIndex);
 
 	SMGFramework::getStageManager()->requestSpawn(std::move(spawnInfo));
 }
@@ -322,4 +338,59 @@ FrameEvent_Collision::FrameEvent_Collision(const XMLReaderNode& node)
 void FrameEvent_Collision::process(Actor& actor) const noexcept
 {
 	actor.setCollisionOn(_on);
+}
+
+FrameEvent_TargetPosition::FrameEvent_TargetPosition(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	std::string typeString;
+	node.loadAttribute("TargetPositionType", typeString);
+
+	if (typeString == "PathStart")
+	{
+		_type = TargetPositionType::PathStart;
+	}
+	else
+	{
+		static_assert(static_cast<int>(TargetPositionType::Count) == 1);
+		ThrowErrCode(ErrCode::UndefinedType);
+	}
+
+	node.loadAttribute("Key", _key);
+}
+
+void FrameEvent_TargetPosition::process(Actor& actor) const noexcept
+{
+	switch (_type)
+	{
+		case FrameEvent_TargetPosition::TargetPositionType::PathStart:
+		{
+			const Path* path = SMGFramework::getStageManager()->getStageInfo()->getPath(_key);
+			if (path == nullptr)
+			{
+				check(false, std::to_string(_key) + " path가 없습니다.");
+				return;
+			}
+			actor.setTargetPosition(path->getPathStartPosition());
+		}
+		break;
+		case FrameEvent_TargetPosition::TargetPositionType::Count:
+		default:
+		{
+			static_assert(static_cast<int>(TargetPositionType::Count) == 1);
+			check(false);
+		}
+		break;
+	}
+}
+
+FrameEvent_AnimationSpeed::FrameEvent_AnimationSpeed(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("Speed", _speed);
+}
+
+void FrameEvent_AnimationSpeed::process(Actor& actor) const noexcept
+{
+	actor.setAnimationSpeed(_speed);
 }

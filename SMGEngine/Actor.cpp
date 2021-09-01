@@ -13,12 +13,13 @@
 #include "GameObject.h"
 #include "Camera.h"
 #include "Path.h"
+#include "ObjectInfo.h"
 
 Actor::Actor(const SpawnInfo& spawnInfo)
-	: _position(spawnInfo._position)
-	, _direction(spawnInfo._direction)
-	, _upVector(spawnInfo._upVector)
-	, _size(spawnInfo._size)
+	: _position(spawnInfo.getPosition())
+	, _direction(spawnInfo.getDirection())
+	, _upVector(spawnInfo.getUpVector())
+	, _size(spawnInfo.getSize())
 	, _speed(0.f)
 	, _verticalSpeed(0.f)
 	, _moveType(MoveType::CharacterDirection)
@@ -31,6 +32,7 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _sectorCoord(0, 0, 0)
 	, _path(nullptr)
 	, _pathTime(0)
+	, _targetPosition(0, 0, 0)
 	, _rotateType(RotateType::Fixed)
 	, _rotateAngleOffset(0.f)
 	, _rotateSpeed(0.f)
@@ -43,11 +45,11 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	, _onGround(false)
 	, _isCollisionOn(true)
 {
-	_characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo._key);
+	_characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo.getCharacterKey());
 	// 시작할때 한번 검증하는 부분 만들면 옮겨야함. [5/20/2021 qwerw]
 	if (nullptr == _characterInfo)
 	{
-		ThrowErrCode(ErrCode::InvalidXmlData, "캐릭터키가 비정상입니다. " + spawnInfo._key);
+		ThrowErrCode(ErrCode::InvalidXmlData, "캐릭터키가 비정상입니다. " + spawnInfo.getCharacterKey());
 	}
 	_actionChart = SMGFramework::getStageManager()->loadActionChartFromXML(_characterInfo->getActionChartFileName());
 	const auto& idleAction = _actionChart->getActionState("IDLE");
@@ -56,7 +58,7 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 		ThrowErrCode(ErrCode::InvalidXmlData, _characterInfo->getActionChartFileName() + " : IDLE 이 없습니다.");
 	}
 	_actionChartVariables = _actionChart->getVariables();
-	_actionIndex = spawnInfo._actionIndex;
+	_actionIndex = spawnInfo.getActionIndex();
 	
 	_gameObject = SMGFramework::getD3DApp()->createObjectFromXML(_characterInfo->getObjectFileName());
 
@@ -203,6 +205,17 @@ bool Actor::isPathEnd(void) const noexcept
 		return true;
 	}
 	return false;
+}
+
+void Actor::setAnimationSpeed(float speed) noexcept
+{
+	_gameObject->setAnimationSpeed(speed);
+}
+
+void Actor::setNextActionState(const std::string& actionStateName) noexcept
+{
+	check(!actionStateName.empty());
+	_nextActionStateName = actionStateName;
 }
 
 float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
@@ -725,10 +738,24 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 			direction = XMLoadFloat3(&position) - XMLoadFloat3(&_position);
 		}
 		break;
+		case MoveType::ToPoint:
+		{
+			direction = XMLoadFloat3(&_targetPosition) - XMLoadFloat3(&_position);
+			float distance = XMVectorGetX(XMVector3Length(direction));
+			if (distance < _speed/**deltaTick */)
+			{
+				applySpeed = false;
+			}
+			else
+			{
+				direction /= distance;
+			}
+		}
+		break;
 		case MoveType::Count:
 		default:
 		{
-			static_assert(static_cast<int>(MoveType::Count) == 3, "타입 추가시 확인");
+			static_assert(static_cast<int>(MoveType::Count) == 4, "타입 추가시 확인");
 			check(false, "타입이 비정상입니다.");
 		}
 		break;
@@ -787,10 +814,18 @@ void Actor::updateActionChart(const TickCount64& deltaTick) noexcept
 	_currentActionState->processFrameEvents(*this, _localTickCount, progressedTick);
 	_localTickCount = progressedTick;
 	
-	std::string nextStateName;
-	if (_currentActionState->checkBranch(*this, nextStateName))
+	if (!_nextActionStateName.empty())
 	{
-		setActionState(nextStateName);
+		setActionState(_nextActionStateName);
+		_nextActionStateName.clear();
+	}
+	else
+	{
+		std::string nextStateName;
+		if (_currentActionState->checkBranch(*this, nextStateName))
+		{
+			setActionState(nextStateName);
+		}
 	}
 }
 
@@ -927,6 +962,16 @@ void Actor::setCollisionOn(bool on) noexcept
 bool Actor::isCollisionOn(void) const noexcept
 {
 	return _isCollisionOn;
+}
+
+void Actor::setTargetPosition(const DirectX::XMFLOAT3& position) noexcept
+{
+	_targetPosition = position;
+}
+
+const DirectX::XMFLOAT3& Actor::getTargetPosition(void) const noexcept
+{
+	return _targetPosition;
 }
 
 float Actor::getResistanceDistance(const Actor& selfActor, const Actor& targetActor) noexcept

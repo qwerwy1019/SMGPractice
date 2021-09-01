@@ -73,7 +73,7 @@ void GameObject::setAnimation(const std::string& animationName, const TickCount6
 {
 	check(_skinnedModelInstance != nullptr);
 	check(animationName.empty() == false);
-	check(blendTick > 0);
+	check(blendTick >= 0);
 
 	_skinnedModelInstance->setAnimation(animationName, blendTick);
 }
@@ -98,6 +98,16 @@ void GameObject::setCulledBackground() noexcept
 	XMVECTOR camPosition = XMLoadFloat3(&SMGFramework::getCamera()->getPosition());
 	XMMATRIX camPositionMatrix = XMMatrixTranslationFromVector(camPosition);
 	_isCulled = SMGFramework::getD3DApp()->checkCulled(_meshGeometry->getBoundingBox(), worldMat * camPositionMatrix);
+}
+
+void GameObject::setAnimationSpeed(float speed) noexcept
+{
+	if (_skinnedModelInstance == nullptr)
+	{
+		check(false);
+		return;
+	}
+	_skinnedModelInstance->setAnimationSpeed(speed);
 }
 
 void GameObject::setRenderItemsXXX(std::vector<RenderItem*>&& renderItems) noexcept

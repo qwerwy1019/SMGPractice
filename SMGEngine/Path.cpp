@@ -92,6 +92,11 @@ const TickCount64& Path::getMoveTick(void) const noexcept
 	return _moveTick;
 }
 
+const DirectX::XMFLOAT3& Path::getPathStartPosition(void) const noexcept
+{
+	return _points.begin()->_position;
+}
+
 void Path::getPathPositionAtTimeCurve(float t, DirectX::XMFLOAT3& position) const noexcept
 {
 	using namespace DirectX;
