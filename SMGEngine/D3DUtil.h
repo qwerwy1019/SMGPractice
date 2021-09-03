@@ -4,6 +4,7 @@
 #include "TypeD3d.h"
 #include "TypeGeometry.h"
 #include "Exception.h"
+#include <iomanip>
 
 class D3DUtil
 {
@@ -81,6 +82,20 @@ public:
 			ThrowErrCode(ErrCode::Overflow, str + "°¡ boneIndex ¹üÀ§¸¦ ¹þ¾î³³´Ï´Ù.");
 		}
 		return value;
+	}
+
+	static std::string toString(float value, int n)
+	{
+		std::stringstream stream;
+		stream << std::fixed << std::setprecision(n) << value;
+		std::string s = stream.str();
+
+		return s;
+	}
+
+	static std::string toString(const DirectX::XMFLOAT3& value, int n)
+	{
+		return toString(value.x, n) + " " + toString(value.y, n) + " " + toString(value.z, n);
 	}
 };
 

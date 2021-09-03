@@ -71,6 +71,7 @@ enum class RotateType
 	JoystickInput,
 	ToWall,
 	ToCollidingTarget,
+	FixedSpeed,
 
 	Count,
 };

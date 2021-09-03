@@ -57,4 +57,17 @@ private:
 	static constexpr TickCount64 KEY_INPUT_INTERVAL = 200;
 	bool _cameraMoveFailed;
 	void updatePassConstant() noexcept;
+#if defined (DEBUG) | defined(_DEBUG)
+public:
+	void updateCameraPositionDev(void) noexcept;
+	void toggleDevCam(void) noexcept;
+	void addDevCamPhi(float delta) noexcept;
+	void addDevCamTheta(float delta) noexcept;
+	void addDevCamRadius(float delta) noexcept;
+private:
+	float _camThetaDev;
+	float _camPhiDev;
+	float _camRadiusDev;
+	bool _useDevCam;
+#endif
 };

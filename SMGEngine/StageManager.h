@@ -14,13 +14,6 @@ class Terrain;
 class SpawnInfo;
 class BackgroundObject;
 
-// 추후 Stage script를 작업하게 된다면 옮겨야함 [9/2/2021 qwerw]
-struct StageData
-{
-	uint32_t _keyCount;
-
-};
-
 class StageManager
 {
 public:
@@ -31,6 +24,7 @@ public:
 private:
 	void processActorCollision(void) noexcept;
 	void processActorCollisionXXX(int sectorCoord0, int sectorCoord1) noexcept;
+	void updateStageScript(void) noexcept;
 	// 스테이지 이동
 public:
 	void loadStage(void);
@@ -80,6 +74,7 @@ private:
 	std::vector<std::unordered_set<Actor*>> _actorsBySector;
 	std::unordered_set<Actor*> _deadActors;
 	std::vector<SpawnInfo> _requestedSpawnInfos;
+	std::vector<std::string, int> _stageScriptVariables;
 
 	std::vector<std::unique_ptr<Actor>> _actors;
 	PlayerActor* _playerActor;

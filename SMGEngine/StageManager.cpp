@@ -54,7 +54,6 @@ void StageManager::update()
 {
 	TickCount64 deltaTick = SMGFramework::Get().getTimer().getDeltaTickCount();
 	
-	//updateStageScript();
 
 	for (const auto& actor : _actors)
 	{
@@ -72,6 +71,7 @@ void StageManager::update()
 	}
 	processActorCollision();
 	killActors();
+	updateStageScript();
 	spawnRequested();
 }
 
@@ -498,6 +498,11 @@ void StageManager::processActorCollisionXXX(int sectorCoord0, int sectorCoord1) 
 			}
 		}
 	}
+}
+
+void StageManager::updateStageScript(void) noexcept
+{
+	throw std::logic_error("The method or operation is not implemented.");
 }
 
 void StageManager::setCameraCount(const int count) noexcept

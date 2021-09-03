@@ -8,6 +8,7 @@
 #include "StageInfo.h"
 #include "Actor.h"
 #include "CameraPoint.h"
+#include "D3DUtil.h"
 
 Camera::Camera()
 	: _cameraPoint(nullptr)
@@ -28,6 +29,12 @@ Camera::Camera()
 	, _cameraIndex(-1)
 	, _keyInputTime(0)
 	, _cameraMoveFailed(false)
+#if defined DEBUG | defined _DEBUG
+	, _camThetaDev(0)
+	, _camPhiDev(0)
+	, _camRadiusDev(200)
+	, _useDevCam(false)
+#endif
 {
 
 }
@@ -41,7 +48,18 @@ void Camera::update(void) noexcept
 	_currentTick += deltaTickCount;
 
 	updateCameraPoint();
+#if defined (DEBUG) | defined (_DEBUG)
+	if (_useDevCam)
+	{
+		updateCameraPositionDev();
+	}
+	else
+	{
+		updateCameraPosition();
+	}
+#else
 	updateCameraPosition();
+#endif
 	updatePassConstant();
 
 	SMGFramework::getStageManager()->setCulled();
@@ -172,6 +190,12 @@ void Camera::updatePassConstant() noexcept
 	XMStoreFloat3(&_cameraDirection, direction);
 	XMStoreFloat3(&_cameraRightVector, rightVector);
 
+	std::string camInfo;
+	camInfo += "pos : " + D3DUtil::toString(_cameraPosition, 0) + "\n";
+	camInfo += "dir : " + D3DUtil::toString(_cameraDirection, 2) + "\n";
+	camInfo += "up : " + D3DUtil::toString(_cameraUpVector, 2) + "\n\n";
+	OutputDebugStringA(camInfo.c_str());
+
 	XMMATRIX view = XMMatrixLookAtLH(positionV, positionV + direction, upVector);
 	XMStoreFloat4x4(&_viewMatrix, view);
 	XMVECTOR viewDet = XMMatrixDeterminant(view);
@@ -248,3 +272,43 @@ void Camera::updateCameraPoint(void) noexcept
 		}
 	}
 }
+
+#if defined DEBUG | _DEBUG
+void Camera::updateCameraPositionDev(void) noexcept
+{
+	using namespace DirectX;
+	XMVECTOR camPos = MathHelper::SphericalToCartesian(_camRadiusDev, _camPhiDev, _camThetaDev);
+	XMVECTOR playerPos = XMLoadFloat3(&SMGFramework::getStageManager()->getPlayerActor()->getPosition());
+	XMStoreFloat3(&_cameraPosition, camPos + playerPos);
+	XMVECTOR upVector = XMVectorSet(0, 1, 0, 0);
+	XMVECTOR direction = XMVector3Normalize(-camPos);
+	XMVECTOR rotationQuat = MathHelper::getQuaternion(upVector, direction);
+	XMStoreFloat4(&_cameraRotationQuat, rotationQuat);
+}
+
+void Camera::toggleDevCam(void) noexcept
+{
+	_useDevCam = !_useDevCam;
+}
+
+void Camera::addDevCamPhi(float delta) noexcept
+{
+	_camPhiDev += delta;
+	_camPhiDev = std::clamp(_camPhiDev, 0.1f, MathHelper::Pi - 0.1f);
+}
+
+void Camera::addDevCamTheta(float delta) noexcept
+{
+	_camThetaDev += delta;
+}
+
+void Camera::addDevCamRadius(float delta) noexcept
+{
+	_camRadiusDev += delta;
+	if (_camRadiusDev < 10)
+	{
+		_camRadiusDev = 10;
+	}
+}
+
+#endif

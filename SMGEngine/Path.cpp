@@ -17,6 +17,20 @@ Path::Path(const XMLReaderNode& node)
 		_points.emplace_back(childNode, _hasDirection);
 	}
 
+	if (_isCurve)
+	{
+		using namespace DirectX;
+		int indexMax = _points.size() / 2;
+		for (int i = 0; i < indexMax; i += 2)
+		{
+			XMVECTOR A = XMLoadFloat3(&_points[i]._position);
+			XMVECTOR B = XMLoadFloat3(&_points[i + 2]._position);
+			XMVECTOR C = XMLoadFloat3(&_points[i + 1]._position);
+			XMVECTOR controlPoint = (2.f * C) - ((A + B) / 2.f);
+			XMStoreFloat3(&_points[i + 1]._position, controlPoint);
+		}
+	}
+
 	// 검증
 	if (_moveTick == 0)
 	{
@@ -43,6 +57,16 @@ Path::Path(const XMLReaderNode& node)
 		if (_points.size() % 2 != 1)
 		{
 			ThrowErrCode(ErrCode::InvalidXmlData, "2차 베지어 곡선 사용중");
+		}
+		if (!_hasDirection)
+		{
+			for (int i = 0; i < _points.size() - 1; ++i)
+			{
+				if (equal(_points[i]._position, _points[i + 1]._position))
+				{
+					ThrowErrCode(ErrCode::InvalidXmlData);
+				}
+			}
 		}
 	}
 	else
@@ -77,6 +101,7 @@ void Path::getPathRotationAtTime(const TickCount64& currentMoveTick, DirectX::XM
 {
 	float t = (currentMoveTick < _moveTick) ? static_cast<float>(currentMoveTick) / _moveTick : 1.f;
 
+	OutputDebugStringA(("t : " + std::to_string(t) + '\n').c_str());
 	if (_isCurve)
 	{
 		getPathRotationAtTimeCurve(t, quaternion);

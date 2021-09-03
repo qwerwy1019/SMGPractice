@@ -259,9 +259,9 @@ int SMGFramework::Run(void)
 					_stageManager->update();
 					_camera->update();
 					_d3dApp->Update();
+					_d3dApp->Draw();
 				}
 
-				_d3dApp->Draw();
 
 				Sleep(10);
 			}
@@ -536,6 +536,18 @@ void SMGFramework::onKeyboardInput(void) noexcept
 	{
 		_drawCollisionBox = !_drawCollisionBox;
 	}
+	if (GetAsyncKeyState('9') && 0x8000)
+	{
+		_camera->toggleDevCam();
+	}
+	if (GetAsyncKeyState(VK_UP) && 0x8000)
+	{
+		_camera->addDevCamRadius(-2);
+	}
+	if (GetAsyncKeyState(VK_DOWN) && 0x8000)
+	{
+		_camera->addDevCamRadius(2);
+	}
 #endif
 }
 
@@ -587,5 +599,13 @@ void SMGFramework::onMouseMove(WPARAM buttonState, int x, int y) noexcept
 
 	_mousePos.x = x;
 	_mousePos.y = y;
+
+#if defined (DEBUG) | defined (_DEBUG)
+	if ((buttonState & MK_RBUTTON) != 0)
+	{
+		_camera->addDevCamTheta(dx);
+		_camera->addDevCamPhi(dy);
+	}
+#endif
 }
 

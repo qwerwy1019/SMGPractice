@@ -12,7 +12,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 {
 #if defined(DEBUG) | defined(_DEBUG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	_CrtSetBreakAlloc(72);
 #endif
 	int rv = 0;
 	try
@@ -28,7 +27,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 		return 1;
 	}
 #if defined(DEBUG) | defined(_DEBUG)
-	_CrtDumpMemoryLeaks();
 	{
 		Microsoft::WRL::ComPtr<IDXGIDebug1> dxgiDebug;
 		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))

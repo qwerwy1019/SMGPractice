@@ -266,10 +266,14 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 			check(false, "미구현");
 		}
 		break;
+		case RotateType::FixedSpeed:
+		{
+			deltaAngle = _rotateSpeed * deltaTick;
+		}
 		case RotateType::Count:
 		default:
 		{
-			static_assert(static_cast<int>(RotateType::Count) == 6, "타입 추가시 확인");
+			static_assert(static_cast<int>(RotateType::Count) == 7, "타입 추가시 확인");
 			check(false, "타입 추가시 확인");
 		}
 		break;
