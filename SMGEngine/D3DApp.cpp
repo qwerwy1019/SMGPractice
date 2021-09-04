@@ -1156,6 +1156,22 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 }
 #endif
 
+void D3DApp::releaseItemsForStageLoad(void) noexcept
+{
+	flushCommandQueue();
+	//renderItem
+	//gameobject
+	//skinnedinstance
+	//objectCBIndex
+	//skinnedCBIndex
+
+	//texture
+	//material
+	//boneinfo, animationInfo
+	//effectManager
+	//mesh geometries
+}
+
 void D3DApp::createRenderItems(GameObject* gameObject, const XMLReaderNode& node)
 {
 	check(gameObject->getMeshGeometry() != nullptr);

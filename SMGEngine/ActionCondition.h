@@ -225,3 +225,16 @@ public:
 	virtual bool checkCondition(const Actor& actor) const noexcept override;
 private:
 };
+
+class ActionCondition_StageVariable : public ActionCondition
+{
+public:
+	ActionCondition_StageVariable(const std::string& args);
+	virtual ~ActionCondition_StageVariable() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::StageVariable; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+	std::string _variableName;
+	OperatorType _operator;
+	int _value;
+};

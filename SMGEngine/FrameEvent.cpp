@@ -107,9 +107,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_AnimationSpeed>(node);
 	}
+	else if (typeString == "AddStageVariable")
+	{
+		return std::make_unique<FrameEvent_AddStageVariable>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 14, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 15, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -142,9 +146,13 @@ FrameEvent_Rotate::FrameEvent_Rotate(const XMLReaderNode& node)
 	{
 		_rotateType = RotateType::ToWall;
 	}
+	else if (typeString == "FixedSpeed")
+	{
+		_rotateType = RotateType::FixedSpeed;
+	}
 	else
 	{
-		static_assert(static_cast<int>(RotateType::Count) == 6, "타입 추가시 확인");
+		static_assert(static_cast<int>(RotateType::Count) == 7, "타입 추가시 확인");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -161,7 +169,8 @@ FrameEvent_Speed::FrameEvent_Speed(const XMLReaderNode& node)
 	node.loadAttribute("TargetSpeed", _targetSpeed);
 	node.loadAttribute("Acceleration", _acceleration);
 	_acceleration *= ACCELERATION_UNIT;
-
+	node.loadAttribute("DirectionOffset", _moveDirectionOffset);
+	_moveDirectionOffset *= MathHelper::Pi / 180.f;
 	std::string typeString;
 	node.loadAttribute("MoveType", typeString);
 	if (typeString == "CharacterDirection")
@@ -192,7 +201,7 @@ void FrameEvent_Speed::process(Actor& actor) const noexcept
 	check(_acceleration > 0.f);
 	check(_targetSpeed >= 0.f);
 
-	actor.setAcceleration(_acceleration, _targetSpeed, _moveType);
+	actor.setAcceleration(_acceleration, _targetSpeed, _moveDirectionOffset, _moveType);
 }
 
 FrameEvent_Jump::FrameEvent_Jump(const XMLReaderNode& node)
@@ -393,4 +402,16 @@ FrameEvent_AnimationSpeed::FrameEvent_AnimationSpeed(const XMLReaderNode& node)
 void FrameEvent_AnimationSpeed::process(Actor& actor) const noexcept
 {
 	actor.setAnimationSpeed(_speed);
+}
+
+FrameEvent_AddStageVariable::FrameEvent_AddStageVariable(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("VariableName", _variableName);
+	node.loadAttribute("Value", _value);
+}
+
+void FrameEvent_AddStageVariable::process(Actor& actor) const noexcept
+{
+	SMGFramework::getStageManager()->addStageScriptVariable(_variableName, _value);
 }

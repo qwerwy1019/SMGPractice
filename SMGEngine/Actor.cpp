@@ -76,7 +76,10 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 
 Actor::~Actor()
 {
-	SMGFramework::getD3DApp()->removeGameObject(_gameObject);
+	if (!SMGFramework::getStageManager()->isLoading())
+	{
+		SMGFramework::getD3DApp()->removeGameObject(_gameObject);
+	}
 }
 
 void Actor::rotateOnPlane(const float rotateAngle) noexcept
@@ -94,7 +97,7 @@ void Actor::rotateOnPlane(const float rotateAngle) noexcept
 	if (_rotateType == RotateType::Fixed || _rotateType == RotateType::ToCollidingTarget)
 	{
 		_rotateAngleOffset -= rotateAngle;
-		static_assert(static_cast<int>(RotateType::Count) == 6, "타입 추가시 확인");
+		static_assert(static_cast<int>(RotateType::Count) == 7, "타입 추가시 확인");
 	}
 }
 
@@ -150,7 +153,7 @@ DirectX::XMFLOAT4 Actor::getRotationQuat(const TickCount64& deltaTick) const noe
 		break;
 		default:
 		{
-			static_assert(static_cast<int>(RotateType::Count) == 6, "타입 추가시 확인");
+			static_assert(static_cast<int>(RotateType::Count) == 7, "타입 추가시 확인");
 			check(false, "타입 추가시 확인");
 		}
 	}
@@ -270,6 +273,7 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 		{
 			deltaAngle = _rotateSpeed * deltaTick;
 		}
+		break;
 		case RotateType::Count:
 		default:
 		{
@@ -420,7 +424,7 @@ bool Actor::isOnGround(void) const noexcept
 
 bool Actor::isQuaternionRotate(void) const noexcept
 {
-	static_assert(static_cast<int>(RotateType::Count) == 6, "타입 추가시 확인");
+	static_assert(static_cast<int>(RotateType::Count) == 7, "타입 추가시 확인");
 	return _rotateType == RotateType::Path;
 }
 
@@ -687,17 +691,20 @@ bool Actor::checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexce
 
 bool Actor::checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
 {
-	throw std::logic_error("The method or operation is not implemented.");
+	check(false, "미구현");
+	return false;
 }
 
 bool Actor::checkCollideBoxWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
 {
-	throw std::logic_error("The method or operation is not implemented.");
+	check(false, "미구현");
+	return false;
 }
 
 bool Actor::checkCollidePolygonWithPolygon(const Actor* lhs, const Actor* rhs) noexcept
 {
-	throw std::logic_error("The method or operation is not implemented.");
+	check(false, "미구현");
+	return false;
 }
 
 DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexcept
@@ -865,7 +872,7 @@ void Actor::setRotateType(const RotateType rotateType, const float rotateAngleOf
 	_rotateSpeed = speed;
 }
 
-void Actor::setAcceleration(const float acceleration, const float targetSpeed, MoveType moveType) noexcept
+void Actor::setAcceleration(float acceleration, float targetSpeed, float moveDirectionOffset, MoveType moveType) noexcept
 {
 	check(acceleration > 0.f);
 	check(targetSpeed >= 0.f);
@@ -873,6 +880,7 @@ void Actor::setAcceleration(const float acceleration, const float targetSpeed, M
 
 	_acceleration = acceleration;
 	_targetSpeed = targetSpeed;
+	_moveDirectionOffset = moveDirectionOffset;
 	_moveType = moveType;
 }
 

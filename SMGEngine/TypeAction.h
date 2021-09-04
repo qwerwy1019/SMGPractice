@@ -21,6 +21,7 @@ enum class ActionConditionType
 	HasPath,
 	PathEnd,
 	TargetPositionArrive,
+	StageVariable,
 
 	Count,
 };
@@ -41,6 +42,7 @@ enum class FrameEventType
 	Collision,
 	TargetPosition,
 	AnimationSpeed,
+	AddStageVariable,
 
 	Count,
 };

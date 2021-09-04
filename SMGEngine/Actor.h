@@ -66,9 +66,12 @@ public:
 
 	void updateObjectWorldMatrix() noexcept;
 
-	void setRotateType(const RotateType rotateType, const float rotateAngleOffset, const float speed) noexcept;
-	void setAcceleration(const float acceleration, const float targetSpeed, MoveType moveType) noexcept;
-	void setVerticalSpeed(const float speed) noexcept;
+	void setRotateType(RotateType rotateType, float rotateAngleOffset, float speed) noexcept;
+	void setAcceleration(float acceleration,
+						float targetSpeed,
+						float moveDirectionOffset,
+						MoveType moveType) noexcept;
+	void setVerticalSpeed(float speed) noexcept;
 	void setTargetVerticalSpeed(float targetVerticalSpeed, float acceleration) noexcept;
 	const CharacterInfo* getCharacterInfo(void) const noexcept;
 	const GameObject* getGameObject(void) const noexcept;

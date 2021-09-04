@@ -9,6 +9,7 @@
 #include "Actor.h"
 #include "CharacterInfoManager.h"
 #include "ObjectInfo.h"
+#include "StageManager.h"
 
 
 bool Terrain::isGround(void) const noexcept
@@ -49,7 +50,10 @@ Terrain::Terrain(const TerrainObjectInfo& terrainInfo)
 
 Terrain::~Terrain()
 {
-	SMGFramework::getD3DApp()->removeGameObject(_gameObject);
+	if (!SMGFramework::getStageManager()->isLoading())
+	{
+		SMGFramework::getD3DApp()->removeGameObject(_gameObject);
+	}
 }
 
 void Terrain::makeAABBTree(void)

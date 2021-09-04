@@ -6,6 +6,7 @@
 #include "SMGFramework.h"
 #include "MeshGeometry.h"
 #include "Camera.h"
+#include "StageManager.h"
 
 GameObject::GameObject(const MeshGeometry* meshGeometry,
 						uint16_t objConstantBufferIndex,
@@ -25,6 +26,10 @@ GameObject::GameObject(const MeshGeometry* meshGeometry,
 
 GameObject::~GameObject()
 {
+	if (SMGFramework::getStageManager()->isLoading())
+	{
+		return;
+	}
 	SMGFramework::getD3DApp()->pushObjectContantBufferIndex(_objConstantBufferIndex);
 	if (_skinnedConstantBufferIndex != std::numeric_limits<uint16_t>::max())
 	{

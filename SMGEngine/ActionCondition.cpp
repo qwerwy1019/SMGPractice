@@ -225,9 +225,13 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	{
 		condition = std::make_unique<ActionCondition_TargetPositionArrive>(conditionArgs);
 	}
+	else if (conditionTypeString == "StageVariable")
+	{
+		condition = std::make_unique<ActionCondition_StageVariable>(conditionArgs);
+	}
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 18, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 19, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -595,4 +599,19 @@ bool ActionCondition_TargetPositionArrive::checkCondition(const Actor& actor) co
 {
 	using namespace MathHelper;
 	return equal(length(sub(actor.getTargetPosition(), actor.getPosition())), 0.f);
+}
+
+ActionCondition_StageVariable::ActionCondition_StageVariable(const std::string& args)
+{
+	bool rv = D3DUtil::parseComparison(args, _variableName, _operator, _value);
+	if (!rv)
+	{
+		ThrowErrCode(ErrCode::ActionChartLoadFail, args);
+	}
+}
+
+bool ActionCondition_StageVariable::checkCondition(const Actor& actor) const noexcept
+{
+	int variable = SMGFramework::getStageManager()->getStageScriptVariable(_variableName);
+	return D3DUtil::compare(_operator, variable, _value);
 }

@@ -107,6 +107,13 @@ Camera* SMGFramework::getCamera(void) noexcept
 	return _instance->_camera.get();
 }
 
+UserData* SMGFramework::getUserData(void) noexcept
+{
+	check(_instance != nullptr);
+	check(_instance->_userData != nullptr);
+	return _instance->_userData.get();
+}
+
 ButtonState SMGFramework::getButtonInput(const ButtonInputType type) const noexcept
 {
 	return _buttonInput[static_cast<int>(type)];

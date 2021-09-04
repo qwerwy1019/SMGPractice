@@ -44,6 +44,7 @@ public:
 private:
 	float _targetSpeed;
 	float _acceleration;
+	float _moveDirectionOffset;
 	MoveType _moveType;
 };
 
@@ -193,4 +194,16 @@ public:
 	virtual FrameEventType getType() const noexcept override { return FrameEventType::AnimationSpeed; }
 private:
 	float _speed;
+};
+
+class FrameEvent_AddStageVariable : public FrameEvent
+{
+public:
+	FrameEvent_AddStageVariable(const XMLReaderNode& node);
+	virtual ~FrameEvent_AddStageVariable() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::AddStageVariable; }
+private:
+	std::string _variableName;
+	int _value;
 };

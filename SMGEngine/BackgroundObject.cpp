@@ -5,6 +5,7 @@
 #include "D3DApp.h"
 #include "SMGFramework.h"
 #include "ObjectInfo.h"
+#include "StageManager.h"
 
 BackgroundObject::BackgroundObject(const BackgroundObjectInfo& backgroundObjectInfo)
 {
@@ -18,7 +19,10 @@ BackgroundObject::BackgroundObject(const BackgroundObjectInfo& backgroundObjectI
 
 BackgroundObject::~BackgroundObject()
 {
-	SMGFramework::getD3DApp()->removeGameObject(_gameObject);
+	if (!SMGFramework::getStageManager()->isLoading())
+	{
+		SMGFramework::getD3DApp()->removeGameObject(_gameObject);
+	}
 }
 
 void BackgroundObject::setCulled() noexcept

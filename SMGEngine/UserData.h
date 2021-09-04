@@ -10,6 +10,10 @@ public:
 	void increaseLife() noexcept;
 	bool decreaseLife() noexcept;
 
+	uint32_t getStarBit() const noexcept { return _starBit; }
+	uint32_t getCoin() const noexcept { return _coin; }
+	uint32_t getLife() const noexcept { return _life; }
+
 private:
 	static constexpr int COIN_MAX = 100;
 	uint32_t _starBit;

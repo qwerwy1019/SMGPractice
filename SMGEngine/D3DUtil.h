@@ -5,6 +5,7 @@
 #include "TypeGeometry.h"
 #include "Exception.h"
 #include <iomanip>
+#include "TypeCommon.h"
 
 class D3DUtil
 {
@@ -62,7 +63,70 @@ public:
 		}
 		return rv;
 	}
-
+	static bool parseComparison(const std::string& input,
+								std::string& name, 
+								OperatorType& operatorType, 
+								int& value)
+	{
+		int operatorPos = input.find_first_of("<=>");
+		if (operatorPos == std::string::npos)
+		{
+			return false;
+		}
+		if (operatorPos == 0 || operatorPos == (input.length() - 1))
+		{
+			return false;
+		}
+		if (input.at(operatorPos) == '<')
+		{
+			operatorType = OperatorType::Less;
+		}
+		else if (input.at(operatorPos) == '=')
+		{
+			operatorType = OperatorType::Equal;
+		}
+		else if (input.at(operatorPos) == '>')
+		{
+			operatorType = OperatorType::Greater;
+		}
+		else
+		{
+			check(false, "타입 추가시 확인" + input);
+			static_assert(static_cast<int>(OperatorType::Count) == 3, "타입 추가시 확인.");
+		}
+		name = input.substr(0, operatorPos);
+		value = std::stoi(input.substr(operatorPos + 1));
+		return true;
+	}
+	static bool compare(OperatorType operatorType, int lhs, int rhs)
+	{
+		switch (operatorType)
+		{
+			case OperatorType::Less:
+			{
+				return lhs < rhs;
+			}
+			break;
+			case OperatorType::Equal:
+			{
+				return lhs == rhs;
+			}
+			break;
+			case OperatorType::Greater:
+			{
+				return lhs > rhs;
+			}
+			break;
+			case OperatorType::Count:
+			default:
+			{
+				check(false, "타입 추가시 확인");
+				static_assert(static_cast<int>(OperatorType::Count) == 3, "타입 추가시 확인.");
+				return false;
+			}
+			break;
+		}
+	}
 	template <typename T> 
 	static T convertTo(const std::string& str)
 	{

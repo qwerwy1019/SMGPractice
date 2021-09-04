@@ -16,6 +16,7 @@ ActionBranch::ActionBranch(const XMLReaderNode& node)
 	node.loadAttribute("Condition", conditionStrings);
 	
 	std::vector<std::string> conditionTokenized = D3DUtil::tokenizeString(conditionStrings, ' ');
+	_actionConditions.reserve(conditionTokenized.size());
 	for (const auto& c : conditionTokenized)
 	{
 		std::unique_ptr<ActionCondition> condition = ActionCondition::parseConditionString(c);

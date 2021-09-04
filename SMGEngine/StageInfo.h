@@ -35,6 +35,7 @@ public:
 	void loadXmlBackgroundInfo(const XMLReaderNode& node);
 	void loadXmlBackgroundObjectInfo(const XMLReaderNode& node);
 	void loadXmlSpawnInfo(const XMLReaderNode& node);
+	void loadXmlSpawnInfoWithKey(const XMLReaderNode& node);
 	void loadXmlTerrainObjectInfo(const XMLReaderNode& node);
 	void loadXmlGravityPointInfo(const XMLReaderNode& node);
 	void loadXmlLightInfo(const XMLReaderNode& node);
@@ -60,6 +61,9 @@ public:
 
 	const std::vector<std::string>& getEffectFileNames(void) const noexcept;
 	const Path* getPath(int key) const noexcept;
+	const SpawnInfo& getSpawnInfoWithKey(int key) const noexcept;
+	bool checkSpawnInfoWithKey(int key) const noexcept;
+	const std::string& getStageScriptName(void) const noexcept;
 private:
 	std::vector<std::unique_ptr<CameraPoint>> _autoCameraPoints;
 	std::unordered_map<int, std::unique_ptr<CameraPoint>> _triggeredCmeraPoints;
@@ -70,6 +74,7 @@ private:
 	std::unordered_map<int, std::unique_ptr<GravityPoint>> _gravityPoints;
 	std::vector<std::string> _effectFileNames;
 	std::unordered_map<int, std::unique_ptr<Path>> _paths;
+	std::string _stageScriptName;
 
 	DirectX::XMFLOAT4 _ambientLight;
 	DirectX::XMFLOAT3 _backgroundColor;

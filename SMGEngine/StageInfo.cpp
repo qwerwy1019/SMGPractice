@@ -30,8 +30,14 @@ void StageInfo::loadXml(const XMLReaderNode& rootNode)
 	const auto& childNodes = rootNode.getChildNodesWithName();
 	auto childIter = childNodes.end();
 
+	childIter = childNodes.find("StageScript");
+	childIter->second.loadAttribute("Name", _stageScriptName);
+
 	childIter = childNodes.find("SpawnInfo");
 	loadXmlSpawnInfo(childIter->second);
+
+	childIter = childNodes.find("SpawnInfoWithKey");
+	loadXmlSpawnInfoWithKey(childIter->second);
 
 	childIter = childNodes.find("TerrainObjects");
 	loadXmlTerrainObjectInfo(childIter->second);
@@ -84,6 +90,18 @@ void StageInfo::loadXmlSpawnInfo(const XMLReaderNode& node)
 	for (int i = 0; i < childNodes.size(); ++i)
 	{
 		_spawnInfo.emplace_back(childNodes[i]);
+	}
+}
+
+void StageInfo::loadXmlSpawnInfoWithKey(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	_spawnInfoWithKey.reserve(childNodes.size());
+	for (int i = 0; i < childNodes.size(); ++i)
+	{
+		int key;
+		childNodes[i].loadAttribute("Key", key);
+		_spawnInfoWithKey.emplace(key, childNodes[i]);
 	}
 }
 
@@ -205,6 +223,24 @@ const Path* StageInfo::getPath(int key) const noexcept
 		return nullptr;
 	}
 	return it->second.get();
+}
+
+const SpawnInfo& StageInfo::getSpawnInfoWithKey(int key) const noexcept
+{
+	auto it = _spawnInfoWithKey.find(key);
+	check(it != _spawnInfoWithKey.end());
+
+	return it->second;
+}
+
+bool StageInfo::checkSpawnInfoWithKey(int key) const noexcept
+{
+	return _spawnInfoWithKey.find(key) != _spawnInfoWithKey.end();
+}
+
+const std::string& StageInfo::getStageScriptName(void) const noexcept
+{
+	return _stageScriptName;
 }
 
 void StageInfo::loadXmlTerrainObjectInfo(const XMLReaderNode& node)

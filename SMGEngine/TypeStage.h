@@ -21,3 +21,21 @@ enum class GravityPointType
 
 	Count,
 };
+
+enum class StagePhaseFunctionType
+{
+	SpawnActor,
+	RemoveLife,
+	LoadStage,
+	//LoadLastSaveFile,
+
+	Count,
+};
+
+enum class StagePhaseConditionType
+{
+	Variable,
+	UserData,
+
+	Count,
+};

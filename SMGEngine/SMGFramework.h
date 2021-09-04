@@ -21,6 +21,7 @@ public:
 	static CharacterInfoManager* getCharacterInfoManager(void) noexcept;
 	static StageManager* getStageManager(void) noexcept;
 	static Camera* getCamera(void) noexcept;
+	static UserData* getUserData(void) noexcept;
 
 	int Run(void);
 	LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -29,6 +30,7 @@ public:
 	uint32_t getClientHeight(void) const noexcept { return _clientHeight; };
 	HWND getHWnd(void) const noexcept { return _hMainWnd; }
 	const GameTimer& getTimer(void) const noexcept { return _timer; }
+
 private:
 	void initMainWindow();
 	bool isAppPaused(void) const noexcept;

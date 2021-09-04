@@ -15,32 +15,33 @@
 #include "Terrain.h"
 #include "BackgroundObject.h"
 #include "ObjectInfo.h"
+#include "StageScript.h"
 
 StageManager::StageManager()
 	: _sectorSize(100, 100, 100)
 	, _sectorUnitNumber(9, 9, 9)
 	, _actorsBySector(9 * 9 * 9)
+	, _currentPhase(nullptr)
 	, _playerActor(nullptr)
 	, _nextStageName("stage00")
 	, _isLoading(false)
-	, _cameraCount(0)
-	, _cameraIndex(-1)
 {
 }
 
 StageManager::~StageManager()
 {
-	_actorsBySector.clear();
-	_actors.clear();
-	_terrains.clear();
-	_backgroundObjects.clear();
+	// d3dapp relaseItemsForStageLoad 작업 완료시 변경할것 [9/3/2021 qwerw]
+	//_isLoading = true;
+	unloadStage();
 }
 
 void StageManager::loadStage(void)
 {	
-	//SMGFramework::getD3DApp()->releaseItemsForStageLoad();
+	unloadStage();
+
 	SMGFramework::getD3DApp()->prepareCommandQueue();
 	loadStageInfo();
+	loadStageScript();
 	createMap();
 	spawnStageInfoActors();
 
@@ -186,6 +187,11 @@ void StageManager::requestSpawn(SpawnInfo&& spawnInfo) noexcept
 	_requestedSpawnInfos.emplace_back(spawnInfo);
 }
 
+void StageManager::requestSpawnWithKey(int key) noexcept
+{
+	_requestedSpawnKeys.emplace_back(key);
+}
+
 const StageInfo* StageManager::getStageInfo(void) const noexcept
 {
 	return _stageInfo.get();
@@ -324,6 +330,25 @@ int StageManager::sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const n
 	return sectorCoord.x * _sectorUnitNumber.y * _sectorUnitNumber.z + sectorCoord.y * _sectorUnitNumber.z + sectorCoord.z;
 }
 
+void StageManager::loadStageScript(void)
+{
+	check(_stageInfo != nullptr);
+	
+	std::string stageScriptFilePath =
+		"../Resources/XmlFiles/StageScript/" +
+		_stageInfo->getStageScriptName() + ".xml";
+
+	XMLReader xmlStageScript;
+
+	xmlStageScript.loadXMLFile(stageScriptFilePath);
+
+	_stageScript = std::make_unique<StageScript>(xmlStageScript.getRootNode());
+
+	_currentPhase = _stageScript->getStartPhase();
+	_stageScriptVariables = _stageScript->getVariables();
+
+}
+
 DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position) const noexcept
 {
 	check(_sectorSize.x != 0);
@@ -366,7 +391,7 @@ void StageManager::spawnStageInfoActors()
 
 void StageManager::spawnRequested()
 {
-	if (_requestedSpawnInfos.empty())
+	if (_requestedSpawnInfos.empty() && _requestedSpawnKeys.empty())
 	{
 		return;
 	}
@@ -377,6 +402,13 @@ void StageManager::spawnRequested()
 		spawnActor(spawnInfo);
 	}
 	_requestedSpawnInfos.clear();
+
+	for (const auto& spawnKey : _requestedSpawnKeys)
+	{
+		spawnActor(_stageInfo->getSpawnInfoWithKey(spawnKey));
+	}
+	_requestedSpawnKeys.clear();
+
 	SMGFramework::getD3DApp()->executeCommandQueue();
 }
 
@@ -502,26 +534,15 @@ void StageManager::processActorCollisionXXX(int sectorCoord0, int sectorCoord1) 
 
 void StageManager::updateStageScript(void) noexcept
 {
-	throw std::logic_error("The method or operation is not implemented.");
-}
+	check(_currentPhase != nullptr);
 
-void StageManager::setCameraCount(const int count) noexcept
-{
-	_cameraCount = count;
-	if (_cameraCount <= _cameraIndex)
+	_currentPhase->processFunctions();
+	std::string nextPhaseName;
+	bool changePhase = _currentPhase->getNextPhaseName(nextPhaseName);
+	if (changePhase)
 	{
-		_cameraIndex = -1;
+		_currentPhase = _stageScript->getPhase(nextPhaseName);
 	}
-}
-
-int StageManager::getCameraCount() const noexcept
-{
-	return _cameraCount;
-}
-
-int StageManager::getCameraIndex() const noexcept
-{
-	return _cameraIndex;
 }
 
 void StageManager::setCulled(void) noexcept
@@ -538,6 +559,28 @@ void StageManager::setCulled(void) noexcept
 	{
 		actor->setCulled();
 	}
+}
+
+void StageManager::addStageScriptVariable(const std::string& name, int value) noexcept
+{
+	auto it = _stageScriptVariables.find(name);
+	if (it == _stageScriptVariables.end())
+	{
+		check(false, name);
+		return;
+	}
+	it->second += value;
+}
+
+int StageManager::getStageScriptVariable(const std::string& name) const noexcept
+{
+	auto it = _stageScriptVariables.find(name);
+	if (it == _stageScriptVariables.end())
+	{
+		check(false, name);
+		return 0;
+	}
+	return it->second;
 }
 
 void StageManager::createMap(void)
@@ -568,4 +611,23 @@ void StageManager::createMap(void)
 	{
 		SMGFramework::getD3DApp()->loadXMLEffectFile(effectFileName);
 	}
+}
+
+void StageManager::unloadStage() noexcept
+{
+	_terrains.clear();
+	_backgroundObjects.clear();
+	_requestedSpawnInfos.clear();
+	_requestedSpawnKeys.clear();
+	_stageScriptVariables.clear();
+	_stageScript = nullptr;
+	_actorsBySector.clear();
+	_deadActors.clear();
+	_actors.clear();
+	_playerActor = nullptr;
+
+	_stageInfo = nullptr;
+	_actionchartMap.clear();
+	
+	SMGFramework::getD3DApp()->releaseItemsForStageLoad();
 }

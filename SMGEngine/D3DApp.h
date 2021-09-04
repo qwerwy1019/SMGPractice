@@ -119,6 +119,8 @@ public:
 	void createEffectMeshGeometry(void);
 	void setBackgroundColor(const DirectX::XMFLOAT3& color) noexcept;
 	void createRenderItems(GameObject* gameObject, const XMLReaderNode& node);
+
+	void releaseItemsForStageLoad(void) noexcept;
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보
@@ -295,5 +297,6 @@ public:
 	int _animationNameIndexDev = 0;
 private:
 #endif
+public:
 };
 

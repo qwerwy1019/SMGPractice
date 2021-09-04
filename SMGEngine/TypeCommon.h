@@ -73,3 +73,12 @@ enum class CharacterType : uint8_t
 
 	Count,
 };
+
+enum class OperatorType : uint8_t
+{
+	Less,
+	Equal,
+	Greater,
+
+	Count,
+};
