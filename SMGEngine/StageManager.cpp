@@ -30,9 +30,6 @@ StageManager::StageManager()
 
 StageManager::~StageManager()
 {
-	// d3dapp relaseItemsForStageLoad 작업 완료시 변경할것 [9/3/2021 qwerw]
-	//_isLoading = true;
-	unloadStage();
 }
 
 void StageManager::loadStage(void)
@@ -74,6 +71,13 @@ void StageManager::update()
 	killActors();
 	updateStageScript();
 	spawnRequested();
+}
+
+void StageManager::releaseObjects()
+{
+	// d3dapp relaseItemsForStageLoad 작업 완료시 변경할것 [9/3/2021 qwerw]
+	//_isLoading = true;
+	unloadStage();
 }
 
 void StageManager::moveActorXXX(Actor* actor, const DirectX::XMFLOAT3& moveVector) noexcept
@@ -613,7 +617,7 @@ void StageManager::createMap(void)
 	}
 }
 
-void StageManager::unloadStage() noexcept
+void StageManager::unloadStage()
 {
 	_terrains.clear();
 	_backgroundObjects.clear();

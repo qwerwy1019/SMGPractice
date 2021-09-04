@@ -23,6 +23,7 @@ public:
 	~StageManager();
 public:
 	void update();
+	void releaseObjects();
 private:
 	void processActorCollision(void) noexcept;
 	void processActorCollisionXXX(int sectorCoord0, int sectorCoord1) noexcept;
@@ -42,7 +43,7 @@ private:
 	void loadStageInfo();
 	void loadStageScript(void);
 	void createMap(void);
-	void unloadStage() noexcept;
+	void unloadStage();
 
 	// 캐릭터 이동
 public:

@@ -58,6 +58,8 @@ void SMGFramework::Create(HINSTANCE hInstance)
 
 void SMGFramework::Destroy(void)
 {
+	_instance->_stageManager->releaseObjects();
+
 	_instance->_camera = nullptr;
 	_instance->_uiManager = nullptr;
 	_instance->_stageManager = nullptr;
