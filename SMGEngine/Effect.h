@@ -28,6 +28,7 @@ public:
 	ConstantEffectInstance(EffectInstance&& baseInstance) noexcept;
 	float getAlpha(void) const noexcept;
 	void setAlpha(float alpha, TickCount64 blendTick) noexcept;
+	void setPosition(const DirectX::XMFLOAT3& position) noexcept;
 private:
 	float _alphaFrom;
 	float _alphaTo;

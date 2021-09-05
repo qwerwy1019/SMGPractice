@@ -803,6 +803,13 @@ void Actor::setPosition(const DirectX::XMFLOAT3& toPosition) noexcept
 			_verticalSpeed = 0.f;
 		}
 	}
+
+	for (const auto& childEffect : _childEffects)
+	{
+		XMFLOAT3 position = MathHelper::add(_actionChart->getChildEffectOffset(childEffect.first), _position);
+
+		childEffect.second->setPosition(position);
+	}
 }
 
 void Actor::addMoveVector(const DirectX::XMFLOAT3& moveVector) noexcept
@@ -1028,6 +1035,7 @@ void Actor::disableChildEffect(int effectKey) noexcept
 	}
 
 	SMGFramework::getEffectManager()->removeConstantEffectInstance(childEffectInfo._effectName, it->second);
+	_childEffects.erase(it);
 }
 
 void Actor::setChildEffectAlpha(int effectKey, float alpha, TickCount64 blendTick)

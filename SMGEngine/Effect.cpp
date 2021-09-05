@@ -370,3 +370,8 @@ void ConstantEffectInstance::setAlpha(float alpha, TickCount64 blendTick) noexce
 	_alphaFrom = currentAlpha;
 	_alphaTo = alpha;
 }
+
+void ConstantEffectInstance::setPosition(const DirectX::XMFLOAT3& position) noexcept
+{
+	_position = position;
+}

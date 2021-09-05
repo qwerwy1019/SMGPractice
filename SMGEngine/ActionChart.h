@@ -56,6 +56,7 @@ public:
 	void processCollisionHandlers(Actor& selfActor, const Actor& targetActor, CollisionCase collisionCase) const noexcept;
 	const std::unordered_map<std::string, int>& getVariables(void) const noexcept;
 	bool getChildEffectInfo(int key, ChildEffectInfo& outInfo) const noexcept;
+	const DirectX::XMFLOAT3 getChildEffectOffset(int key) const noexcept;
 private:
 	void loadXMLActionStates(const XMLReaderNode& node);
 	void loadXMLCollisionHandlers(const XMLReaderNode& node);

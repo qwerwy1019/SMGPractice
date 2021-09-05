@@ -119,6 +119,13 @@ bool ActionChart::getChildEffectInfo(int key, ChildEffectInfo& outInfo) const no
 	return true;
 }
 
+const DirectX::XMFLOAT3 ActionChart::getChildEffectOffset(int key) const noexcept
+{
+	auto it = _childEffects.find(key);
+	check(it != _childEffects.end());
+	return it->second._positionOffset;
+}
+
 void ActionChart::loadXMLActionStates(const XMLReaderNode& node)
 {
 	const auto& actionStates = node.getChildNodes();
