@@ -207,3 +207,38 @@ private:
 	std::string _variableName;
 	int _value;
 };
+
+class FrameEvent_EnableEffect : public FrameEvent
+{
+public:
+	FrameEvent_EnableEffect(const XMLReaderNode& node);
+	virtual ~FrameEvent_EnableEffect() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::EnableEffect; }
+private:
+	int _effectKey;
+};
+
+class FrameEvent_DisableEffect : public FrameEvent
+{
+public:
+	FrameEvent_DisableEffect(const XMLReaderNode& node);
+	virtual ~FrameEvent_DisableEffect() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::DisableEffect; }
+private:
+	int _effectKey;
+};
+
+class FrameEvent_SetEffectAlpha : public FrameEvent
+{
+public:
+	FrameEvent_SetEffectAlpha(const XMLReaderNode& node);
+	virtual ~FrameEvent_SetEffectAlpha() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::SetEffectAlpha; }
+private:
+	TickCount64 _blendTick;
+	int _effectKey;
+	float _alpha;
+};

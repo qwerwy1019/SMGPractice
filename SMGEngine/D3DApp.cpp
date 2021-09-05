@@ -523,8 +523,8 @@ void D3DApp::Update(void)
 	updatePassConstantBuffer();
 	updateShadowPassConstantBuffer();
 	updateMaterialConstantBuffer();
-	_effectManager->update();
-	_effectManager->updateEffectInstanceData(_frameResources[_frameIndex].get());
+
+	SMGFramework::getEffectManager()->updateEffectInstanceData(_frameResources[_frameIndex].get());
 }
 
 void D3DApp::Draw(void)
@@ -1275,7 +1275,7 @@ void D3DApp::drawEffects(void)
 {
 	_commandList->SetPipelineState(_pipelineStateObjectMap[PSOType::Effect].Get());
 
-	auto meshGeometry = _effectManager->getMeshGeometry();
+	auto meshGeometry = SMGFramework::getEffectManager()->getMeshGeometry();
 	D3D12_VERTEX_BUFFER_VIEW vbv = meshGeometry->getVertexBufferView();
 	_commandList->IASetVertexBuffers(0, 1, &vbv);
 	D3D12_INDEX_BUFFER_VIEW ibv = meshGeometry->getIndexBufferView();
@@ -1287,7 +1287,7 @@ void D3DApp::drawEffects(void)
 	const auto& subMesh = meshGeometry->_subMeshList[0];
 	_commandList->DrawIndexedInstanced(
 		subMesh._indexCount,
-		_effectManager->getInstanceCount(),
+		SMGFramework::getEffectManager()->getInstanceCount(),
 		subMesh._baseIndexLoacation,
 		subMesh._baseVertexLoaction,
 		0);
@@ -1361,30 +1361,6 @@ void D3DApp::setLight(const std::vector<Light>& lights, const DirectX::XMFLOAT4&
 	}
 	_passConstants._ambientLight = ambientLight;
 	updateShadowTransform();
-}
-
-void D3DApp::addEffectInstance(const std::string& effectName, EffectInstance&& instance) noexcept
-{
-	check(_effectManager != nullptr);
-
-	return _effectManager->addEffectInstance(effectName, std::move(instance));
-}
-
-bool D3DApp::hasEffect(const std::string& effectName) const noexcept
-{
-	return _effectManager->hasEffect(effectName);
-}
-
-void D3DApp::loadXMLEffectFile(const std::string& effectFileName)
-{
-	check(_effectManager != nullptr);
-	_effectManager->loadXML(effectFileName);
-}
-
-void D3DApp::createEffectMeshGeometry(void)
-{
-	check(_effectManager != nullptr);
-	_effectManager->createEffectMeshGeometry();
 }
 
 void D3DApp::setBackgroundColor(const DirectX::XMFLOAT3& color) noexcept
@@ -1873,7 +1849,6 @@ bool D3DApp::Initialize(void)
 {
 	initDirect3D();
 	initDirect2D();
-	_effectManager = make_unique<EffectManager>();
 
 	OnResize();
 

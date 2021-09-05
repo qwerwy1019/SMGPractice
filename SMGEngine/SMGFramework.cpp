@@ -8,6 +8,7 @@
 #include "CharacterInfoManager.h"
 #include "Camera.h"
 #include "UserData.h"
+#include "Effect.h"
 
 SMGFramework::SMGFramework(HINSTANCE hInstance)
 	: _clientWidth(1280)
@@ -50,6 +51,7 @@ void SMGFramework::Create(HINSTANCE hInstance)
 	_instance->_uiManager = std::make_unique<UIManager>();
 	_instance->_camera = std::make_unique<Camera>();
 	_instance->_userData = std::make_unique<UserData>();
+	_instance->_effectManager = std::make_unique<EffectManager>();
 
 	_instance->_stageManager->loadStage();
 	_instance->_uiManager->loadUI();
@@ -60,6 +62,7 @@ void SMGFramework::Destroy(void)
 {
 	_instance->_stageManager->releaseObjects();
 
+	_instance->_effectManager = nullptr;
 	_instance->_camera = nullptr;
 	_instance->_uiManager = nullptr;
 	_instance->_stageManager = nullptr;
@@ -114,6 +117,13 @@ UserData* SMGFramework::getUserData(void) noexcept
 	check(_instance != nullptr);
 	check(_instance->_userData != nullptr);
 	return _instance->_userData.get();
+}
+
+EffectManager* SMGFramework::getEffectManager(void) noexcept
+{
+	check(_instance != nullptr);
+	check(_instance->_effectManager != nullptr);
+	return _instance->_effectManager.get();
 }
 
 ButtonState SMGFramework::getButtonInput(const ButtonInputType type) const noexcept
@@ -267,10 +277,10 @@ int SMGFramework::Run(void)
 				{
 					_stageManager->update();
 					_camera->update();
+					_effectManager->update();
 					_d3dApp->Update();
 					_d3dApp->Draw();
 				}
-
 
 				Sleep(10);
 			}

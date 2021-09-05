@@ -22,8 +22,6 @@ class UIManager;
 class Actor;
 class GameObject;
 class ShadowMap;
-class EffectManager;
-struct EffectInstance;
 
 // 정점 관련
 static constexpr size_t VERTEX_INPUT_DESC_SIZE = 3;
@@ -113,10 +111,6 @@ public:
 	//const DirectX::XMFLOAT4X4& getInverseViewMatrix(void) const noexcept;
 	bool XM_CALLCONV checkCulled(const DirectX::BoundingBox& box, FXMMATRIX world) const noexcept;
 	void setLight(const std::vector<Light>& lights, const DirectX::XMFLOAT4& ambientLight) noexcept;
-	void addEffectInstance(const std::string& effectName, EffectInstance&& instance) noexcept;
-	bool hasEffect(const std::string& effectName) const noexcept;
-	void loadXMLEffectFile(const std::string& effectFileName);
-	void createEffectMeshGeometry(void);
 	void setBackgroundColor(const DirectX::XMFLOAT3& color) noexcept;
 	void createRenderItems(GameObject* gameObject, const XMLReaderNode& node);
 
@@ -271,7 +265,6 @@ private:
 
 	//WComPtr<ID3D11DeviceContext3> _immediateContext;
 	WComPtr<ID3D11DeviceContext> _d3d11Context;
-	unique_ptr<EffectManager> _effectManager;
 
 	//_resourceManager : 스테이지매니저가 요청한 자료들을 로드/언로드한다. 멀티스레드 적용이 되었으면 좋겠음.
 	//_stageManager : 스테이지를 불러오고, 오브젝트를 배치한다.

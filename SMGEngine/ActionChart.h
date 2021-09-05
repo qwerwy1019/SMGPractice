@@ -38,6 +38,13 @@ private:
 	TickCount64 _blendTick;
 };
 
+struct ChildEffectInfo
+{
+	std::string _effectName;
+	DirectX::XMFLOAT3 _positionOffset;
+	float _size;
+};
+
 class ActionChart
 {
 public:
@@ -48,8 +55,15 @@ public:
 	void checkValid(void) const;
 	void processCollisionHandlers(Actor& selfActor, const Actor& targetActor, CollisionCase collisionCase) const noexcept;
 	const std::unordered_map<std::string, int>& getVariables(void) const noexcept;
+	bool getChildEffectInfo(int key, ChildEffectInfo& outInfo) const noexcept;
+private:
+	void loadXMLActionStates(const XMLReaderNode& node);
+	void loadXMLCollisionHandlers(const XMLReaderNode& node);
+	void loadXMLVariables(const XMLReaderNode& node);
+	void loadXMLChildEffects(const XMLReaderNode& node);
 private:
 	std::unordered_map<std::string, std::unique_ptr<ActionState>> _actionStates;
 	std::vector<std::unique_ptr<CollisionHandler>> _collisionHandlers;
 	std::unordered_map<std::string, int> _variables;
+	std::unordered_map<int, ChildEffectInfo> _childEffects;
 };

@@ -8,6 +8,7 @@ class StageManager;
 class CharacterInfoManager;
 class Camera;
 class UserData;
+class EffectManager;
 
 class SMGFramework
 {
@@ -22,6 +23,7 @@ public:
 	static StageManager* getStageManager(void) noexcept;
 	static Camera* getCamera(void) noexcept;
 	static UserData* getUserData(void) noexcept;
+	static EffectManager* getEffectManager(void) noexcept;
 
 	int Run(void);
 	LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -59,6 +61,7 @@ private:
 	std::unique_ptr<StageManager> _stageManager;
 	std::unique_ptr<CharacterInfoManager> _characterInfoManager;
 	std::unique_ptr<Camera> _camera;
+	std::unique_ptr<EffectManager> _effectManager;
 
 	std::unique_ptr<UserData> _userData;
 

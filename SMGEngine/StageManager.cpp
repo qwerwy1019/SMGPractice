@@ -16,6 +16,7 @@
 #include "BackgroundObject.h"
 #include "ObjectInfo.h"
 #include "StageScript.h"
+#include "Effect.h"
 
 StageManager::StageManager()
 	: _sectorSize(100, 100, 100)
@@ -609,11 +610,11 @@ void StageManager::createMap(void)
 		_terrains.emplace_back(terrainObjectInfo);
 	}
 	
-	SMGFramework::getD3DApp()->createEffectMeshGeometry();
+	SMGFramework::getEffectManager()->createEffectMeshGeometry();
 	const auto& effectFileNames = _stageInfo->getEffectFileNames();
 	for (const auto& effectFileName : effectFileNames)
 	{
-		SMGFramework::getD3DApp()->loadXMLEffectFile(effectFileName);
+		SMGFramework::getEffectManager()->loadXML(effectFileName);
 	}
 }
 

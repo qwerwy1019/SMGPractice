@@ -44,35 +44,17 @@ ActionChart::ActionChart(const XMLReaderNode& node)
 {
 	const auto& childNodes = node.getChildNodesWithName();
 	auto childIter = childNodes.find("ActionStates");
-	const auto& actionStates = childIter->second.getChildNodes();
-	for (const auto& actionState : actionStates)
-	{
-		auto it = _actionStates.emplace(actionState.getNodeName(), std::make_unique<ActionState>(actionState));
-		if (it.second == false)
-		{
-			ThrowErrCode(ErrCode::ActionChartLoadFail, actionState.getNodeName());
-		}
-	}
+	loadXMLActionStates(childIter->second);
+	
 	childIter = childNodes.find("CollisionHandlers");
-	const auto& collisionHandlers = childIter->second.getChildNodes();
-	for (const auto& collisionHandler : collisionHandlers)
-	{
-		_collisionHandlers.emplace_back(std::make_unique<CollisionHandler>(collisionHandler));
-	}
+	loadXMLCollisionHandlers(childIter->second);
+
 	childIter = childNodes.find("Variables");
-	const auto& variables = childIter->second.getChildNodes();
-	for (const auto& variable : variables)
-	{
-		std::string name;
-		variable.loadAttribute("Name", name);
-		int value;
-		variable.loadAttribute("Value", value);
-		auto it = _variables.emplace(name, value);
-		if (it.second == false)
-		{
-			ThrowErrCode(ErrCode::ActionChartLoadFail, name);
-		}
-	}
+	loadXMLVariables(childIter->second);
+	
+	childIter = childNodes.find("ChildEffects");
+	loadXMLChildEffects(childIter->second);
+
 	checkValid();
 }
 
@@ -123,6 +105,74 @@ void ActionChart::processCollisionHandlers(Actor& selfActor, const Actor& target
 const std::unordered_map<std::string, int>& ActionChart::getVariables(void) const noexcept
 {
 	return _variables;
+}
+
+bool ActionChart::getChildEffectInfo(int key, ChildEffectInfo& outInfo) const noexcept
+{
+	auto it = _childEffects.find(key);
+	if (it == _childEffects.end())
+	{
+		check(false, std::to_string(key));
+		return false;
+	}
+	outInfo = it->second;
+	return true;
+}
+
+void ActionChart::loadXMLActionStates(const XMLReaderNode& node)
+{
+	const auto& actionStates = node.getChildNodes();
+	for (const auto& actionState : actionStates)
+	{
+		auto it = _actionStates.emplace(actionState.getNodeName(), std::make_unique<ActionState>(actionState));
+		if (it.second == false)
+		{
+			ThrowErrCode(ErrCode::ActionChartLoadFail, actionState.getNodeName());
+		}
+	}
+}
+
+void ActionChart::loadXMLCollisionHandlers(const XMLReaderNode& node)
+{
+	const auto& collisionHandlers = node.getChildNodes();
+	for (const auto& collisionHandler : collisionHandlers)
+	{
+		_collisionHandlers.emplace_back(std::make_unique<CollisionHandler>(collisionHandler));
+	}
+}
+
+void ActionChart::loadXMLVariables(const XMLReaderNode& node)
+{
+	const auto& variables = node.getChildNodes();
+	for (const auto& variable : variables)
+	{
+		std::string name;
+		variable.loadAttribute("Name", name);
+		int value;
+		variable.loadAttribute("Value", value);
+		auto it = _variables.emplace(name, value);
+		if (it.second == false)
+		{
+			ThrowErrCode(ErrCode::ActionChartLoadFail, name);
+		}
+	}
+}
+
+void ActionChart::loadXMLChildEffects(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	_childEffects.reserve(childNodes.size());
+	for (const auto& childNode : childNodes)
+	{
+		int key;
+		ChildEffectInfo effectInfo;
+		childNode.loadAttribute("Key", key);
+		childNode.loadAttribute("EffectName", effectInfo._effectName);
+		childNode.loadAttribute("Position", effectInfo._positionOffset);
+		childNode.loadAttribute("Size", effectInfo._size);
+
+		_childEffects.emplace(key, effectInfo);
+	}
 }
 
 ActionState::ActionState(const XMLReaderNode& node)

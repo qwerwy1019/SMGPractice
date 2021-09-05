@@ -111,9 +111,21 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_AddStageVariable>(node);
 	}
+	else if (typeString == "EnableEffect")
+	{
+		return std::make_unique<FrameEvent_EnableEffect>(node);
+	}
+	else if (typeString == "DisableEffect")
+	{
+		return std::make_unique<FrameEvent_DisableEffect>(node);
+	}
+	else if (typeString == "SetEffectAlpha")
+	{
+		return std::make_unique<FrameEvent_SetEffectAlpha>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 15, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 18, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -265,7 +277,10 @@ FrameEvent_Effect::FrameEvent_Effect(const XMLReaderNode& node)
 	node.loadAttribute("Position", _positionOffset);
 	node.loadAttribute("Size", _size);
 
-	check(SMGFramework::getD3DApp()->hasEffect(_effectName), _effectName);
+	if (!SMGFramework::getEffectManager()->hasTemporaryEffect(_effectName))
+	{
+		ThrowErrCode(ErrCode::ActionChartLoadFail, _effectName);
+	}
 }
 
 void FrameEvent_Effect::process(Actor& actor) const noexcept
@@ -276,7 +291,7 @@ void FrameEvent_Effect::process(Actor& actor) const noexcept
 	XMStoreFloat3(&position, offsetWorld);
 
 	EffectInstance instance(position, _size);
-	SMGFramework::getD3DApp()->addEffectInstance(_effectName, std::move(instance));
+	SMGFramework::getEffectManager()->addTemporaryEffectInstance(_effectName, std::move(instance));
 }
 
 FrameEvent_SetVariable::FrameEvent_SetVariable(const XMLReaderNode& node)
@@ -414,4 +429,39 @@ FrameEvent_AddStageVariable::FrameEvent_AddStageVariable(const XMLReaderNode& no
 void FrameEvent_AddStageVariable::process(Actor& actor) const noexcept
 {
 	SMGFramework::getStageManager()->addStageScriptVariable(_variableName, _value);
+}
+
+FrameEvent_EnableEffect::FrameEvent_EnableEffect(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("EffectKey", _effectKey);
+}
+
+void FrameEvent_EnableEffect::process(Actor& actor) const noexcept
+{
+	actor.enableChildEffect(_effectKey);
+}
+
+FrameEvent_DisableEffect::FrameEvent_DisableEffect(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("EffectKey", _effectKey);
+}
+
+void FrameEvent_DisableEffect::process(Actor& actor) const noexcept
+{
+	actor.disableChildEffect(_effectKey);
+}
+
+FrameEvent_SetEffectAlpha::FrameEvent_SetEffectAlpha(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("EffectKey", _effectKey);
+	node.loadAttribute("BlendTick", _blendTick);
+	node.loadAttribute("Alpha", _alpha);
+}
+
+void FrameEvent_SetEffectAlpha::process(Actor& actor) const noexcept
+{
+	actor.setChildEffectAlpha(_effectKey, _alpha, _blendTick);
 }

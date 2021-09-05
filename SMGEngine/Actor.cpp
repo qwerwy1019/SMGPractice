@@ -14,6 +14,7 @@
 #include "Camera.h"
 #include "Path.h"
 #include "ObjectInfo.h"
+#include "Effect.h"
 
 Actor::Actor(const SpawnInfo& spawnInfo)
 	: _position(spawnInfo.getPosition())
@@ -62,16 +63,15 @@ Actor::Actor(const SpawnInfo& spawnInfo)
 	
 	_gameObject = SMGFramework::getD3DApp()->createObjectFromXML(_characterInfo->getObjectFileName());
 
+	_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(_position);
+	_sectorCoord = SMGFramework::getStageManager()->getSectorCoord(_position);
+	updateObjectWorldMatrix();
 	setActionState("IDLE");
-
 	if (_currentActionState == nullptr)
 	{
 		ThrowErrCode(ErrCode::ActionChartLoadFail, "기본액션 IDLE이 없습니다. " + _characterInfo->getActionChartFileName());
 	}
 
-	_gravityPoint = SMGFramework::getStageManager()->getGravityPointAt(_position);
-	_sectorCoord = SMGFramework::getStageManager()->getSectorCoord(_position);
-	updateObjectWorldMatrix();
 }
 
 Actor::~Actor()
@@ -984,6 +984,61 @@ void Actor::setTargetPosition(const DirectX::XMFLOAT3& position) noexcept
 const DirectX::XMFLOAT3& Actor::getTargetPosition(void) const noexcept
 {
 	return _targetPosition;
+}
+
+void Actor::enableChildEffect(int effectKey) noexcept
+{
+	auto it = _childEffects.find(effectKey);
+	if (it != _childEffects.end())
+	{
+		return;
+	}
+
+	ChildEffectInfo childEffectInfo;
+	bool success = _actionChart->getChildEffectInfo(effectKey, childEffectInfo);
+	if (!success)
+	{
+		return;
+	}
+	
+	XMFLOAT3 position = MathHelper::add(childEffectInfo._positionOffset, _position);
+	EffectInstance instance(position, _size * childEffectInfo._size);
+	auto instancePtr = SMGFramework::getEffectManager()->addConstantEffectInstance(childEffectInfo._effectName, std::move(instance));
+	if (instancePtr == nullptr)
+	{
+		return;
+	}
+
+	_childEffects.emplace(effectKey, instancePtr);
+}
+
+void Actor::disableChildEffect(int effectKey) noexcept
+{
+	auto it = _childEffects.find(effectKey);
+	if (it == _childEffects.end())
+	{
+		return;
+	}
+
+	ChildEffectInfo childEffectInfo;
+	bool success = _actionChart->getChildEffectInfo(effectKey, childEffectInfo);
+	if (!success)
+	{
+		return;
+	}
+
+	SMGFramework::getEffectManager()->removeConstantEffectInstance(childEffectInfo._effectName, it->second);
+}
+
+void Actor::setChildEffectAlpha(int effectKey, float alpha, TickCount64 blendTick)
+{
+	auto it = _childEffects.find(effectKey);
+	if (it == _childEffects.end())
+	{
+		check(false);
+		return;
+	}
+	it->second->setAlpha(alpha, blendTick);
 }
 
 float Actor::getResistanceDistance(const Actor& selfActor, const Actor& targetActor) noexcept

@@ -9,6 +9,7 @@ class SpawnInfo;
 struct GravityPoint;
 class GameObject;
 class Path;
+class ConstantEffectInstance;
 
 class Actor
 {
@@ -86,6 +87,8 @@ public:
 	bool isCollisionOn(void) const noexcept;
 	void setTargetPosition(const DirectX::XMFLOAT3& position) noexcept;
 	const DirectX::XMFLOAT3& getTargetPosition(void) const noexcept;
+	void enableChildEffect(int effectKey) noexcept;
+	void disableChildEffect(int effectKey) noexcept;
 private:
 	DirectX::XMFLOAT3 _position;
 	//DirectX::XMFLOAT4 _rotationQuat;
@@ -135,6 +138,10 @@ private:
 	bool _isCollisionOn;
 
 	bool _onGround;
+
+	std::unordered_map<int, ConstantEffectInstance*> _childEffects;
+public:
+	void setChildEffectAlpha(int effectKey, float alpha, TickCount64 blendTick);
 };
 
 class PlayerActor : public Actor

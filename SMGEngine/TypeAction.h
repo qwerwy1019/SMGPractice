@@ -43,6 +43,9 @@ enum class FrameEventType
 	TargetPosition,
 	AnimationSpeed,
 	AddStageVariable,
+	EnableEffect,
+	DisableEffect,
+	SetEffectAlpha,
 
 	Count,
 };
