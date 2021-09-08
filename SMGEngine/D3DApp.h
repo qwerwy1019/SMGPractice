@@ -101,6 +101,7 @@ public:
 	ID2D1DeviceContext2* getD2dContext(void) const noexcept { return _d2dContext.Get(); }
 	IDWriteTextFormat* getTextFormat(TextFormatType type) const noexcept { return _textFormats[static_cast<int>(type)].Get(); }
 	ID2D1Brush* getTextBrush(TextBrushType type)const noexcept { return _textBrushes[static_cast<int>(type)].Get(); }
+	ID2D1Bitmap* loadBitmapImage(const std::string& resourceName);
 
 	void prepareCommandQueue(void);
 	void executeCommandQueue(void);
@@ -262,6 +263,9 @@ private:
 	WComPtr<IDWriteFactory3> _writeFactory;
 	std::array<WComPtr<IDWriteTextFormat>, static_cast<int>(TextFormatType::Count)> _textFormats;
 	std::array<WComPtr<ID2D1Brush>, static_cast<int>(TextBrushType::Count)> _textBrushes;
+
+	WComPtr<IWICImagingFactory> _wicImageFactory;
+	std::unordered_map<std::string, WComPtr<ID2D1Bitmap>> _bitmapImages;
 
 	//WComPtr<ID3D11DeviceContext3> _immediateContext;
 	WComPtr<ID3D11DeviceContext> _d3d11Context;

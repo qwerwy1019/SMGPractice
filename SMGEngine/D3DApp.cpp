@@ -7,6 +7,7 @@
 #include <limits>
 #include <Windows.h>
 #include <windowsx.h>
+#include <wincodec.h>
 #include "DirectX/DDSTextureLoader12.h"
 #include "MathHelper.h"
 #include <DirectXColors.h>
@@ -238,13 +239,18 @@ void D3DApp::initDirect2D(void)
 {
 	D2D1_FACTORY_OPTIONS options;
 	options.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
-	D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, options, _d2dFactory.GetAddressOf());
-
+	ThrowIfFailed(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, options, _d2dFactory.GetAddressOf()));
+	ThrowIfFailed(CoCreateInstance(
+		CLSID_WICImagingFactory,
+		nullptr,
+		CLSCTX_INPROC_SERVER,
+		IID_PPV_ARGS(_wicImageFactory.GetAddressOf())
+	));
 	WComPtr<IDXGIDevice> deviceDxgi;
 	WComPtr<ID3D11Device> deviceD3d11;
 
 	unsigned __int32 DeviceFlags = ::D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-	D3D11On12CreateDevice(_deviceD3d12.Get(),
+	ThrowIfFailed(D3D11On12CreateDevice(_deviceD3d12.Get(),
 		DeviceFlags,
 		nullptr, 
 		0, 
@@ -253,7 +259,7 @@ void D3DApp::initDirect2D(void)
 		0x00000001,
 		&deviceD3d11,
 		&_d3d11Context, 
-		nullptr);
+		nullptr));
 
 	ThrowIfFailed(deviceD3d11.As(&_deviceD3d11On12));
 
@@ -265,16 +271,49 @@ void D3DApp::initDirect2D(void)
 	ThrowIfFailed(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), (IUnknown**)&_writeFactory));
 
 	{
-		ThrowIfFailed(_writeFactory->CreateTextFormat(L"굴림체", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
+		ThrowIfFailed(_writeFactory->CreateTextFormat(L"Righteous", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
 			DWRITE_FONT_STYLE_NORMAL,
 			DWRITE_FONT_STRETCH_NORMAL,
-			13.f,
+			36.f,
 			L"ko-KR",
 			&_textFormats[0]));
 		ThrowIfFailed(_textFormats[0]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
 		ThrowIfFailed(_textFormats[0]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
+
+		ThrowIfFailed(_writeFactory->CreateTextFormat(L"Righteous", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			36.f,
+			L"ko-KR",
+			&_textFormats[static_cast<int>(TextFormatType::Normal)]));
+		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::Normal)]->SetTextAlignment(
+			DWRITE_TEXT_ALIGNMENT_CENTER));
+		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::Normal)]->SetParagraphAlignment(
+			DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
+
+		ThrowIfFailed(_writeFactory->CreateTextFormat(L"Righteous", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			40.f,
+			L"ko-KR",
+			&_textFormats[static_cast<int>(TextFormatType::Points)]));
+		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::Points)]->SetTextAlignment(
+			DWRITE_TEXT_ALIGNMENT_LEADING));
+		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::Points)]->SetParagraphAlignment(
+			DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
+
+		ThrowIfFailed(_writeFactory->CreateTextFormat(L"Righteous", nullptr, DWRITE_FONT_WEIGHT_EXTRA_BOLD,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			40.f,
+			L"ko-KR",
+			&_textFormats[static_cast<int>(TextFormatType::PointsOutline)]));
+		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::PointsOutline)]->SetTextAlignment(
+			DWRITE_TEXT_ALIGNMENT_LEADING));
+		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::PointsOutline)]->SetParagraphAlignment(
+			DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
 	}
-	static_assert(1 == static_cast<int>(TextFormatType::Count), "타입 추가시 작성해야함.");
+	static_assert(3 == static_cast<int>(TextFormatType::Count), "타입 추가시 작성해야함.");
 
 	WComPtr<ID2D1SolidColorBrush> black;
 	WComPtr<ID2D1SolidColorBrush> white;
@@ -1089,14 +1128,10 @@ void D3DApp::createGameObjectDev(Actor* actor)
 		mesh = meshFind->second.get();
 	}
 
-	auto parentObject = const_cast<GameObject*>(actor->getGameObject());
-	auto object = parentObject->_devObjects.emplace_back(
-					std::make_unique<GameObject>(
-						mesh,
-						parentObject->getObjectConstantBufferIndex(),
-						SKINNED_UNDEFINED,
-						nullptr)).get();
-	//GameObject* gameObjectDev = createGameObject(it.first->second.get(), nullptr, SKINNED_UNDEFINED);
+ 	auto parentObject = const_cast<GameObject*>(actor->getGameObject());
+	auto object = createGameObject(mesh, nullptr, SKINNED_UNDEFINED);
+ 	parentObject->_devObjects.emplace_back(object);
+	
 	auto renderItem = make_unique<RenderItem>(
 		object,
 		loadXmlMaterial("devMat", "green"),
@@ -1135,12 +1170,8 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 	auto meshIt = _geometries.emplace("NormalVector" + std::to_string(gameObject->getObjectConstantBufferIndex()),
 		std::make_unique<MeshGeometry>(normalLineMeshData, _deviceD3d12.Get(), _commandList.Get()));
 
-	auto object = gameObject->_devObjects.emplace_back(
-			std::make_unique<GameObject>(
-				meshIt.first->second.get(),
-				gameObject->getObjectConstantBufferIndex(),
-				SKINNED_UNDEFINED,
-				nullptr)).get();
+	auto object = createGameObject(meshIt.first->second.get(), nullptr, SKINNED_UNDEFINED);
+	gameObject->_devObjects.emplace_back(object);
 
 	auto renderItem = make_unique<RenderItem>(
 		object,
@@ -1199,7 +1230,7 @@ void D3DApp::createRenderItems(GameObject* gameObject, const XMLReaderNode& node
 		subMeshNodes[j].loadAttribute("MaterialFile", materialFile);
 		subMeshNodes[j].loadAttribute("MaterialName", materialName);
 		Material* material = loadXmlMaterial(materialFile, materialName);
-		if (gameObject->isSkinnedAnimationObject() && material->getRenderLayer() != RenderLayer::OpaqueSkinned)
+		if ((gameObject->isSkinnedAnimationObject()) != (material->getRenderLayer() == RenderLayer::OpaqueSkinned))
 		{
 			ThrowErrCode(ErrCode::NotSkinnedMaterial, materialFile + "/" + materialName);
 		}
@@ -1954,4 +1985,54 @@ RenderItem::RenderItem(const GameObject* parentObject,
 const SubMeshGeometry& RenderItem::getSubMesh() const noexcept
 {
 	return _parentObject->getMeshGeometry()->_subMeshList[_subMeshIndex];
+}
+
+ID2D1Bitmap* D3DApp::loadBitmapImage(const std::string& resourceName)
+{
+	auto findIt = _bitmapImages.find(resourceName);
+	if (findIt != _bitmapImages.end())
+	{
+		return findIt->second.Get();
+	}
+	WComPtr<IWICBitmapDecoder> decoder = nullptr;
+	WComPtr<IWICBitmapFrameDecode> source = nullptr;
+	unique_ptr<IWICStream> pStream = nullptr;
+	WComPtr<IWICFormatConverter> converter = nullptr;
+	WComPtr<ID2D1Bitmap> outBitmap = nullptr;
+
+	std::wstring fileName;
+	fileName.assign(resourceName.begin(), resourceName.end());
+	fileName = L"../Resources/XmlFiles/Asset/Texture/" + fileName + L".png";
+
+	ThrowIfFailed(_wicImageFactory->CreateDecoderFromFilename(
+		fileName.c_str(),
+		NULL,
+		GENERIC_READ,
+		WICDecodeMetadataCacheOnLoad,
+		decoder.GetAddressOf()
+	), resourceName);
+	ThrowIfFailed(decoder->GetFrame(0, &source));
+	ThrowIfFailed(_wicImageFactory->CreateFormatConverter(&converter));
+
+	ThrowIfFailed(converter->Initialize(
+		source.Get(),
+		GUID_WICPixelFormat32bppPBGRA,
+		WICBitmapDitherTypeNone,
+		nullptr,
+		0.f,
+		WICBitmapPaletteTypeMedianCut
+	));
+
+	_d2dContext->CreateBitmapFromWicBitmap(
+		converter.Get(),
+		nullptr,
+		outBitmap.GetAddressOf()
+	);
+
+	auto it = _bitmapImages.emplace(resourceName, outBitmap);
+	if (it.second == false)
+	{
+		ThrowErrCode(ErrCode::KeyDuplicated, resourceName);
+	}
+	return it.first->second.Get();
 }

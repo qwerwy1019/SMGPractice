@@ -49,6 +49,12 @@ void GameObject::setWorldMatrix(const DirectX::XMFLOAT3& position, const DirectX
 {
 	MathHelper::getWorldMatrix(position, direction, upVector, size, _worldMatrix);
 	_dirtyFrames = FRAME_RESOURCE_COUNT;
+#if defined DEBUG | defined _DEBUG
+	for (const auto& devObject : _devObjects)
+	{
+		devObject->setWorldMatrix(position, direction, upVector, size);
+	}
+#endif
 }
 
 XMVECTOR GameObject::transformLocalToWorld(DirectX::FXMVECTOR vector) const noexcept

@@ -1,8 +1,10 @@
 #pragma once
 #include "TypeD3d.h"
 #include "TypeUI.h"
+#include "TypeCommon.h"
 
 class Material;
+class XMLReaderNode;
 
 
 static constexpr D2D1_BITMAP_PROPERTIES1 bitmapProperty =
@@ -15,40 +17,33 @@ static constexpr D2D1_BITMAP_PROPERTIES1 bitmapProperty =
 
 class UIElement
 {
-	// 나중에 이동생성자로 바꿀예정 [2/16/2021 qwerwy]
 public:
-	UIElement(const std::string& name, const D2D1_POINT_2F& position, const DirectX::XMFLOAT2& size) noexcept;
+	UIElement(const XMLReaderNode& node);
+	UIElement(const std::string& name, const DirectX::XMFLOAT2& position, const DirectX::XMFLOAT2& size) noexcept;
+	virtual UIElementType getType(void) const noexcept = 0;
+	virtual ~UIElement() = default;
 	bool isNameEqual(const std::string& name) const noexcept { return _name == name; }
-	virtual void draw(const D2D1_POINT_2F& parentPosition) const noexcept = 0;
+	virtual void draw(const DirectX::XMFLOAT2& parentPosition) const noexcept = 0;
+	static std::unique_ptr<UIElement> loadXMLUIElement(const XMLReaderNode& node);
 protected:
 	std::string _name;
-	D2D1_POINT_2F _localPosition;
+	DirectX::XMFLOAT2 _localPosition;
 	DirectX::XMFLOAT2 _size;
-};
-
-class UIGroup
-{
-public:
-	UIElement* findElement(const std::string& name) const noexcept;
-	void addElement(std::unique_ptr<UIElement>&& uiElement);
-	void draw(void) const noexcept;
-private:
-	std::vector<std::unique_ptr<UIElement>> _child;
-	//UIElement* _parent;
-
-	D2D1_POINT_2F _position;
-	float _alpha;
 };
 
 class UIElementText : public UIElement
 {
 public:
+	UIElementText(const XMLReaderNode& node);
+	virtual ~UIElementText() = default;
+	virtual UIElementType getType(void) const noexcept override { return UIElementType::Text; }
 	UIElementText(const std::string& name,
-		const D2D1_POINT_2F& position,
+		const DirectX::XMFLOAT2& position,
 		const DirectX::XMFLOAT2& size,
 		TextFormatType formatType,
+		TextBrushType brushType,
 		const std::wstring& text);
-	virtual void draw(const D2D1_POINT_2F& parentPosition) const noexcept override;
+	virtual void draw(const DirectX::XMFLOAT2& parentPosition) const noexcept override;
 	void setText(const std::wstring& text);
 private:
 	WComPtr<IDWriteTextLayout> _textLayout;
@@ -58,13 +53,41 @@ private:
 
 class UIElementImage : public UIElement
 {
-	uint16_t _diffuseSRVHeapIndex;
-	DirectX::XMFLOAT4 _diffuseAlbedo;
-	DirectX::XMFLOAT4 _textureUV;
+public:
+	UIElementImage(const XMLReaderNode& node);
+	virtual ~UIElementImage() = default;
+	virtual UIElementType getType(void) const noexcept override { return UIElementType::Image; }
+	virtual void draw(const DirectX::XMFLOAT2& parentPosition) const noexcept override;
+	void setImage(const std::string& imageName);
+private:
+	ID2D1Bitmap* _bitmapImage;
 };
 
 class UIElementButton : public UIElementImage
 {
+};
+
+class UIGroup
+{
+public:
+	UIGroup(const XMLReaderNode& node);
+	UIElement* findElement(const std::string& name) const noexcept;
+	void update(void);
+	void draw(void) const noexcept;
+	UIFunctionType getUpdateFunctionType(void) const noexcept { return _updateFunctionType; }
+	DirectX::XMFLOAT2 getCurrentPosition(void) const noexcept;
+	void setMove(const DirectX::XMFLOAT2& toPosition,
+				TickCount64 blendTick,
+				InterpolationType interpolationType) noexcept;
+private:
+	std::vector<std::unique_ptr<UIElement>> _child;
+
+	DirectX::XMFLOAT2 _fromPosition;
+	DirectX::XMFLOAT2 _toPosition;
+	TickCount64 _moveBlendTick;
+	TickCount64 _moveBlendStartTick;
+	InterpolationType _moveInterpolationType;
+	UIFunctionType _updateFunctionType;
 };
 
 class UIManager
@@ -72,9 +95,10 @@ class UIManager
 public:
 	UIManager();
 	void drawUI();
-	void loadUI();
-	void updateUI();
-
+	void loadXML(const std::string& fileName);
+	void update();
+	UIGroup* getGroup(const std::string& groupName) noexcept;
 private:
 	std::unordered_map<std::string, std::unique_ptr<UIGroup>> _uiGroups;
+	DirectX::XMFLOAT2 _screenSize;
 };

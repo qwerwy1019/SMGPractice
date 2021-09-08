@@ -59,6 +59,9 @@ void StageInfo::loadXml(const XMLReaderNode& rootNode)
 
 	childIter = childNodes.find("Background");
 	loadXmlBackgroundInfo(childIter->second);
+
+	childIter = childNodes.find("UIInfo");
+	loadXMLUIInfo(childIter->second);
 }
 
 void StageInfo::loadXmlBackgroundInfo(const XMLReaderNode& node)
@@ -243,6 +246,11 @@ const std::string& StageInfo::getStageScriptName(void) const noexcept
 	return _stageScriptName;
 }
 
+const std::vector<std::string>& StageInfo::getUIFileNames(void) const noexcept
+{
+	return _uiFileNames;
+}
+
 void StageInfo::loadXmlTerrainObjectInfo(const XMLReaderNode& node)
 {
 	const auto& childNodes = node.getChildNodes();
@@ -397,6 +405,18 @@ void StageInfo::loadXmlPaths(const XMLReaderNode& node)
 		int key;
 		childNode.loadAttribute("Key", key);
 		_paths.emplace(key, std::make_unique<Path>(childNode));
+	}
+}
+
+void StageInfo::loadXMLUIInfo(const XMLReaderNode& node)
+{
+	const auto& childNodes = node.getChildNodes();
+	for (const auto& childNode : childNodes)
+	{
+		std::string fileName;
+		childNode.loadAttribute("FileName", fileName);
+
+		_uiFileNames.emplace_back(fileName);
 	}
 }
 

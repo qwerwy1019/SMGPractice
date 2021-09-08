@@ -165,6 +165,17 @@ public:
 	}
 
 	template<>
+	void loadAttribute(const std::string& attrName, std::wstring& outValue) const
+	{
+		_bstr_t bstrAttrName = attrName.c_str();
+		_variant_t out = outValue.c_str();
+		ThrowIfFailed(_element->getAttribute(bstrAttrName, &out), attrName);
+
+		USES_CONVERSION;
+		outValue = out.bstrVal;
+	}
+
+	template<>
 	void loadAttribute(const std::string& attrName, DirectX::XMFLOAT2& outValue) const
 	{
 		std::string outString;

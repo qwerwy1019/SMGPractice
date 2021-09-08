@@ -17,6 +17,7 @@
 #include "ObjectInfo.h"
 #include "StageScript.h"
 #include "Effect.h"
+#include "UIManager.h"
 
 StageManager::StageManager()
 	: _sectorSize(100, 100, 100)
@@ -46,6 +47,8 @@ void StageManager::loadStage(void)
 	SMGFramework::getD3DApp()->executeCommandQueue();
 
 	SMGFramework::getD3DApp()->setLight(_stageInfo->getLights(), _stageInfo->getAmbientLight());
+
+	loadUI();
 	_isLoading = false;
 }
 
@@ -333,6 +336,15 @@ void StageManager::killActors(void) noexcept
 int StageManager::sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept
 {
 	return sectorCoord.x * _sectorUnitNumber.y * _sectorUnitNumber.z + sectorCoord.y * _sectorUnitNumber.z + sectorCoord.z;
+}
+
+void StageManager::loadUI()
+{
+	const auto& uiFileNames = _stageInfo->getUIFileNames();
+	for (const auto& uiFileName : uiFileNames)
+	{
+		SMGFramework::getUIManager()->loadXML(uiFileName);
+	}
 }
 
 void StageManager::loadStageScript(void)

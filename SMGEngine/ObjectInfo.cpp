@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ObjectInfo.h"
 #include "FileHelper.h"
+#include "MathHelper.h"
 
 ObjectInfo::ObjectInfo(const XMLReaderNode& node)
 {
@@ -10,8 +11,13 @@ ObjectInfo::ObjectInfo(const XMLReaderNode& node)
 	node.loadAttribute("Size", _size);
 
 	using namespace DirectX;
-	XMStoreFloat3(&_upVector, DirectX::XMVector3Normalize(XMLoadFloat3(&_upVector)));
-	XMStoreFloat3(&_direction, DirectX::XMVector3Normalize(XMLoadFloat3(&_direction)));
+	XMVECTOR upVector = XMVector3Normalize(XMLoadFloat3(&_upVector));
+	XMVECTOR direction = XMVector3Normalize(XMLoadFloat3(&_direction));
+	XMVECTOR right = XMVector3Normalize(XMVector3Cross(upVector, direction));
+	upVector = XMVector3Cross(direction, right);
+
+	XMStoreFloat3(&_upVector, upVector);
+	XMStoreFloat3(&_direction, direction);
 }
 
 ObjectInfo::ObjectInfo(const DirectX::XMFLOAT3& position,

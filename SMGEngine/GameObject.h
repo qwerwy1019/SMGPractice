@@ -53,6 +53,7 @@ private:
 
 #if defined DEBUG | defined _DEBUG
 public:
-	std::vector<std::unique_ptr<GameObject>> _devObjects;
+	std::vector<GameObject*> _devObjects;
 #endif
+public:
 };

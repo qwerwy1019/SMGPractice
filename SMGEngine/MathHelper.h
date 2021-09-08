@@ -4,6 +4,7 @@
 #include "Exception.h"
 #include <DirectXMath.h>
 #include <algorithm>
+#include "TypeCommon.h"
 
 namespace MathHelper
 {
@@ -614,5 +615,42 @@ namespace MathHelper
 		rightVector = -cameraRotateMatrix.r[0];
 		upVector = cameraRotateMatrix.r[1];
 		direction = -cameraRotateMatrix.r[2];
+	}
+
+	static float getInterpolateValue(TickCount64 currentTick,
+									TickCount64 blendStartTick, 
+									TickCount64 blendTick,
+									InterpolationType interpolateType) noexcept
+	{
+		check(blendTick != 0);
+
+		float originalT = std::clamp(static_cast<float>(currentTick - blendStartTick) / blendTick, 0.f, 1.f);
+		switch (interpolateType)
+		{
+			case InterpolationType::Linear:
+			{
+				return originalT;
+			}
+			break;
+			case InterpolationType::Cosine:
+			{
+				return 0.5f - std::cosf(originalT * Pi) / 2.f;
+			}
+			break;
+			case InterpolationType::Shake:
+			{
+				float t = fmodf(originalT, 0.25f);
+				return abs(t - 0.125f) / 0.125f;
+			}
+			break;
+			case InterpolationType::Count:
+			default:
+			{
+				static_assert(static_cast<int>(InterpolationType::Count) == 3);
+				check(false);
+				return 0.f;
+			}
+			break;
+		}
 	}
 };

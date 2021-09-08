@@ -15,6 +15,8 @@
 #include "Camera.h"
 #include "Path.h"
 #include "ObjectInfo.h"
+#include "UIManager.h"
+#include "UIFunction.h"
 
 FrameEvent::FrameEvent(const XMLReaderNode& node)
 {
@@ -123,9 +125,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_SetEffectAlpha>(node);
 	}
+	else if (typeString == "CallUIFunction")
+	{
+		return std::make_unique<FrameEvent_CallUIFunction>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 18, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 19, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -464,4 +470,37 @@ FrameEvent_SetEffectAlpha::FrameEvent_SetEffectAlpha(const XMLReaderNode& node)
 void FrameEvent_SetEffectAlpha::process(Actor& actor) const noexcept
 {
 	actor.setChildEffectAlpha(_effectKey, _alpha, _blendTick);
+}
+
+FrameEvent_CallUIFunction::FrameEvent_CallUIFunction(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("UIGroupName", _uiGroupName);
+
+	std::string functionString;
+	node.loadAttribute("Function", functionString);
+	if (functionString.empty())
+	{
+		_uiFunctionType = UIFunctionType::Count;
+	}
+	else if (functionString == "setHpUI")
+	{
+		_uiFunctionType = UIFunctionType::SetHpUI;
+	}
+	else
+	{
+		ThrowErrCode(ErrCode::UndefinedType, functionString);
+		static_assert(static_cast<int>(UIFunctionType::Count) == 1);
+	}
+}
+
+void FrameEvent_CallUIFunction::process(Actor& actor) const noexcept
+{
+	UIGroup* group = SMGFramework::getUIManager()->getGroup(_uiGroupName);
+	if (group == nullptr)
+	{
+		check(false, _uiGroupName);
+		return;
+	}
+	UIFunction::execute(_uiFunctionType, group);
 }

@@ -82,3 +82,12 @@ enum class OperatorType : uint8_t
 
 	Count,
 };
+
+enum class InterpolationType
+{
+	Linear,
+	Cosine,
+	Shake,
+
+	Count,
+};

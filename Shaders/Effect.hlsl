@@ -53,14 +53,27 @@ void EffectGeoShader(point VertexOut gIn[1],
 	v[2] = float4(gIn[0]._posWorld - halfWidth * right - halfHeight * up, 1.0f);
 	v[3] = float4(gIn[0]._posWorld - halfWidth * right + halfHeight * up, 1.0f);
 
-	float texXUnit = 1.f / instanceData._totalFrame;
-	float texXOffset = texXUnit * instanceData._frame;
+	float texXUnit;
+	float texYUnit;
+	if (instanceData._totalFrame > 8)
+	{
+		texXUnit = 1.f / 8;
+		texYUnit = 1.f / ((instanceData._totalFrame / 8) + 1);
+	}
+	else
+	{
+		texXUnit = 1.f / instanceData._totalFrame;
+		texYUnit = 1.f;
+	}
+
+	float texXOffset = texXUnit * (instanceData._frame % 8);
+	float texYOffset = texYUnit * (instanceData._frame / 8);
 	float2 texCoord[4] =
 	{
-		float2(texXOffset + texXUnit, 1.0f),
-		float2(texXOffset + texXUnit, 0.0f),
-		float2(texXOffset, 1.0f),
-		float2(texXOffset, 0.0f)
+		float2(texXOffset + texXUnit,	texYOffset + texYUnit),
+		float2(texXOffset + texXUnit,	texYOffset),
+		float2(texXOffset,				texYOffset + texYUnit),
+		float2(texXOffset,				texYOffset)
 	};
 
 	GeoOut gOut;

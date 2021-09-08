@@ -1,6 +1,7 @@
 #pragma once
 #include "TypeCommon.h"
 #include "TypeAction.h"
+#include "TypeUI.h"
 class Actor;
 class ActionCondition;
 class XMLReaderNode;
@@ -241,4 +242,16 @@ private:
 	TickCount64 _blendTick;
 	int _effectKey;
 	float _alpha;
+};
+
+class FrameEvent_CallUIFunction : public FrameEvent
+{
+public:
+	FrameEvent_CallUIFunction(const XMLReaderNode& node);
+	virtual ~FrameEvent_CallUIFunction() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::CallUIFunction; }
+private:
+	std::string _uiGroupName;
+	UIFunctionType _uiFunctionType;
 };

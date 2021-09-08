@@ -44,6 +44,7 @@ public:
 	void loadXmlTriggeredCameraInfo(const XMLReaderNode& node);
 	void loadXmlAutoCameraInfo(const XMLReaderNode& node);
 	void loadXmlPaths(const XMLReaderNode& node);
+	void loadXMLUIInfo(const XMLReaderNode& node);
 
 	std::vector<const CameraPoint*> getNearCameraPoints(const DirectX::XMFLOAT3& position) const noexcept;
 	const CameraPoint* getNearestCameraPoint(const DirectX::XMFLOAT3& position) const noexcept;
@@ -64,6 +65,7 @@ public:
 	const SpawnInfo& getSpawnInfoWithKey(int key) const noexcept;
 	bool checkSpawnInfoWithKey(int key) const noexcept;
 	const std::string& getStageScriptName(void) const noexcept;
+	const std::vector<std::string>& getUIFileNames(void) const noexcept;
 private:
 	std::vector<std::unique_ptr<CameraPoint>> _autoCameraPoints;
 	std::unordered_map<int, std::unique_ptr<CameraPoint>> _triggeredCmeraPoints;
@@ -75,6 +77,7 @@ private:
 	std::vector<std::string> _effectFileNames;
 	std::unordered_map<int, std::unique_ptr<Path>> _paths;
 	std::string _stageScriptName;
+	std::vector<std::string> _uiFileNames;
 
 	DirectX::XMFLOAT4 _ambientLight;
 	DirectX::XMFLOAT3 _backgroundColor;

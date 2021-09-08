@@ -9,6 +9,7 @@
 #include "Camera.h"
 #include "UserData.h"
 #include "Effect.h"
+#include "UIFunction.h"
 
 SMGFramework::SMGFramework(HINSTANCE hInstance)
 	: _clientWidth(1280)
@@ -45,6 +46,8 @@ void SMGFramework::Create(HINSTANCE hInstance)
 	_instance = std::make_unique<SMGFramework>(hInstance);
 	_instance->initMainWindow();
 
+	UIFunction::initialize();
+
 	_instance->_d3dApp = std::make_unique<D3DApp>();
 	_instance->_characterInfoManager = std::make_unique<CharacterInfoManager>();
 	_instance->_stageManager = std::make_unique<StageManager>();
@@ -53,8 +56,8 @@ void SMGFramework::Create(HINSTANCE hInstance)
 	_instance->_userData = std::make_unique<UserData>();
 	_instance->_effectManager = std::make_unique<EffectManager>();
 
+
 	_instance->_stageManager->loadStage();
-	_instance->_uiManager->loadUI();
 }
 
 
@@ -276,6 +279,7 @@ int SMGFramework::Run(void)
 				if (_timer.getDeltaTickCount() != 0)
 				{
 					_stageManager->update();
+					_uiManager->update();
 					_camera->update();
 					_effectManager->update();
 					_d3dApp->Update();

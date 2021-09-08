@@ -91,5 +91,6 @@ private:
 	std::string _nextStageName;
 	bool _isLoading;
 	std::unordered_map<std::string, std::unique_ptr<ActionChart>> _actionchartMap;
+	void loadUI();
 };
 

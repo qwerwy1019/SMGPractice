@@ -78,6 +78,13 @@ Actor::~Actor()
 {
 	if (!SMGFramework::getStageManager()->isLoading())
 	{
+#if defined DEBUG | defined _DEBUG
+		for (const auto& devObject : _gameObject->_devObjects)
+		{
+			SMGFramework::getD3DApp()->removeGameObject(devObject);
+		}
+		_gameObject->_devObjects.clear();
+#endif
 		SMGFramework::getD3DApp()->removeGameObject(_gameObject);
 	}
 }
