@@ -487,10 +487,38 @@ FrameEvent_CallUIFunction::FrameEvent_CallUIFunction(const XMLReaderNode& node)
 	{
 		_uiFunctionType = UIFunctionType::SetHpUI;
 	}
+	else if (functionString == "showUI")
+	{
+		_uiFunctionType = UIFunctionType::ShowUI;
+	}
+	else if (functionString == "hideUI")
+	{
+		_uiFunctionType = UIFunctionType::HideUI;
+	}
+	else if (functionString == "shakeUI")
+	{
+		_uiFunctionType = UIFunctionType::ShakeUI;
+	}
+	else if (functionString == "irisOut")
+	{
+		_uiFunctionType = UIFunctionType::IrisOut;
+	}
+	else if (functionString == "irisIn")
+	{
+		_uiFunctionType = UIFunctionType::IrisIn;
+	}
+	else if (functionString == "updateIris")
+	{
+		_uiFunctionType = UIFunctionType::UpdateIris;
+	}
+	else if (functionString == "updateMousePointer")
+	{
+		_uiFunctionType = UIFunctionType::UpdateMousePointer;
+	}
 	else
 	{
 		ThrowErrCode(ErrCode::UndefinedType, functionString);
-		static_assert(static_cast<int>(UIFunctionType::Count) == 1);
+		static_assert(static_cast<int>(UIFunctionType::Count) == 8);
 	}
 }
 

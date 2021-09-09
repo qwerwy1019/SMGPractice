@@ -80,6 +80,11 @@ namespace MathHelper
 		return equal(lhs.x, rhs.x, epsilon) && equal(lhs.y, rhs.y, epsilon) && equal(lhs.z, rhs.z, epsilon);
 	}
 
+	static DirectX::XMFLOAT2 add(const DirectX::XMFLOAT2& lhs, const DirectX::XMFLOAT2& rhs)
+	{
+		return DirectX::XMFLOAT2(lhs.x + rhs.x, lhs.y + rhs.y);
+	}
+
 	static DirectX::XMFLOAT3 add(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs)
 	{
 		return DirectX::XMFLOAT3(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z);
@@ -90,6 +95,11 @@ namespace MathHelper
 		return DirectX::XMFLOAT4(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w);
 	}
 
+	static DirectX::XMFLOAT2 sub(const DirectX::XMFLOAT2& lhs, const DirectX::XMFLOAT2& rhs)
+	{
+		return DirectX::XMFLOAT2(lhs.x - rhs.x, lhs.y - rhs.y);
+	}
+
 	static DirectX::XMFLOAT3 sub(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs)
 	{
 		return DirectX::XMFLOAT3(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z);
@@ -98,6 +108,11 @@ namespace MathHelper
 	static DirectX::XMFLOAT4 sub(const DirectX::XMFLOAT4& lhs, const DirectX::XMFLOAT4& rhs)
 	{
 		return DirectX::XMFLOAT4(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w);
+	}
+
+	static DirectX::XMFLOAT2 mul(const DirectX::XMFLOAT2& lhs, const float rhs)
+	{
+		return DirectX::XMFLOAT2(lhs.x * rhs, lhs.y * rhs);
 	}
 
 	static DirectX::XMFLOAT3 mul(const DirectX::XMFLOAT3& lhs, const float rhs)
@@ -622,8 +637,11 @@ namespace MathHelper
 									TickCount64 blendTick,
 									InterpolationType interpolateType) noexcept
 	{
+		if (blendStartTick + blendTick <= currentTick)
+		{
+			return 1.f;
+		}
 		check(blendTick != 0);
-
 		float originalT = std::clamp(static_cast<float>(currentTick - blendStartTick) / blendTick, 0.f, 1.f);
 		switch (interpolateType)
 		{

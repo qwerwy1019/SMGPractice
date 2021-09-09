@@ -99,6 +99,7 @@ public:
 	// ui 관련
 	IDWriteFactory3* getWriteFactory(void) const noexcept { return _writeFactory.Get(); }
 	ID2D1DeviceContext2* getD2dContext(void) const noexcept { return _d2dContext.Get(); }
+	ID2D1Factory3* getD2dFactory(void) const noexcept { return _d2dFactory.Get(); }
 	IDWriteTextFormat* getTextFormat(TextFormatType type) const noexcept { return _textFormats[static_cast<int>(type)].Get(); }
 	ID2D1Brush* getTextBrush(TextBrushType type)const noexcept { return _textBrushes[static_cast<int>(type)].Get(); }
 	ID2D1Bitmap* loadBitmapImage(const std::string& resourceName);
@@ -267,19 +268,7 @@ private:
 	WComPtr<IWICImagingFactory> _wicImageFactory;
 	std::unordered_map<std::string, WComPtr<ID2D1Bitmap>> _bitmapImages;
 
-	//WComPtr<ID3D11DeviceContext3> _immediateContext;
 	WComPtr<ID3D11DeviceContext> _d3d11Context;
-
-	//_resourceManager : 스테이지매니저가 요청한 자료들을 로드/언로드한다. 멀티스레드 적용이 되었으면 좋겠음.
-	//_stageManager : 스테이지를 불러오고, 오브젝트를 배치한다.
-	//UI는 어떻게 돌아가야 하지?
-	//_audioManager : 사운드쪽
-	//input처리를 보통 어떻게 하지?
-	//UpdateGameObject
-	//UpdateUI
-	//UpdateCamera
-
-	// infoManager를 만들기전까지는 임시로 이렇게 쓴다. [1/26/2021 qwerw]
 
 	unordered_map<string, unique_ptr<BoneInfo>> _boneInfoMap;
 	unordered_map<string, unique_ptr<AnimationInfo>> _animationInfoMap;
@@ -289,9 +278,6 @@ private:
 public:
 	void createGameObjectDev(Actor* actor);
 	void createGameObjectDev(GameObject* gameObject);
-	const std::vector<unique_ptr<SkinnedModelInstance>>& getSkinnedInstanceXXX(void) const noexcept { return _skinnedInstance; }
-	vector<string> _animationNameListDev;
-	int _animationNameIndexDev = 0;
 private:
 #endif
 public:

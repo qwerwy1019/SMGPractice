@@ -86,6 +86,15 @@ EffectManager::EffectManager()
 {
 }
 
+void EffectManager::releaseForStageLoad() noexcept
+{
+	_temporaryEffects.clear();
+	_constantEffects.clear();
+
+	_instanceCount = 0;
+	_mesh = nullptr;
+}
+
 void EffectManager::update() noexcept
 {
 	for (const auto& t : _temporaryEffects)

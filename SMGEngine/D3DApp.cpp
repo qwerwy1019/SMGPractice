@@ -189,13 +189,12 @@ void D3DApp::initDirect3D()
 		debugController->EnableDebugLayer();
 
 		WComPtr<IDXGIInfoQueue> dxgiInfoQueue;
-		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(dxgiInfoQueue.GetAddressOf()))))
-		{
-			dxgiFactoryFlag = DXGI_CREATE_FACTORY_DEBUG;
+		ThrowIfFailed(DXGIGetDebugInterface1(0, IID_PPV_ARGS(dxgiInfoQueue.GetAddressOf())));
 
-			dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true);
-			dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true);
-		}
+		dxgiFactoryFlag = DXGI_CREATE_FACTORY_DEBUG;
+
+		dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true);
+		dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true);
 
 		logAdapters();
 	}
@@ -211,6 +210,18 @@ void D3DApp::initDirect3D()
 		ThrowIfFailed(D3D12CreateDevice(warpAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&_deviceD3d12)));
 	}
 	ThrowIfFailed(_deviceD3d12->CreateFence(_currentFence, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&_fence)));
+#if defined DEBUG | defined _DEBUG
+	WComPtr<ID3D12InfoQueue> d3d12InfoQueue;
+	ThrowIfFailed(_deviceD3d12.As(&d3d12InfoQueue));
+	D3D12_MESSAGE_ID hide[] =
+	{
+		D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE, // d3d d2d clear ¹®Á¦
+	};
+	D3D12_INFO_QUEUE_FILTER filter = {};
+	filter.DenyList.NumIDs = _countof(hide);
+	filter.DenyList.pIDList = hide;
+	ThrowIfFailed(d3d12InfoQueue->AddStorageFilterEntries(&filter));
+#endif
 
 	_rtvDescriptorSize = _deviceD3d12->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	_dsvDescriptorSize = _deviceD3d12->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
@@ -595,6 +606,7 @@ void D3DApp::Draw(void)
 	
 	
 	const float backgroundColor[4] = { _backgroundColor.x, _backgroundColor.y, _backgroundColor.z, 1.f };
+
 	_commandList->ClearRenderTargetView(getCurrentBackBufferView(), backgroundColor, 0, nullptr);
 	_commandList->ClearDepthStencilView(getDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
@@ -1050,9 +1062,6 @@ GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
 		childIter->second.loadAttribute("FileName", animationInfoName);
 		const AnimationInfo* animationInfo = loadXMLAnimationInfo(animationInfoName);
 
-#if defined DEBUG | defined _DEBUG
-		_animationNameListDev = animationInfo->getAnimationNameListDev();
-#endif
 		skinnedInstance = createSkinnedInstance(skinnedConstantBufferIndex, boneInfo, animationInfo);
 	}
 
@@ -1190,17 +1199,27 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 void D3DApp::releaseItemsForStageLoad(void) noexcept
 {
 	flushCommandQueue();
-	//renderItem
-	//gameobject
-	//skinnedinstance
-	//objectCBIndex
-	//skinnedCBIndex
+	Sleep(100);
 
-	//texture
-	//material
-	//boneinfo, animationInfo
-	//effectManager
-	//mesh geometries
+	for (int i = 0; i < static_cast<int>(RenderLayer::Count); ++i)
+	{
+		_renderItems[i].clear();
+	}
+	_gameObjects.clear();
+	_skinnedInstance.clear();
+	_objectCBReturned = std::queue<UINT>();
+	_objectCBIndexCount = 0;
+	_skinnedCBReturned = std::queue<uint16_t>();
+	_skinnedCBIndexCount = 0;
+
+	_textures.clear();
+	_textureIndexMap.clear();
+	_textureLoadedCount = 0;
+	_materials.clear();
+	_boneInfoMap.clear();
+	_animationInfoMap.clear();
+	_geometries.clear();
+	_bitmapImages.clear();
 }
 
 void D3DApp::createRenderItems(GameObject* gameObject, const XMLReaderNode& node)
@@ -1257,7 +1276,6 @@ void D3DApp::drawUI(void)
 
 	_d2dContext->SetTarget(_backBufferBitmap[_currentBackBuffer].Get());
 	_d2dContext->BeginDraw();
-	D2D1_POINT_2F position = { 0.f, 0.f };
 
 	SMGFramework::Get().getUIManager()->drawUI();
 
@@ -1643,7 +1661,6 @@ void D3DApp::buildPipelineStateObject(void)
 	ZeroMemory(&psoDescNormal, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
 	D3D12_RENDER_TARGET_BLEND_DESC blendDesc;
 	D3D12_DEPTH_STENCIL_DESC transparentStencilDesc;
-	D3D12_DEPTH_STENCIL_DESC shadowDesc;
 	D3D12_DEPTH_STENCIL_DESC uiDepthStencilesc;
 
 	// psoDescNormal
@@ -1996,7 +2013,6 @@ ID2D1Bitmap* D3DApp::loadBitmapImage(const std::string& resourceName)
 	}
 	WComPtr<IWICBitmapDecoder> decoder = nullptr;
 	WComPtr<IWICBitmapFrameDecode> source = nullptr;
-	unique_ptr<IWICStream> pStream = nullptr;
 	WComPtr<IWICFormatConverter> converter = nullptr;
 	WComPtr<ID2D1Bitmap> outBitmap = nullptr;
 

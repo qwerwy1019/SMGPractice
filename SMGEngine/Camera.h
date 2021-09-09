@@ -8,6 +8,7 @@ class Camera
 {
 public:
 	Camera();
+	void releaseForStageLoad(void) noexcept;
 	void update() noexcept;
 	const DirectX::XMFLOAT4X4& getViewMatrix(void) const noexcept;
 	const DirectX::XMFLOAT4X4& getInvViewMatrix(void) const noexcept;
@@ -28,12 +29,9 @@ private:
 	// Ä«¸Þ¶ó
 	const CameraPoint* _cameraPoint;
 	DirectX::XMFLOAT3 _cameraBlendPosition;
-	//DirectX::XMFLOAT3 _cameraInputUpVector;
-	//DirectX::XMFLOAT3 _cameraInputDirection;
 	DirectX::XMFLOAT4 _cameraBlendRotationQuat;
 	TickCount64 _blendTick;
 	TickCount64 _currentTick;
-	//int _cameraDataIndexInput;
 	
 	float _cameraPositionSpeed;
 	float _cameraAngleSpeed;

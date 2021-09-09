@@ -19,6 +19,14 @@ enum class TextBrushType : uint8_t
 enum class UIFunctionType
 {
 	SetHpUI,
+	ShowUI,
+	HideUI,
+	ShakeUI,
+	IrisOut,
+	IrisIn,
+	
+	UpdateIris,
+	UpdateMousePointer,
 
 	Count,
 };
@@ -27,6 +35,15 @@ enum class UIElementType
 {
 	Image,
 	Text,
+	Iris,
 	
 	Count,
+};
+
+enum class SideType
+{
+	Left,
+	Right,
+	Up,
+	Down,
 };

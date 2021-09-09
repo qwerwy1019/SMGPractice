@@ -16,10 +16,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 	int rv = 0;
 	try
 	{
+		ThrowIfFailed(::CoInitialize(nullptr));
 		SMGFramework::Create(hInstance);
 
 		rv = SMGFramework::Get().Run();
 		SMGFramework::Destroy();
+		::CoUninitialize();
 	}
 	catch (DxException& e)
 	{

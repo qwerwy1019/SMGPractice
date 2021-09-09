@@ -78,6 +78,7 @@ Actor::~Actor()
 {
 	if (!SMGFramework::getStageManager()->isLoading())
 	{
+		releaseChildEffects();
 #if defined DEBUG | defined _DEBUG
 		for (const auto& devObject : _gameObject->_devObjects)
 		{
@@ -1025,7 +1026,20 @@ void Actor::enableChildEffect(int effectKey) noexcept
 
 	_childEffects.emplace(effectKey, instancePtr);
 }
+void Actor::releaseChildEffects(void) noexcept
+{
+	for (const auto& effect : _childEffects)
+	{
+		ChildEffectInfo childEffectInfo;
+		bool success = _actionChart->getChildEffectInfo(effect.first, childEffectInfo);
+		if (!success)
+		{
+			continue;
+		}
+		SMGFramework::getEffectManager()->removeConstantEffectInstance(childEffectInfo._effectName, effect.second);
 
+	}
+}
 void Actor::disableChildEffect(int effectKey) noexcept
 {
 	auto it = _childEffects.find(effectKey);

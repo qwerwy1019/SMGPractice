@@ -267,7 +267,9 @@ int SMGFramework::Run(void)
 		{
 			if (_stageManager->isLoading())
 			{
+				_timer.Stop();
 				_stageManager->loadStage();
+				_timer.Start();
 			}
 
 			_timer.ProgressTick();
@@ -466,21 +468,8 @@ void SMGFramework::calculateFrameStats(void) noexcept
 		std::wstring mspfStr = std::to_wstring(1000.f / frameCnt);
 
 		std::wstring timePosStr = L"";
-		std::wstring animString = L"";
 
-#if defined DEBUG | defined _DEBUG
-		timePosStr += L"animTime: ";
-		animString += L" name: ";
-		const auto& skinnedInstanceList = _d3dApp->getSkinnedInstanceXXX();
-		if (!skinnedInstanceList.empty())
-		{
-			timePosStr = std::to_wstring(skinnedInstanceList[0]->getLocalTickCount());
-			USES_CONVERSION;
-			animString = A2W(_d3dApp->_animationNameListDev[_d3dApp->_animationNameIndexDev].c_str());
-		}
-#endif
-
-		std::wstring windowText = WINDOW_CAPTION + timePosStr + animString + L" fps: " + fpsStr + L" mspf: " + mspfStr;
+		std::wstring windowText = WINDOW_CAPTION + timePosStr + L" fps: " + fpsStr + L" mspf: " + mspfStr;
 		SetWindowText(_hMainWnd, windowText.c_str());
 
 		frameCnt = 0;
@@ -594,6 +583,8 @@ void SMGFramework::onMouseUp(WPARAM buttonState, int x, int y, ButtonInputType t
 
 void SMGFramework::onMouseMove(WPARAM buttonState, int x, int y) noexcept
 {
+	_isPointerActive = false;
+
 	float dx = DirectX::XMConvertToRadians(0.25f * static_cast<float>(x - _mousePos.x));
 	float dy = DirectX::XMConvertToRadians(0.25f * static_cast<float>(y - _mousePos.y));
 
@@ -618,10 +609,11 @@ void SMGFramework::onMouseMove(WPARAM buttonState, int x, int y) noexcept
 	if((buttonState & MK_LBUTTON) == 0 && (buttonState & MK_RBUTTON) == 0)
 	{
 		setStickInput(StickInputType::Pointer, dx, dy);
+		_isPointerActive = true;
 	}
 
-	_mousePos.x = x;
-	_mousePos.y = y;
+	_mousePos.x = static_cast<float>(x);
+	_mousePos.y = static_cast<float>(y);
 
 #if defined (DEBUG) | defined (_DEBUG)
 	if ((buttonState & MK_RBUTTON) != 0)

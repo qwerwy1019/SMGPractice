@@ -39,6 +39,13 @@ Camera::Camera()
 
 }
 
+void Camera::releaseForStageLoad(void) noexcept
+{
+	_cameraPoint = nullptr;
+	_blendTick = 0;
+	_inputCameraPointKey = -1;
+}
+
 void Camera::update(void) noexcept
 {
 	check(SMGFramework::getStageManager() != nullptr);

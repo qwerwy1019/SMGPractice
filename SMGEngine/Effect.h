@@ -86,6 +86,7 @@ class EffectManager
 {
 public:
 	EffectManager();
+	void releaseForStageLoad() noexcept;
 	void update() noexcept;
 	void createEffectMeshGeometry(void);
 	void loadXML(const std::string& fileName);

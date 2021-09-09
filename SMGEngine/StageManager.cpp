@@ -18,6 +18,7 @@
 #include "StageScript.h"
 #include "Effect.h"
 #include "UIManager.h"
+#include "Camera.h"
 
 StageManager::StageManager()
 	: _sectorSize(100, 100, 100)
@@ -79,8 +80,7 @@ void StageManager::update()
 
 void StageManager::releaseObjects()
 {
-	// d3dapp relaseItemsForStageLoad 작업 완료시 변경할것 [9/3/2021 qwerw]
-	//_isLoading = true;
+	_isLoading = true;
 	unloadStage();
 }
 
@@ -638,6 +638,7 @@ void StageManager::unloadStage()
 	_requestedSpawnKeys.clear();
 	_stageScriptVariables.clear();
 	_stageScript = nullptr;
+	_currentPhase = nullptr;
 	_actorsBySector.clear();
 	_deadActors.clear();
 	_actors.clear();
@@ -645,6 +646,9 @@ void StageManager::unloadStage()
 
 	_stageInfo = nullptr;
 	_actionchartMap.clear();
-	
+
+	SMGFramework::getUIManager()->releaseForStageLoad();
+	SMGFramework::getCamera()->releaseForStageLoad();
+	SMGFramework::getEffectManager()->releaseForStageLoad();
 	SMGFramework::getD3DApp()->releaseItemsForStageLoad();
 }

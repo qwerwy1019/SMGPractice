@@ -6,11 +6,17 @@
 #include "FileHelper.h"
 #include "UIFunction.h"
 #include "MathHelper.h"
+#include <d2d1.h>
 
 
 UIManager::UIManager()
 	: _screenSize(0, 0)
 {
+}
+
+void UIManager::releaseForStageLoad(void) noexcept
+{
+	_uiGroups.clear();
 }
 
 void UIManager::drawUI()
@@ -60,12 +66,16 @@ UIGroup* UIManager::getGroup(const std::string& groupName) noexcept
 }
 
 UIGroup::UIGroup(const XMLReaderNode& node)
-	: _fromPosition(0, 0)
+	: _position(0, 0)
+	, _positionOffsetFrom(0, 0)
+	, _positionOffsetTo(0, 0)
 	, _moveBlendStartTick(0)
 	, _moveBlendTick(0)
+	, _moveInterpolationType(InterpolationType::Count)
+	, _isActive(true)
 {
-	node.loadAttribute("Position", _toPosition);
-
+	node.loadAttribute("Position", _position);
+	node.loadAttribute("Hide", _hidePositionOffset);
 	std::string function;
 	node.loadAttribute("UpdateFunction", function);
 	if (function.empty())
@@ -76,15 +86,51 @@ UIGroup::UIGroup(const XMLReaderNode& node)
 	{
 		_updateFunctionType = UIFunctionType::SetHpUI;
 	}
+	else if (function == "showUI")
+	{
+		_updateFunctionType = UIFunctionType::ShowUI;
+	}
+	else if (function == "hideUI")
+	{
+		_updateFunctionType = UIFunctionType::HideUI;
+	}
+	else if (function == "shakeUI")
+	{
+		_updateFunctionType = UIFunctionType::ShakeUI;
+	}
+	else if (function == "irisOut")
+	{
+		_updateFunctionType = UIFunctionType::IrisOut;
+	}
+	else if (function == "irisIn")
+	{
+		_updateFunctionType = UIFunctionType::IrisIn;
+	}
+	else if (function == "updateIris")
+	{
+		_updateFunctionType = UIFunctionType::UpdateIris;
+	}
+	else if (function == "updateMousePointer")
+	{
+		_updateFunctionType = UIFunctionType::UpdateMousePointer;
+	}
 	else
 	{
 		ThrowErrCode(ErrCode::UndefinedType, function);
-		static_assert(static_cast<int>(UIFunctionType::Count) == 1);
+		static_assert(static_cast<int>(UIFunctionType::Count) == 8);
 	}
 	const auto& childNodes = node.getChildNodes();
 	for (const auto& childNode : childNodes)
 	{
 		_child.emplace_back(UIElement::loadXMLUIElement(childNode));
+	}
+
+	bool isHide;
+	node.loadAttribute("InitHide", isHide);
+	if (isHide)
+	{
+		_positionOffsetTo = _hidePositionOffset;
+		_moveInterpolationType = InterpolationType::Linear;
 	}
 }
 
@@ -111,7 +157,12 @@ void UIGroup::update(void)
 
 void UIGroup::draw(void) const noexcept
 {
-	DirectX::XMFLOAT2 position = getCurrentPosition();
+	if (!_isActive)
+	{
+		return;
+	}
+
+	DirectX::XMFLOAT2 position = MathHelper::add(_position, getCurrentPositionOffset());
 	
 	for (const auto& e : _child)
 	{
@@ -119,32 +170,33 @@ void UIGroup::draw(void) const noexcept
 	}
 }
 
-DirectX::XMFLOAT2 UIGroup::getCurrentPosition(void) const noexcept
+DirectX::XMFLOAT2 UIGroup::getCurrentPositionOffset(void) const noexcept
 {
-	if (_moveBlendTick == 0)
+	if (_moveInterpolationType == InterpolationType::Count)
 	{
-		return _toPosition;
+		return XMFLOAT2(0, 0);
 	}
 	else
 	{
 		using namespace MathHelper;
 		TickCount64 currentTick = SMGFramework::Get().getTimer().getCurrentTickCount();
 		float t = getInterpolateValue(currentTick, _moveBlendStartTick, _moveBlendTick, _moveInterpolationType);
-		return XMFLOAT2(_fromPosition.x * (1 - t) + _toPosition.x * t,
-						_fromPosition.y * (1 - t) + _toPosition.y * t);
+		return add(mul(_positionOffsetFrom, 1 - t), mul(_positionOffsetTo, t));
 	}
 
 }
 
-void UIGroup::setMove(const DirectX::XMFLOAT2& toPosition,
+void UIGroup::setMove(const DirectX::XMFLOAT2& moveVector,
 					TickCount64 blendTick, 
 					InterpolationType interpolationType) noexcept
 {
-	_toPosition = toPosition;
+	check(interpolationType != InterpolationType::Count);
+
+	_positionOffsetTo = moveVector;
 	_moveBlendTick = blendTick;
 	_moveBlendStartTick = SMGFramework::Get().getTimer().getCurrentTickCount();
 	_moveInterpolationType = interpolationType;
-	_fromPosition = getCurrentPosition();
+	_positionOffsetFrom = getCurrentPositionOffset();
 }
 
 UIElement::UIElement(const std::string& name, const DirectX::XMFLOAT2& position, const DirectX::XMFLOAT2& size) noexcept
@@ -174,9 +226,13 @@ std::unique_ptr<UIElement> UIElement::loadXMLUIElement(const XMLReaderNode& node
 	{
 		return std::make_unique<UIElementText>(node);
 	}
+	else if (typeString == "Iris")
+	{
+		return std::make_unique<UIElementIris>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(UIElementType::Count) == 2);
+		static_assert(static_cast<int>(UIElementType::Count) == 3);
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -283,4 +339,95 @@ void UIElementImage::draw(const DirectX::XMFLOAT2& parentPosition) const noexcep
 void UIElementImage::setImage(const std::string& imageName)
 {
 	_bitmapImage = SMGFramework::getD3DApp()->loadBitmapImage(imageName);
+}
+
+UIElementIris::UIElementIris(const XMLReaderNode& node)
+	: UIElement(node)
+{
+	node.loadAttribute("RadiusIn", _radiusIn);
+	node.loadAttribute("RadiusOut", _radiusOut);
+	node.loadAttribute("InitTick", _currentTick);
+	node.loadAttribute("InitIn", _isIn);
+	node.loadAttribute("ProgressTick", _progressTick);
+
+	const D2D1_RECT_F rect = D2D1::Rect(0.f, 0.f, _size.x, _size.y);
+	ThrowIfFailed(SMGFramework::getD3DApp()->getD2dFactory()->CreateRectangleGeometry(
+		rect, &_screenRectangle));
+
+	const D2D1_ELLIPSE circle = D2D1::Ellipse(D2D1::Point2F(_size.x / 2.f, _size.y / 2.f), 50.f, 50.f);
+	ThrowIfFailed(SMGFramework::getD3DApp()->getD2dFactory()->CreateEllipseGeometry(
+		circle,
+		&_circle));
+
+	ID2D1Geometry* geometries[] =
+	{
+		_circle.Get(),
+		_screenRectangle.Get(),
+	};
+
+	ThrowIfFailed(SMGFramework::getD3DApp()->getD2dFactory()->CreateGeometryGroup(
+		D2D1_FILL_MODE_ALTERNATE,
+		geometries,
+		2,
+		&_geometryGroup
+	));
+}
+
+void UIElementIris::draw(const DirectX::XMFLOAT2& parentPosition) const noexcept
+{
+	ID2D1Brush* brush = SMGFramework::Get().getD3DApp()->getTextBrush(TextBrushType::Black);
+	SMGFramework::getD3DApp()->getD2dContext()->FillGeometry(_geometryGroup.Get(), brush);
+}
+
+void UIElementIris::set(bool isIn) noexcept
+{
+	_isIn = isIn;
+}
+
+void UIElementIris::update(void)
+{
+	if (_isIn)
+	{
+		if (_currentTick == _progressTick)
+		{
+			return;
+		}
+		TickCount64 deltaTick = SMGFramework::Get().getTimer().getDeltaTickCount();
+		_currentTick = std::min(_currentTick + deltaTick, _progressTick);
+	}
+	else
+	{
+		if (_currentTick == 0)
+		{
+			return;
+		}
+		TickCount64 deltaTick = SMGFramework::Get().getTimer().getDeltaTickCount();
+		if (_currentTick < deltaTick)
+		{
+			_currentTick = 0;
+		}
+		else
+		{
+			_currentTick -= deltaTick;
+		}
+	}
+	
+	D2D1_POINT_2F center = { _size.x / 2.f, _size.y / 2.f };
+	float t = MathHelper::getInterpolateValue(
+		_currentTick, 0, _progressTick, InterpolationType::Linear);
+	float radius = _radiusIn * (1 - t) + _radiusOut * t;
+	const D2D1_ELLIPSE circle = D2D1::Ellipse(center, radius, radius);
+	ThrowIfFailed(SMGFramework::getD3DApp()->getD2dFactory()->CreateEllipseGeometry(circle, &_circle));
+	ID2D1Geometry* geometries[] =
+	{
+		_circle.Get(),
+		_screenRectangle.Get(),
+	};
+
+	ThrowIfFailed(SMGFramework::getD3DApp()->getD2dFactory()->CreateGeometryGroup(
+		D2D1_FILL_MODE_ALTERNATE,
+		geometries,
+		2,
+		&_geometryGroup
+	));
 }

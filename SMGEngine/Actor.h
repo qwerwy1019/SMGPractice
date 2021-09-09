@@ -88,6 +88,7 @@ public:
 	void setTargetPosition(const DirectX::XMFLOAT3& position) noexcept;
 	const DirectX::XMFLOAT3& getTargetPosition(void) const noexcept;
 	void enableChildEffect(int effectKey) noexcept;
+	void releaseChildEffects(void) noexcept;
 	void disableChildEffect(int effectKey) noexcept;
 private:
 	DirectX::XMFLOAT3 _position;

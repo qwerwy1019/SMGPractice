@@ -63,6 +63,27 @@ private:
 	ID2D1Bitmap* _bitmapImage;
 };
 
+class UIElementIris : public UIElement
+{
+public:
+	UIElementIris(const XMLReaderNode& node);
+	virtual ~UIElementIris() = default;
+	virtual UIElementType getType(void) const noexcept override { return UIElementType::Iris; }
+	virtual void draw(const DirectX::XMFLOAT2& parentPosition) const noexcept override;
+	void set(bool isIn) noexcept;
+	void update(void);
+private:
+	WComPtr<ID2D1GeometryGroup> _geometryGroup;
+	WComPtr<ID2D1EllipseGeometry> _circle;
+	WComPtr<ID2D1RectangleGeometry> _screenRectangle;
+
+	TickCount64 _currentTick;
+	bool _isIn;
+
+	float _radiusIn;
+	float _radiusOut;
+	TickCount64 _progressTick;
+};
 class UIElementButton : public UIElementImage
 {
 };
@@ -75,25 +96,33 @@ public:
 	void update(void);
 	void draw(void) const noexcept;
 	UIFunctionType getUpdateFunctionType(void) const noexcept { return _updateFunctionType; }
-	DirectX::XMFLOAT2 getCurrentPosition(void) const noexcept;
-	void setMove(const DirectX::XMFLOAT2& toPosition,
+	DirectX::XMFLOAT2 getCurrentPositionOffset(void) const noexcept;
+	const DirectX::XMFLOAT2 getHidePositionOffset(void) const noexcept { return _hidePositionOffset; }
+	void setMove(const DirectX::XMFLOAT2& moveVector,
 				TickCount64 blendTick,
 				InterpolationType interpolationType) noexcept;
+	void setActive(bool isActive) noexcept { _isActive = isActive; }
+	bool isActive(void) { return _isActive; }
 private:
 	std::vector<std::unique_ptr<UIElement>> _child;
 
-	DirectX::XMFLOAT2 _fromPosition;
-	DirectX::XMFLOAT2 _toPosition;
+	DirectX::XMFLOAT2 _position;
+	DirectX::XMFLOAT2 _positionOffsetFrom;
+	DirectX::XMFLOAT2 _positionOffsetTo;
 	TickCount64 _moveBlendTick;
 	TickCount64 _moveBlendStartTick;
 	InterpolationType _moveInterpolationType;
 	UIFunctionType _updateFunctionType;
+	DirectX::XMFLOAT2 _hidePositionOffset;
+
+	bool _isActive;
 };
 
 class UIManager
 {
 public:
 	UIManager();
+	void releaseForStageLoad(void) noexcept;
 	void drawUI();
 	void loadXML(const std::string& fileName);
 	void update();
