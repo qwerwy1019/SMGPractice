@@ -255,3 +255,16 @@ private:
 	std::string _uiGroupName;
 	UIFunctionType _uiFunctionType;
 };
+
+class FrameEvent_ChangeMaterial : public FrameEvent
+{
+public:
+	FrameEvent_ChangeMaterial(const XMLReaderNode& node);
+	virtual ~FrameEvent_ChangeMaterial() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::ChangeMaterial; }
+private:
+	std::string _fileName;
+	std::string _name;
+	uint8_t _renderItemIndex;
+};

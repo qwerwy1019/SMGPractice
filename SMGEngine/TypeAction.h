@@ -47,6 +47,7 @@ enum class FrameEventType
 	DisableEffect,
 	SetEffectAlpha,
 	CallUIFunction,
+	ChangeMaterial,
 
 	Count,
 };

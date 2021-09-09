@@ -129,9 +129,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_CallUIFunction>(node);
 	}
+	else if (typeString == "ChangeMaterial")
+	{
+		return std::make_unique<FrameEvent_ChangeMaterial>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 19, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 20, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -531,4 +535,17 @@ void FrameEvent_CallUIFunction::process(Actor& actor) const noexcept
 		return;
 	}
 	UIFunction::execute(_uiFunctionType, group);
+}
+
+FrameEvent_ChangeMaterial::FrameEvent_ChangeMaterial(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+	node.loadAttribute("FileName", _fileName);
+	node.loadAttribute("Name", _name);
+	node.loadAttribute("RenderItemIndex", _renderItemIndex);
+}
+
+void FrameEvent_ChangeMaterial::process(Actor& actor) const noexcept
+{
+	actor.changeMaterial(_renderItemIndex, _fileName, _name);
 }

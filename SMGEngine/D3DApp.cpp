@@ -906,7 +906,7 @@ void D3DApp::updatePassConstantBuffer()
 
 Material* D3DApp::loadXmlMaterial(const std::string& fileName, const std::string& materialName)
 {
-	std::string materialKey = fileName + "/" + materialName;
+	std::string materialKey = getMaterialKey(fileName, materialName);
 	auto findIt = _materials.find(materialKey);
 	if (findIt != _materials.end())
 	{
@@ -1026,6 +1026,17 @@ const MeshGeometry* D3DApp::createMeshGeometry(const std::string& meshName, cons
 		ThrowErrCode(ErrCode::KeyDuplicated, meshName);
 	}
 	return it.first->second.get();
+}
+
+const Material* D3DApp::getMaterial(const std::string& fileName, const std::string& materialName) const noexcept
+{
+	std::string materialKey = getMaterialKey(fileName, materialName);
+	auto findIt = _materials.find(materialKey);
+	if (findIt != _materials.end())
+	{
+		return findIt->second.get();
+	}
+	return nullptr;
 }
 
 GameObject* D3DApp::createObjectFromXML(const std::string& fileName)
@@ -1340,6 +1351,11 @@ void D3DApp::drawEffects(void)
 		subMesh._baseIndexLoacation,
 		subMesh._baseVertexLoaction,
 		0);
+}
+
+std::string D3DApp::getMaterialKey(const std::string& fileName, const std::string& materialName) const noexcept
+{
+	return fileName + "/" + materialName;
 }
 
 void D3DApp::removeRenderItem(const RenderLayer renderLayer, const RenderItem* renderItem) noexcept
@@ -2002,6 +2018,12 @@ RenderItem::RenderItem(const GameObject* parentObject,
 const SubMeshGeometry& RenderItem::getSubMesh() const noexcept
 {
 	return _parentObject->getMeshGeometry()->_subMeshList[_subMeshIndex];
+}
+
+void RenderItem::changeMaterial(const Material* material) noexcept
+{
+	check(material != nullptr);
+	_material = material;
 }
 
 ID2D1Bitmap* D3DApp::loadBitmapImage(const std::string& resourceName)

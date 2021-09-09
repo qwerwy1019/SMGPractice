@@ -121,6 +121,22 @@ void GameObject::setAnimationSpeed(float speed) noexcept
 	_skinnedModelInstance->setAnimationSpeed(speed);
 }
 
+void GameObject::changeMaterial(uint8_t renderItemIndex, const std::string& materialFileName, const std::string& materialName) noexcept
+{
+	if (_renderItems.size() <= renderItemIndex)
+	{
+		check(false);
+		return;
+	}
+	const Material* material = SMGFramework::getD3DApp()->getMaterial(materialFileName, materialName);
+	if (material == nullptr)
+	{
+		check(false, materialFileName + "/" + materialName);
+		return;
+	}
+	_renderItems[renderItemIndex]->changeMaterial(material);
+}
+
 void GameObject::setRenderItemsXXX(std::vector<RenderItem*>&& renderItems) noexcept
 {
 	check(_meshGeometry != nullptr || renderItems.empty(), "Mesh가 없는 gameobject는 rendterItem을 생성할수 없습니다.");

@@ -1059,6 +1059,11 @@ void Actor::disableChildEffect(int effectKey) noexcept
 	_childEffects.erase(it);
 }
 
+void Actor::changeMaterial(uint8_t renderItemIndex, const std::string& fileName, const std::string& name) noexcept
+{
+	_gameObject->changeMaterial(renderItemIndex, fileName, name);
+}
+
 void Actor::setChildEffectAlpha(int effectKey, float alpha, TickCount64 blendTick)
 {
 	auto it = _childEffects.find(effectKey);

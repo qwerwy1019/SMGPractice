@@ -71,6 +71,7 @@ struct RenderItem
 	uint8_t _subMeshIndex;
 	
 	const SubMeshGeometry& getSubMesh() const noexcept;
+	void changeMaterial(const Material* material) noexcept;
 };
 
 class D3DApp
@@ -172,11 +173,13 @@ private:
 	SkinnedModelInstance* createSkinnedInstance(uint16_t& skinnedBufferIndex, const BoneInfo* boneInfo, const AnimationInfo* animationInfo) noexcept;
 public:
 	const MeshGeometry* createMeshGeometry(const std::string& meshName, const GeneratedMeshData& meshData);
+	const Material* getMaterial(const std::string& fileName, const std::string& materialName) const noexcept;
 private:
 	void drawRenderItems(const RenderLayer renderLayer, bool checkCulled);
 	void drawUI(void);
 	void drawSceneToShadowMap(void);
 	void drawEffects(void);
+	std::string getMaterialKey(const std::string& fileName, const std::string& materialName) const noexcept;
 
 	void buildShaderResourceViews();
 

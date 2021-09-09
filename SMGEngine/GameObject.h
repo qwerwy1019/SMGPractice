@@ -38,6 +38,9 @@ public:
 	void setCulledBackground() noexcept;
 	bool isCulled() const noexcept { return _isCulled; }
 	void setAnimationSpeed(float speed) noexcept;
+	void changeMaterial(uint8_t renderItemIndex, 
+					const std::string& materialFileName,
+					const std::string& materialName) noexcept;
 private:
 	DirectX::XMFLOAT4X4 _worldMatrix;
 	DirectX::XMFLOAT4X4 _textureTransform;

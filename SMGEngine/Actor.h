@@ -90,6 +90,7 @@ public:
 	void enableChildEffect(int effectKey) noexcept;
 	void releaseChildEffects(void) noexcept;
 	void disableChildEffect(int effectKey) noexcept;
+	void changeMaterial(uint8_t renderItemIndex, const std::string& fileName, const std::string& name) noexcept;
 private:
 	DirectX::XMFLOAT3 _position;
 	//DirectX::XMFLOAT4 _rotationQuat;
