@@ -384,9 +384,13 @@ FrameEvent_TargetPosition::FrameEvent_TargetPosition(const XMLReaderNode& node)
 	{
 		_type = TargetPositionType::PathStart;
 	}
+	else if (typeString == "PointerPicked")
+	{
+		_type = TargetPositionType::PointerPicked;
+	}
 	else
 	{
-		static_assert(static_cast<int>(TargetPositionType::Count) == 1);
+		static_assert(static_cast<int>(TargetPositionType::Count) == 2);
 		ThrowErrCode(ErrCode::UndefinedType);
 	}
 
@@ -408,10 +412,15 @@ void FrameEvent_TargetPosition::process(Actor& actor) const noexcept
 			actor.setTargetPosition(path->getPathStartPosition());
 		}
 		break;
+		case FrameEvent_TargetPosition::TargetPositionType::PointerPicked:
+		{
+			actor.setTargetPosition(SMGFramework::getStageManager()->getPointerPickedPosition());
+		}
+		break;
 		case FrameEvent_TargetPosition::TargetPositionType::Count:
 		default:
 		{
-			static_assert(static_cast<int>(TargetPositionType::Count) == 1);
+			static_assert(static_cast<int>(TargetPositionType::Count) == 2);
 			check(false);
 		}
 		break;
@@ -483,46 +492,10 @@ FrameEvent_CallUIFunction::FrameEvent_CallUIFunction(const XMLReaderNode& node)
 
 	std::string functionString;
 	node.loadAttribute("Function", functionString);
-	if (functionString.empty())
-	{
-		_uiFunctionType = UIFunctionType::Count;
-	}
-	else if (functionString == "setHpUI")
-	{
-		_uiFunctionType = UIFunctionType::SetHpUI;
-	}
-	else if (functionString == "showUI")
-	{
-		_uiFunctionType = UIFunctionType::ShowUI;
-	}
-	else if (functionString == "hideUI")
-	{
-		_uiFunctionType = UIFunctionType::HideUI;
-	}
-	else if (functionString == "shakeUI")
-	{
-		_uiFunctionType = UIFunctionType::ShakeUI;
-	}
-	else if (functionString == "irisOut")
-	{
-		_uiFunctionType = UIFunctionType::IrisOut;
-	}
-	else if (functionString == "irisIn")
-	{
-		_uiFunctionType = UIFunctionType::IrisIn;
-	}
-	else if (functionString == "updateIris")
-	{
-		_uiFunctionType = UIFunctionType::UpdateIris;
-	}
-	else if (functionString == "updateMousePointer")
-	{
-		_uiFunctionType = UIFunctionType::UpdateMousePointer;
-	}
-	else
+	_uiFunctionType = getUIFunctionTypeFromString(functionString);
+	if(_uiFunctionType == UIFunctionType::Count || _uiFunctionType == UIFunctionType::None)
 	{
 		ThrowErrCode(ErrCode::UndefinedType, functionString);
-		static_assert(static_cast<int>(UIFunctionType::Count) == 8);
 	}
 }
 

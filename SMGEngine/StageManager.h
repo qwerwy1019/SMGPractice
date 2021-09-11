@@ -7,7 +7,6 @@
 class StageInfo;
 enum class ErrCode : uint32_t;
 class Actor;
-class PlayerActor;
 class ActionChart;
 struct GravityPoint;
 class Terrain;
@@ -27,6 +26,8 @@ public:
 private:
 	void processActorCollision(void) noexcept;
 	void processActorCollisionXXX(int sectorCoord0, int sectorCoord1) noexcept;
+	void updateMouseRaycast();
+	void updateStarShoot();
 	// 스테이지 이동
 public:
 	void loadStage(void);
@@ -43,7 +44,8 @@ private:
 	void loadStageInfo();
 	void loadStageScript(void);
 	void createMap(void);
-	void unloadStage();
+	void unloadStage(bool isReload);
+	void loadUI();
 
 	// 캐릭터 이동
 public:
@@ -54,10 +56,10 @@ public:
 	float checkWall(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept;
 	float checkGround(Actor* actor, const DirectX::XMFLOAT3& moveVector) const noexcept;
 
-	const PlayerActor* getPlayerActor(void) const noexcept;
+	const Actor* getPlayerActor(void) const noexcept;
 	const GravityPoint* getGravityPointAt(const DirectX::XMFLOAT3& position) const noexcept;
 
-	DirectX::XMINT3 getSectorCoord(const DirectX::XMFLOAT3& position) const noexcept;
+	DirectX::XMINT3 getSectorCoord(const DirectX::XMFLOAT3& position, bool checkRange = true) const noexcept;
 	void killActor(Actor* actor) noexcept;
 
 	void setCulled(void) noexcept;
@@ -66,9 +68,13 @@ public:
 	void addStageScriptVariable(const std::string& name, int value) noexcept;
 	int getStageScriptVariable(const std::string& name) const noexcept;
 	void updateStageScript(void) noexcept;
+
+	const Actor* getPointerPickedActor(void) const noexcept { return _raycastActor; }
+	const DirectX::XMFLOAT3& getPointerPickedPosition(void) const noexcept { return _raycastPosition; }
 private:
 	void killActors(void) noexcept;
 	int sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const noexcept;
+	void raycast(DirectX::XMVECTOR start, DirectX::XMVECTOR dir, float maxLength);
 
 private:
 	std::vector<Terrain> _terrains;
@@ -85,12 +91,23 @@ private:
 	std::unique_ptr<StageScript> _stageScript;
 
 	std::vector<std::unique_ptr<Actor>> _actors;
-	PlayerActor* _playerActor;
+	Actor* _playerActor;
 	std::unique_ptr<StageInfo> _stageInfo;
 	
 	std::string _nextStageName;
+	std::string _currentStageName;
 	bool _isLoading;
 	std::unordered_map<std::string, std::unique_ptr<ActionChart>> _actionchartMap;
-	void loadUI();
+
+	// mouse raycast
+	Actor* _raycastActor;
+	DirectX::XMFLOAT3 _raycastPosition;
+
+	TickCount64 _lastStarShootTick;
+	static constexpr TickCount64 STAR_SHOOT_COOLTIME = 500;
+	static constexpr CharacterKey STAR_SHOOT_CHARACTER_KEY = 8;
+	static constexpr int STAR_SHOOT_ACTION_INDEX = 2;
+	static constexpr float STAR_SHOOT_SIZE = 0.3f;
+	static constexpr float STAR_SHOOT_DISTANCE = 100.f;
 };
 

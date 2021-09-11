@@ -179,7 +179,8 @@ private:
 	enum class TargetPositionType
 	{
 		PathStart,
-
+		PointerPicked,
+		
 		Count,
 	};
 	TargetPositionType _type;

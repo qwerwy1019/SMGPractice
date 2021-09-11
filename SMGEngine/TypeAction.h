@@ -22,6 +22,8 @@ enum class ActionConditionType
 	PathEnd,
 	TargetPositionArrive,
 	StageVariable,
+	PointerPicked,
+	OnWall,
 
 	Count,
 };
@@ -88,6 +90,7 @@ enum class CollisionShape
 	Sphere,
 	Box,
 	Polygon,
+	Line,
 
 	Count,
 };

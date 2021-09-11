@@ -155,7 +155,7 @@ DirectX::XMFLOAT4 Actor::getRotationQuat(const TickCount64& deltaTick) const noe
 		{
 			check(_path != nullptr);
 			XMFLOAT4 rotationQuatF;
-			_path->getPathRotationAtTime(_pathTime, rotationQuatF);
+			_path->getPathRotationAtTime(_pathTime, rotationQuatF, InterpolationType::Linear);
 			rotationQuat = XMLoadFloat4(&rotationQuatF);
 		}
 		break;
@@ -245,7 +245,7 @@ float Actor::getRotateAngleDelta(const TickCount64& deltaTick) const noexcept
 		case RotateType::ToPlayer:
 		{
 			check(SMGFramework::getStageManager()->getPlayerActor() != this);
-			const PlayerActor* player = SMGFramework::getStageManager()->getPlayerActor();
+			const Actor* player = SMGFramework::getStageManager()->getPlayerActor();
 			if (nullptr != player)
 			{
 				XMVECTOR toPlayer = XMLoadFloat3(&player->getPosition()) - XMLoadFloat3(&_position);
@@ -337,7 +337,7 @@ bool Actor::getGravityDirection(DirectX::XMFLOAT3& gravityDirection) const noexc
 	{
 		case GravityPointType::Fixed:
 		{
-			gravityDirection = _gravityPoint->_position;
+			gravityDirection = _gravityPoint->_direction;
 		}
 		break;
 		case GravityPointType::Point:
@@ -430,6 +430,16 @@ bool Actor::isOnGround(void) const noexcept
 	return _onGround;
 }
 
+void Actor::setActorOnWall(bool onWall) noexcept
+{
+	_onWall = onWall;
+}
+
+bool Actor::isOnWall(void) const noexcept
+{
+	return _onWall;
+}
+
 bool Actor::isQuaternionRotate(void) const noexcept
 {
 	static_assert(static_cast<int>(RotateType::Count) == 7, "타입 추가시 확인");
@@ -462,6 +472,10 @@ bool Actor::checkCollision(const Actor* lhs, const Actor* rhs) noexcept
 	check(lhs != nullptr);
 	check(rhs != nullptr);
 
+	if (!checkCharacterTypeCollision(lhs, rhs))
+	{
+		return false;
+	}
 	using namespace DirectX;
 	XMFLOAT3 distanceVector = MathHelper::sub(lhs->getPosition(), rhs->getPosition());
 		
@@ -495,7 +509,7 @@ bool Actor::checkCollision(const Actor* lhs, const Actor* rhs) noexcept
 				default:
 				{
 					check(false, "타입이 추가되었는지 확인해주세요.");
-					static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
+					static_assert(static_cast<int>(CollisionShape::Count) == 4, "타입이 추가되었다면 작업해야합니다.");
 					return false;
 				}
 			}
@@ -523,7 +537,7 @@ bool Actor::checkCollision(const Actor* lhs, const Actor* rhs) noexcept
 				default:
 				{
 					check(false, "타입이 추가되었는지 확인해주세요.");
-					static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
+					static_assert(static_cast<int>(CollisionShape::Count) == 4, "타입이 추가되었다면 작업해야합니다.");
 					return false;
 				}
 			}
@@ -551,7 +565,7 @@ bool Actor::checkCollision(const Actor* lhs, const Actor* rhs) noexcept
 				default:
 				{
 					check(false, "타입이 추가되었는지 확인해주세요.");
-					static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
+					static_assert(static_cast<int>(CollisionShape::Count) == 4, "타입이 추가되었다면 작업해야합니다.");
 					return false;
 				}
 			}
@@ -560,7 +574,7 @@ bool Actor::checkCollision(const Actor* lhs, const Actor* rhs) noexcept
 		default:
 		{
 			check(false, "타입이 추가되었는지 확인해주세요.");
-			static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입이 추가되었다면 작업해야합니다.");
+			static_assert(static_cast<int>(CollisionShape::Count) == 4, "타입이 추가되었다면 작업해야합니다.");
 			return false;
 		}
 	}
@@ -609,7 +623,7 @@ float Actor::getHalfHeight(void) const noexcept
 		case CollisionShape::Count:
 		default:
 		{
-			static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
+			static_assert(static_cast<int>(CollisionShape::Count) == 4, "타입 추가시 확인");
 			check(false);
 			return 0.f;
 		}
@@ -752,7 +766,7 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 			applySpeed = false;
 
 			XMFLOAT3 position;
-			_path->getPathPositionAtTime(_pathTime, position);
+			_path->getPathPositionAtTime(_pathTime, position, InterpolationType::Linear);
 
 			direction = XMLoadFloat3(&position) - XMLoadFloat3(&_position);
 		}
@@ -1064,6 +1078,119 @@ void Actor::changeMaterial(uint8_t renderItemIndex, const std::string& fileName,
 	_gameObject->changeMaterial(renderItemIndex, fileName, name);
 }
 
+bool Actor::checkCharacterTypeCollision(const Actor* lhs, const Actor* rhs) noexcept
+{
+	static_assert(static_cast<int>(CharacterType::Count) == 5, "타입 추가시 함수 전체 확인해야함");
+	check(lhs->_characterInfo->getCharacterType() != CharacterType::Count);
+	check(rhs->_characterInfo->getCharacterType() != CharacterType::Count);
+
+	switch (lhs->_characterInfo->getCharacterType())
+	{
+		case CharacterType::Player:
+		{
+			switch (rhs->_characterInfo->getCharacterType())
+			{
+				case CharacterType::Player:
+				case CharacterType::Monster:
+				case CharacterType::Object:
+				case CharacterType::Item:
+				{
+					return true;
+				}
+				break;
+				case CharacterType::PlayerAttackObject:
+				{
+					return false;
+				}
+				break;
+			}
+		}
+		break;
+		case CharacterType::Monster:
+		{
+			switch (rhs->_characterInfo->getCharacterType())
+			{
+				case CharacterType::Player:
+				case CharacterType::Monster:
+				case CharacterType::PlayerAttackObject:
+				case CharacterType::Object:
+				{
+					return true;
+				}
+				break;
+				case CharacterType::Item:
+				{
+					return false;
+				}
+				break;
+			}
+		}
+		break;
+		case CharacterType::Object:
+		{
+			switch (rhs->_characterInfo->getCharacterType())
+			{
+				case CharacterType::Player:
+				case CharacterType::Monster:
+				case CharacterType::Object:
+				{
+					return true;
+				}
+				break;
+				case CharacterType::PlayerAttackObject:
+				case CharacterType::Item:
+				{
+					return false;
+				}
+				break;
+			}
+		}
+		break;
+		case CharacterType::PlayerAttackObject:
+		{
+			switch (rhs->_characterInfo->getCharacterType())
+			{
+				case CharacterType::Monster:
+				{
+					return true;
+				}
+				break;
+				case CharacterType::Player:
+				case CharacterType::PlayerAttackObject:
+				case CharacterType::Item:
+				case CharacterType::Object:
+				{
+					return false;
+				}
+				break;
+			}
+		}
+		break;
+		case CharacterType::Item:
+		{
+			switch (rhs->_characterInfo->getCharacterType())
+			{
+				case CharacterType::Player:
+				{
+					return true;
+				}
+				break;
+				case CharacterType::Monster:
+				case CharacterType::PlayerAttackObject:
+				case CharacterType::Item:
+				case CharacterType::Object:
+				{
+					return false;
+				}
+				break;
+			}
+		}
+		break;
+	}
+	check(false);
+	return false;
+}
+
 void Actor::setChildEffectAlpha(int effectKey, float alpha, TickCount64 blendTick)
 {
 	auto it = _childEffects.find(effectKey);
@@ -1130,8 +1257,40 @@ float Actor::getResistanceDistance(const Actor& selfActor, const Actor& targetAc
 	}
 }
 
-PlayerActor::PlayerActor(const SpawnInfo& spawnInfo)
-	: Actor(spawnInfo)
-	, _isMoving(false)
+bool XM_CALLCONV Actor::checkCollisionWithLine(FXMVECTOR start, FXMVECTOR velocity, float& collisionTime) noexcept
 {
+	// 우선은 적당히 위치만 나오면 되니까 구체로만 검사한다. [9/10/2021 qwerw]
+	XMVECTOR sphereCenter = XMLoadFloat3(&_position);
+	float speed = XMVectorGetX(XMVector3Length(velocity));
+	check(!MathHelper::equal(speed, 0));
+	float distance = XMVectorGetX(XMVector3Length(XMVector3Cross(sphereCenter - start, velocity / speed)));
+	float radius = getRadius();
+	if (radius < distance)
+	{
+		return false;
+	}
+
+	float centerDistance = XMVectorGetX(XMVector3Length(start - XMLoadFloat3(&_position)));
+
+	float t = sqrt(centerDistance * centerDistance - distance * distance)
+				- sqrt(radius * radius - distance * distance);
+	if (speed < t)
+	{
+		return false;
+	}
+	collisionTime = t / speed;
+	return true;
+}
+
+bool Actor::checkPointerPicked(void) const noexcept
+{
+	return (_characterInfo->getCharacterType() == CharacterType::Item);
+}
+
+bool Actor::isPlaneMove(void) const noexcept
+{
+	return _moveType != MoveType::ToPoint &&
+		_moveType != MoveType::Path;
+
+	static_assert(static_cast<int>(MoveType::Count) == 4);
 }

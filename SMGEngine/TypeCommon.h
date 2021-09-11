@@ -70,6 +70,8 @@ enum class CharacterType : uint8_t
 	Player,
 	Monster,
 	Object,
+	PlayerAttackObject,
+	Item,
 
 	Count,
 };

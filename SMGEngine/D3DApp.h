@@ -117,7 +117,8 @@ public:
 	void setBackgroundColor(const DirectX::XMFLOAT3& color) noexcept;
 	void createRenderItems(GameObject* gameObject, const XMLReaderNode& node);
 
-	void releaseItemsForStageLoad(void) noexcept;
+	void releaseItemsForStageLoad(bool isReload) noexcept;
+	float getAspectRatio(void) const noexcept { return _aspectRatio; }
 private:
 	////////////////////////////////////////////////////////////////////////
 	// 장비 정보
@@ -173,6 +174,7 @@ private:
 	SkinnedModelInstance* createSkinnedInstance(uint16_t& skinnedBufferIndex, const BoneInfo* boneInfo, const AnimationInfo* animationInfo) noexcept;
 public:
 	const MeshGeometry* createMeshGeometry(const std::string& meshName, const GeneratedMeshData& meshData);
+	const MeshGeometry* getMeshGeometry(const std::string& meshName) const noexcept;
 	const Material* getMaterial(const std::string& fileName, const std::string& materialName) const noexcept;
 private:
 	void drawRenderItems(const RenderLayer renderLayer, bool checkCulled);
@@ -244,6 +246,7 @@ private:
 
 	// 좌표계 변환
 	XMFLOAT4X4 _projectionMatrix;
+	float _aspectRatio;
 
 	D3D12_VIEWPORT _viewPort;
 	D3D12_RECT _scissorRect;

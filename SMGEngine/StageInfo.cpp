@@ -174,15 +174,19 @@ const DirectX::XMINT3& StageInfo::getSectorSize(void) const noexcept
 const GravityPoint* StageInfo::getGravityPointAt(const DirectX::XMFLOAT3& position) const noexcept
 {
 	using namespace MathHelper;
+	const GravityPoint* nearestPoint = nullptr;
+	float nearestDistanceSq = std::numeric_limits<float>::max();
 	for (const auto& gravityPoint : _gravityPoints)
 	{
-		if (lengthSq(sub(gravityPoint.second->_position, position)) <=
-			gravityPoint.second->_radius * gravityPoint.second->_radius)
+		float distanceSq = lengthSq(sub(gravityPoint.second->_position, position));
+		if (distanceSq < nearestDistanceSq &&
+			distanceSq <= gravityPoint.second->_radius * gravityPoint.second->_radius)
 		{
-			return gravityPoint.second.get();
+			nearestDistanceSq = distanceSq;
+			nearestPoint = gravityPoint.second.get();
 		}
 	}
-	return nullptr;
+	return nearestPoint;
 }
 const GravityPoint* StageInfo::getGravityPoint(int key) const noexcept
 {
@@ -296,6 +300,14 @@ void StageInfo::loadXmlGravityPointInfo(const XMLReaderNode& node)
 		childNodes[i].loadAttribute("Radius", gravityPoint->_radius);
 		childNodes[i].loadAttribute("MinRadius", gravityPoint->_minRadius);
 		childNodes[i].loadAttribute("Position", gravityPoint->_position);
+		if (gravityPoint->_type == GravityPointType::Fixed)
+		{
+			childNodes[i].loadAttribute("Direction", gravityPoint->_direction);
+		}
+		else
+		{
+			gravityPoint->_direction = { 0, 0, 0 };
+		}
 
 		_gravityPoints.emplace(key, std::move(gravityPoint));
 	}

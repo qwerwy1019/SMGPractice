@@ -57,10 +57,16 @@ public:
 	Terrain(const TerrainObjectInfo& terrainInfo);
 	~Terrain();
 	bool checkCollision(const Actor& actor, const DirectX::XMFLOAT3& velocity, float& collisionTime) const noexcept;
+	bool checkCollisionLine(DirectX::FXMVECTOR start, DirectX::FXMVECTOR velocity, float& collisionTime) const noexcept;
 	float XM_CALLCONV checkCollisionXXX(int nodeIndex, 
 										DirectX::FXMVECTOR min,
 										DirectX::FXMVECTOR max, 
 										const TerrainCollisionInfoXXX& collisionInfo) const noexcept;
+	float XM_CALLCONV checkCollisionLineXXX(int nodeIndex,
+											DirectX::FXMVECTOR min,
+											DirectX::FXMVECTOR max,
+											const DirectX::XMFLOAT3& start,
+											const DirectX::XMFLOAT3& velocity) const noexcept;
 	void setCulled(void) noexcept;
 private:
 	enum class DivideType

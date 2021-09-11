@@ -238,3 +238,23 @@ private:
 	OperatorType _operator;
 	int _value;
 };
+
+class ActionCondition_PointerPicked : public ActionCondition
+{
+public:
+	ActionCondition_PointerPicked(const std::string& args);
+	virtual ~ActionCondition_PointerPicked() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::PointerPicked; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+};
+
+class ActionCondition_OnWall : public ActionCondition
+{
+public:
+	ActionCondition_OnWall(const std::string& args);
+	virtual ~ActionCondition_OnWall() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::OnWall; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+};

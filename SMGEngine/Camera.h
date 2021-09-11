@@ -19,6 +19,7 @@ public:
 	int getCameraIndex(void) const noexcept;
 	const TickCount64& getCurrentTick(void) const noexcept;
 	void setInputCameraPointKey(int key) noexcept;
+	DirectX::XMVECTOR getScreenPositionWorld(const DirectX::XMFLOAT2& screenPosition, float distance) const noexcept;
 private:
 	void updateCameraPosition(void) noexcept;
 	void updateCameraPoint(void) noexcept;

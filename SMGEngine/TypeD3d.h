@@ -91,3 +91,7 @@ constexpr RenderLayer HasShadowLayers[] =
 };
 static_assert(static_cast<int>(RenderLayer::Count) == 7, "그림자가 생겨야 하는 레이어라면 추가해주세요.");
 constexpr uint16_t SKINNED_UNDEFINED = std::numeric_limits<uint16_t>::max();
+
+static constexpr float FOV_ANGLE = 0.25f * DirectX::XM_PI;
+static constexpr float NEAR_Z = 10.f;
+static constexpr float FAR_Z = 50000.f;

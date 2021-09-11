@@ -92,7 +92,7 @@ class UIGroup
 {
 public:
 	UIGroup(const XMLReaderNode& node);
-	UIElement* findElement(const std::string& name) const noexcept;
+	UIElement* findElement(const std::string& name, UIElementType typeCheck) const noexcept;
 	void update(void);
 	void draw(void) const noexcept;
 	UIFunctionType getUpdateFunctionType(void) const noexcept { return _updateFunctionType; }

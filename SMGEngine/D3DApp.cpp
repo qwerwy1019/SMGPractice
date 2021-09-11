@@ -67,6 +67,7 @@ D3DApp::D3DApp()
 	, _currentBackBuffer(0)
 	, _textureLoadedCount(0)
 	, _projectionMatrix(MathHelper::Identity4x4)
+	, _aspectRatio(0)
 	, _viewPort()
 	, _scissorRect()
 	, _sceneBounds(XMFLOAT3(0, 0, 0), 600.f)
@@ -404,6 +405,8 @@ void D3DApp::createSwapChain()
 	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 	ThrowIfFailed(_factory->CreateSwapChain(_commandQueue.Get(), &sd, _swapChain.GetAddressOf()));
+
+	ThrowIfFailed(_factory->MakeWindowAssociation(SMGFramework::Get().getHWnd(), DXGI_MWA_NO_ALT_ENTER));
 }
 
 void D3DApp::createDescriptorHeaps(void)
@@ -436,8 +439,7 @@ void D3DApp::OnResize(void)
 	check(_swapChain != nullptr, "swapChain이 null입니다. 초기화를 확인하세요.");
 	check(_commandAlloc != nullptr, "commandAlloc이 null입니다. 초기화를 확인하세요.");
 
-	// 이거 왜 있어야 하지? [5/24/2021 qwerw]
-	//flushCommandQueue();
+	flushCommandQueue();
 	
 	// reset ui before resize
 	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
@@ -545,8 +547,8 @@ void D3DApp::OnResize(void)
 
 	flushCommandQueue();
 
-	double aspectRatio = static_cast<double>(width) / height;
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, aspectRatio, 10.f, 50000.0f);
+	_aspectRatio = static_cast<double>(width) / height;
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(FOV_ANGLE, _aspectRatio, NEAR_Z, FAR_Z);
 	XMStoreFloat4x4(&_projectionMatrix, proj);
 
 	BoundingFrustum::CreateFromMatrix(_viewFrustumLocal, proj);
@@ -892,8 +894,8 @@ void D3DApp::updatePassConstantBuffer()
 	const float height = static_cast<float>(SMGFramework::Get().getClientHeight());
 	_passConstants._renderTargetSize = XMFLOAT2(static_cast<float>(width), static_cast<float>(height));
 	_passConstants._invRenderTargetSize = XMFLOAT2(1.0f / width, 1.0f / height);
-	_passConstants._nearZ = 10.0f;
-	_passConstants._farZ = 50000.0f;
+	_passConstants._nearZ = NEAR_Z;
+	_passConstants._farZ = FAR_Z;
 	_passConstants._totalTime = SMGFramework::Get().getTimer().getTotalTime();
 	_passConstants._deltaTime = SMGFramework::Get().getTimer().getDeltaTime();
 
@@ -1017,7 +1019,15 @@ SkinnedModelInstance* D3DApp::createSkinnedInstance(uint16_t& skinnedBufferIndex
 
 	return skinnedInstancePtr;
 }
-
+const MeshGeometry* D3DApp::getMeshGeometry(const std::string& meshName) const noexcept
+{
+	auto it = _geometries.find(meshName);
+	if (it != _geometries.end())
+	{
+		return it->second.get();
+	}
+	return nullptr;
+}
 const MeshGeometry* D3DApp::createMeshGeometry(const std::string& meshName, const GeneratedMeshData& meshData)
 {
 	auto it = _geometries.emplace(meshName, std::make_unique<MeshGeometry>(meshData, _deviceD3d12.Get(), _commandList.Get()));
@@ -1132,7 +1142,7 @@ void D3DApp::createGameObjectDev(Actor* actor)
 		default:
 		{
 			check(false, "타입 추가시 확인해야함.");
-			static_assert(static_cast<int>(CollisionShape::Count) == 3);
+			static_assert(static_cast<int>(CollisionShape::Count) == 4);
 		}
 	}
 	const MeshGeometry* mesh = nullptr;
@@ -1207,7 +1217,7 @@ void D3DApp::createGameObjectDev(GameObject* gameObject)
 }
 #endif
 
-void D3DApp::releaseItemsForStageLoad(void) noexcept
+void D3DApp::releaseItemsForStageLoad(bool isReload) noexcept
 {
 	flushCommandQueue();
 	Sleep(100);
@@ -1223,14 +1233,17 @@ void D3DApp::releaseItemsForStageLoad(void) noexcept
 	_skinnedCBReturned = std::queue<uint16_t>();
 	_skinnedCBIndexCount = 0;
 
-	_textures.clear();
-	_textureIndexMap.clear();
-	_textureLoadedCount = 0;
-	_materials.clear();
-	_boneInfoMap.clear();
-	_animationInfoMap.clear();
-	_geometries.clear();
-	_bitmapImages.clear();
+	if (!isReload)
+	{
+		_textures.clear();
+		_textureIndexMap.clear();
+		_textureLoadedCount = 0;
+		_materials.clear();
+		_boneInfoMap.clear();
+		_animationInfoMap.clear();
+		_geometries.clear();
+		_bitmapImages.clear();
+	}
 }
 
 void D3DApp::createRenderItems(GameObject* gameObject, const XMLReaderNode& node)

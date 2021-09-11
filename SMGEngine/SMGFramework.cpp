@@ -21,6 +21,7 @@ SMGFramework::SMGFramework(HINSTANCE hInstance)
 	, _hMainWnd(nullptr)
 	, _mousePos{ 0, 0 }
 	, _drawCollisionBox(true)
+	, _isPointerActive(false)
 {
 	check(hInstance != nullptr, "hInstance is null");
 	for (int i = 0; i < static_cast<int>(ButtonInputType::Count); ++i)
@@ -56,7 +57,7 @@ void SMGFramework::Create(HINSTANCE hInstance)
 	_instance->_userData = std::make_unique<UserData>();
 	_instance->_effectManager = std::make_unique<EffectManager>();
 
-
+	_instance->_stageManager->setNextStage("stage00");
 	_instance->_stageManager->loadStage();
 }
 
@@ -276,10 +277,10 @@ int SMGFramework::Run(void)
 			if (!isAppPaused())
 			{
 				calculateFrameStats();
-				onKeyboardInput();
 				
 				if (_timer.getDeltaTickCount() != 0)
 				{
+					onKeyboardInput();
 					_stageManager->update();
 					_uiManager->update();
 					_camera->update();
@@ -355,6 +356,10 @@ LRESULT SMGFramework::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					{
 						_d3dApp->OnResize();
 					}
+				}
+				else
+				{
+					ThrowErrCode(ErrCode::UndefinedType);
 				}
 			}
 			return 0;
@@ -443,6 +448,7 @@ void SMGFramework::initMainWindow()
 	{
 		ThrowErrCode(ErrCode::InitFail, "CreateWindow Failed.");
 	}
+	ShowCursor(false);
 
 	ShowWindow(_hMainWnd, SW_SHOW);
 	UpdateWindow(_hMainWnd);

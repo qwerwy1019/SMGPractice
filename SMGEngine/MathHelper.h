@@ -242,39 +242,36 @@ namespace MathHelper
 		return true;
 	}
 
-	static DirectX::XMVECTOR XM_CALLCONV triangleIntersectLine(DirectX::FXMVECTOR t0,
+	static float XM_CALLCONV triangleIntersectLine(DirectX::FXMVECTOR t0,
 														DirectX::FXMVECTOR t1,
 														DirectX::FXMVECTOR t2,
 														DirectX::CXMVECTOR from,
-														DirectX::CXMVECTOR to,
-														bool checkNormal) noexcept
+														DirectX::CXMVECTOR velocity) noexcept
 	{
 		using namespace DirectX;
 		const auto& plane = XMPlaneFromPoints(t0, t1, t2);
 		if (XMVector3Equal(plane, XMVectorZero()))
 		{
-			return to;
+			return 1.f;
 		}
 
-		if (checkNormal)
+		if (XMVectorGetX(XMVector3Dot(plane, velocity)) > 0)
 		{
-			if (XMVectorGetX(XMVector3Dot(plane, to - from)) > 0)
-			{
-				return to;
-			}
+			return 1.f;
 		}
-		const auto& intersect = XMPlaneIntersectLine(plane, from, to);
-		if (XMVectorGetX(XMVector3Dot(from - intersect, to - intersect)) > 0)
+
+		const auto& intersect = XMPlaneIntersectLine(plane, from, from + velocity);
+		if (XMVectorGetX(XMVector3Dot(from - intersect, from + velocity - intersect)) > 0)
 		{
-			return to;
+			return 1.f;
 		}
 
 		if (false == isPointInTriangle(t0, t1, t2, intersect))
 		{
-			return to;
+			return 1.f;
 		}
 		
-		return intersect;
+		return XMVectorGetX(XMVector3Length(intersect - from) / XMVector3Length(velocity));
 	}
 	static float XM_CALLCONV triangleIntersectRectangle(DirectX::FXMVECTOR t0,
 											DirectX::FXMVECTOR t1,

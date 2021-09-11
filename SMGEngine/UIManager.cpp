@@ -78,46 +78,10 @@ UIGroup::UIGroup(const XMLReaderNode& node)
 	node.loadAttribute("Hide", _hidePositionOffset);
 	std::string function;
 	node.loadAttribute("UpdateFunction", function);
-	if (function.empty())
-	{
-		_updateFunctionType = UIFunctionType::Count;
-	}
-	else if (function == "setHpUI")
-	{
-		_updateFunctionType = UIFunctionType::SetHpUI;
-	}
-	else if (function == "showUI")
-	{
-		_updateFunctionType = UIFunctionType::ShowUI;
-	}
-	else if (function == "hideUI")
-	{
-		_updateFunctionType = UIFunctionType::HideUI;
-	}
-	else if (function == "shakeUI")
-	{
-		_updateFunctionType = UIFunctionType::ShakeUI;
-	}
-	else if (function == "irisOut")
-	{
-		_updateFunctionType = UIFunctionType::IrisOut;
-	}
-	else if (function == "irisIn")
-	{
-		_updateFunctionType = UIFunctionType::IrisIn;
-	}
-	else if (function == "updateIris")
-	{
-		_updateFunctionType = UIFunctionType::UpdateIris;
-	}
-	else if (function == "updateMousePointer")
-	{
-		_updateFunctionType = UIFunctionType::UpdateMousePointer;
-	}
-	else
+	_updateFunctionType = getUIFunctionTypeFromString(function);
+	if(_updateFunctionType == UIFunctionType::Count)
 	{
 		ThrowErrCode(ErrCode::UndefinedType, function);
-		static_assert(static_cast<int>(UIFunctionType::Count) == 8);
 	}
 	const auto& childNodes = node.getChildNodes();
 	for (const auto& childNode : childNodes)
@@ -134,12 +98,21 @@ UIGroup::UIGroup(const XMLReaderNode& node)
 	}
 }
 
-UIElement* UIGroup::findElement(const std::string& name) const noexcept
+UIElement* UIGroup::findElement(const std::string& name, UIElementType typeCheck) const noexcept
 {
 	for (const auto& e : _child)
 	{
 		if (e->isNameEqual(name))
 		{
+			if (typeCheck != e->getType())
+			{
+				check(false, "element type error " +
+							name +
+							std::to_string(static_cast<int>(typeCheck)) +
+							std::to_string(static_cast<int>(e->getType())),
+							);
+				return nullptr;
+			}
 			return e.get();
 		}
 	}
@@ -149,7 +122,7 @@ UIElement* UIGroup::findElement(const std::string& name) const noexcept
 
 void UIGroup::update(void)
 {
-	if (_updateFunctionType != UIFunctionType::Count)
+	if (_updateFunctionType != UIFunctionType::None)
 	{
 		UIFunction::execute(_updateFunctionType, this);
 	}
@@ -350,11 +323,16 @@ UIElementIris::UIElementIris(const XMLReaderNode& node)
 	node.loadAttribute("InitIn", _isIn);
 	node.loadAttribute("ProgressTick", _progressTick);
 
-	const D2D1_RECT_F rect = D2D1::Rect(0.f, 0.f, _size.x, _size.y);
+	const D2D1_RECT_F rect = D2D1::Rect(
+		_localPosition.x - _size.x,
+		_localPosition.y - _size.y,
+		_localPosition.x + _size.x, 
+		_localPosition.y + _size.y);
+
 	ThrowIfFailed(SMGFramework::getD3DApp()->getD2dFactory()->CreateRectangleGeometry(
 		rect, &_screenRectangle));
 
-	const D2D1_ELLIPSE circle = D2D1::Ellipse(D2D1::Point2F(_size.x / 2.f, _size.y / 2.f), 50.f, 50.f);
+	const D2D1_ELLIPSE circle = D2D1::Ellipse(D2D1::Point2F(_localPosition.x, _localPosition.y), _size.x, _size.y);
 	ThrowIfFailed(SMGFramework::getD3DApp()->getD2dFactory()->CreateEllipseGeometry(
 		circle,
 		&_circle));
@@ -376,7 +354,15 @@ UIElementIris::UIElementIris(const XMLReaderNode& node)
 void UIElementIris::draw(const DirectX::XMFLOAT2& parentPosition) const noexcept
 {
 	ID2D1Brush* brush = SMGFramework::Get().getD3DApp()->getTextBrush(TextBrushType::Black);
-	SMGFramework::getD3DApp()->getD2dContext()->FillGeometry(_geometryGroup.Get(), brush);
+	auto transformMatrix = D2D1::Matrix3x2F::Translation(parentPosition.x, parentPosition.y);
+	WComPtr<ID2D1TransformedGeometry> transformedGeometry;
+
+	SMGFramework::getD3DApp()->getD2dFactory()->CreateTransformedGeometry(
+		_geometryGroup.Get(),
+		transformMatrix,
+		&transformedGeometry);
+
+	SMGFramework::getD3DApp()->getD2dContext()->FillGeometry(transformedGeometry.Get(), brush);
 }
 
 void UIElementIris::set(bool isIn) noexcept
@@ -412,7 +398,7 @@ void UIElementIris::update(void)
 		}
 	}
 	
-	D2D1_POINT_2F center = { _size.x / 2.f, _size.y / 2.f };
+	D2D1_POINT_2F center = { _localPosition.x, _localPosition.y };
 	float t = MathHelper::getInterpolateValue(
 		_currentTick, 0, _progressTick, InterpolationType::Linear);
 	float radius = _radiusIn * (1 - t) + _radiusOut * t;

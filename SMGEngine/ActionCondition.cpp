@@ -229,9 +229,17 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	{
 		condition = std::make_unique<ActionCondition_StageVariable>(conditionArgs);
 	}
+	else if (conditionTypeString == "PointerPicked")
+	{
+		condition = std::make_unique<ActionCondition_PointerPicked>(conditionArgs);
+	}
+	else if (conditionTypeString == "OnWall")
+	{
+		condition = std::make_unique<ActionCondition_OnWall>(conditionArgs);
+	}
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 19, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 21, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -405,7 +413,7 @@ bool ActionCondition_CheckPlayerDistance::checkCondition(const Actor& actor) con
 	check(&actor != SMGFramework::getStageManager()->getPlayerActor());
 	check(nullptr != SMGFramework::getStageManager()->getPlayerActor());
 
-	const PlayerActor* player = SMGFramework::getStageManager()->getPlayerActor();
+	const Actor* player = SMGFramework::getStageManager()->getPlayerActor();
 	if (player == nullptr)
 	{
 		return false;
@@ -436,7 +444,7 @@ bool ActionCondition_CheckPlayerAltitude::checkCondition(const Actor& actor) con
 	check(&actor != SMGFramework::getStageManager()->getPlayerActor());
 	check(nullptr != SMGFramework::getStageManager()->getPlayerActor());
 
-	const PlayerActor* player = SMGFramework::getStageManager()->getPlayerActor();
+	const Actor* player = SMGFramework::getStageManager()->getPlayerActor();
 	if (player == nullptr)
 	{
 		return false;
@@ -483,9 +491,17 @@ ActionCondition_CharacterType::ActionCondition_CharacterType(const std::string& 
 	{
 		_characterType = CharacterType::Object;
 	}
+	else if (args == "PlayerAttackObject")
+	{
+		_characterType = CharacterType::PlayerAttackObject;
+	}
+	else if (args == "Item")
+	{
+		_characterType = CharacterType::PlayerAttackObject;
+	}
 	else
 	{
-		static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
+		static_assert(static_cast<int>(CharacterType::Count) == 5, "타입 추가시 확인");
 		ThrowErrCode(ErrCode::UndefinedType, "characterType Error : " + args);
 	}
 }
@@ -614,4 +630,28 @@ bool ActionCondition_StageVariable::checkCondition(const Actor& actor) const noe
 {
 	int variable = SMGFramework::getStageManager()->getStageScriptVariable(_variableName);
 	return D3DUtil::compare(_operator, variable, _value);
+}
+
+ActionCondition_PointerPicked::ActionCondition_PointerPicked(const std::string& args)
+{
+	
+}
+
+bool ActionCondition_PointerPicked::checkCondition(const Actor& actor) const noexcept
+{
+	if (&actor == SMGFramework::getStageManager()->getPointerPickedActor())
+	{
+		return true;
+	}
+	return false;
+}
+
+ActionCondition_OnWall::ActionCondition_OnWall(const std::string& args)
+{
+
+}
+
+bool ActionCondition_OnWall::checkCondition(const Actor& actor) const noexcept
+{
+	return actor.isOnWall();
 }

@@ -231,8 +231,8 @@ CameraPoint_Path::CameraPoint_Path(const XMLReaderNode& node, bool isAutoCamera)
 
 bool CameraPoint_Path::getData(const Camera* camera, DirectX::XMFLOAT3& position, DirectX::XMFLOAT4& rotationQuat) const noexcept
 {
-	_path->getPathPositionAtTime(camera->getCurrentTick(), position);
-	_path->getPathRotationAtTime(camera->getCurrentTick(), rotationQuat);
+	_path->getPathPositionAtTime(camera->getCurrentTick(), position, InterpolationType::Cosine);
+	_path->getPathRotationAtTime(camera->getCurrentTick(), rotationQuat, InterpolationType::Cosine);
 
 	return true;
 }

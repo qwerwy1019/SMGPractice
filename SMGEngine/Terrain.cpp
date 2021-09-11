@@ -395,12 +395,19 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex,
 													collisionInfo._velocity);
 			}
 			break;
+			case CollisionShape::Line:
+			{
+				return MathHelper::triangleIntersectLine(t0, t1, t2, 
+														collisionInfo._position,
+														collisionInfo._velocity);
+			}
+			break;
 			case CollisionShape::Polygon:
 			case CollisionShape::Count:
 			default:
 			{
 				check(false);
-				static_assert(static_cast<int>(CollisionShape::Count) == 3);
+				static_assert(static_cast<int>(CollisionShape::Count) == 4);
 				return MathHelper::NO_INTERSECTION;
 			}
 			break;
@@ -432,6 +439,161 @@ float XM_CALLCONV Terrain::checkCollisionXXX(int nodeIndex,
 		}
 	}
 }
+
+float XM_CALLCONV Terrain::checkCollisionLineXXX(int nodeIndex,
+												DirectX::FXMVECTOR min,
+												DirectX::FXMVECTOR max,
+												const DirectX::XMFLOAT3& start,
+												const DirectX::XMFLOAT3& velocity) const noexcept
+{
+	check(nodeIndex < _aabbNodes.size());
+	check(0 <= nodeIndex);
+
+	const auto& node = _aabbNodes[nodeIndex];
+	if (node._children[0] == std::numeric_limits<uint16_t>::max() &&
+		node._children[1] == std::numeric_limits<uint16_t>::max())
+	{
+		const auto& v0 = getVertexFromLeafNode(node._data._leaf, 0);
+		const auto& v1 = getVertexFromLeafNode(node._data._leaf, 1);
+		const auto& v2 = getVertexFromLeafNode(node._data._leaf, 2);
+
+		const auto& t0 = XMLoadFloat3(&v0._position);
+		const auto& t1 = XMLoadFloat3(&v1._position);
+		const auto& t2 = XMLoadFloat3(&v2._position);
+
+		return MathHelper::triangleIntersectLine(t0, t1, t2,
+			XMLoadFloat3(&start),
+			XMLoadFloat3(&velocity));
+	}
+	else
+	{
+		XMVECTOR nodeMinRate = XMVectorSet(static_cast<float>(node._data._node._minX) / std::numeric_limits<uint8_t>::max(),
+			static_cast<float>(node._data._node._minY) / std::numeric_limits<uint8_t>::max(),
+			static_cast<float>(node._data._node._minZ) / std::numeric_limits<uint8_t>::max(), 0);
+
+		XMVECTOR nodeMaxRate = XMVectorSet(static_cast<float>(node._data._node._maxX) / std::numeric_limits<uint8_t>::max(),
+			static_cast<float>(node._data._node._maxY) / std::numeric_limits<uint8_t>::max(),
+			static_cast<float>(node._data._node._maxZ) / std::numeric_limits<uint8_t>::max(), 0);
+
+		XMVECTOR nodeMinV = min + (max - min) * nodeMinRate;
+		XMVECTOR nodeMaxV = min + (max - min) * nodeMaxRate;
+		XMFLOAT3 nodeMin, nodeMax;
+		XMStoreFloat3(&nodeMin, nodeMinV);
+		XMStoreFloat3(&nodeMax, nodeMaxV);
+
+		do 
+		{
+			// vector 원소를 index접근할 방법이 없는지... [9/11/2021 qwerw]
+			float t;
+			if (!MathHelper::equal(velocity.x, 0.f))
+			{
+				// x = nodeMax.x 평면과의 교점
+				// (nodeMax.x, someY, someZ) 가 start + t * velocity이다
+				// nodeMax.x == start.x + t * velocity.x이다.
+				// t = (nodeMax.x - start.x) / velocity.x이다.
+				t = (nodeMax.x - start.x) / velocity.x;
+				if (0.f < t && t < 1.f)
+				{
+					float intersectY = start.y + t * velocity.y;
+					float intersectZ = start.z + t * velocity.z;
+					if (nodeMin.y < intersectY && intersectY < nodeMax.y &&
+						nodeMin.z < intersectZ && intersectZ < nodeMax.z)
+					{
+						break;
+					}
+				}
+			}
+			
+			if (!MathHelper::equal(velocity.y, 0.f))
+			{
+				t = (nodeMax.y - start.y) / velocity.y;
+				if (0.f < t && t < 1.f)
+				{
+					float intersectX = start.x + t * velocity.x;
+					float intersectZ = start.z + t * velocity.z;
+					if (nodeMin.x < intersectX && intersectX < nodeMax.x &&
+						nodeMin.z < intersectZ && intersectZ < nodeMax.z)
+					{
+						break;
+					}
+				}
+			}
+
+			if (!MathHelper::equal(velocity.z, 0.f))
+			{
+				t = (nodeMax.z - start.z) / velocity.z;
+
+				float intersectX = start.x + t * velocity.x;
+				float intersectY = start.y + t * velocity.y;
+				if (0.f < t && t < 1.f)
+				{
+					if (nodeMin.x < intersectX && intersectX < nodeMax.x &&
+						nodeMin.y < intersectY && intersectY < nodeMax.y)
+					{
+						break;
+					}
+				}
+			}
+
+			if (!MathHelper::equal(velocity.x, 0.f))
+			{
+				t = (nodeMin.x - start.x) / velocity.x;
+
+				float intersectY = start.y + t * velocity.y;
+				float intersectZ = start.z + t * velocity.z;
+				if (0.f < t && t < 1.f)
+				{
+					if (nodeMin.y < intersectY && intersectY < nodeMax.y &&
+						nodeMin.z < intersectZ && intersectZ < nodeMax.z)
+					{
+						break;
+					}
+				}
+			}
+
+			if (!MathHelper::equal(velocity.y, 0.f))
+			{
+				t = (nodeMin.y - start.y) / velocity.y;
+
+				float intersectX = start.x + t * velocity.x;
+				float intersectZ = start.z + t * velocity.z;
+				if (0.f < t && t < 1.f)
+				{
+					if (nodeMin.x < intersectX && intersectX < nodeMax.x &&
+						nodeMin.z < intersectZ && intersectZ < nodeMax.z)
+					{
+						break;
+					}
+				}
+			}
+
+			if (!MathHelper::equal(velocity.z, 0.f))
+			{
+				t = (nodeMin.z - start.z) / velocity.z;
+
+				float intersectX = start.x + t * velocity.x;
+				float intersectY = start.y + t * velocity.y;
+				if (0.f < t && t < 1.f)
+				{
+					if (nodeMin.x < intersectX && intersectX < nodeMax.x &&
+						nodeMin.y < intersectY && intersectY < nodeMax.y)
+					{
+						break;
+					}
+				}
+			}
+
+			return MathHelper::NO_INTERSECTION;
+			
+		} while (false);
+		
+		return std::min(checkCollisionLineXXX(node._children[0], nodeMinV, nodeMaxV, start, velocity),
+			checkCollisionLineXXX(node._children[1], nodeMinV, nodeMaxV, start, velocity));
+		
+	}
+}
+
+
 
 void Terrain::setCulled(void) noexcept
 {
@@ -497,7 +659,7 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 		default:
 		{
 			check(false);
-			static_assert(static_cast<int>(CollisionShape::Count) == 3);
+			static_assert(static_cast<int>(CollisionShape::Count) == 4);
 		}
 	}
 
@@ -514,4 +676,22 @@ bool Terrain::checkCollision(const Actor& actor, const DirectX::XMFLOAT3& veloci
 	check(collisionTime < 1.05);
 
 	return true;
+}
+
+bool Terrain::checkCollisionLine(DirectX::FXMVECTOR start, DirectX::FXMVECTOR velocity, float& collisionTime) const noexcept
+{
+	XMMATRIX inverseMatrix = XMLoadFloat4x4(&_gameObject->getWorldMatrix());
+	inverseMatrix = XMMatrixInverse(nullptr, inverseMatrix);
+
+	DirectX::XMFLOAT3 startF, velocityF;
+	TerrainCollisionInfoXXX collisionInfo;
+	collisionInfo._shape = CollisionShape::Line;
+	XMStoreFloat3(&startF, XMVector3Transform(start, inverseMatrix));
+	XMStoreFloat3(&velocityF, XMVector4Transform(velocity, inverseMatrix));
+
+	XMVECTOR minV = XMLoadFloat3(&_min);
+	XMVECTOR maxV = XMLoadFloat3(&_max);
+
+	collisionTime = checkCollisionLineXXX(_aabbNodes.size() - 1, minV, maxV, startF, velocityF);
+	return collisionTime < 1.f;
 }

@@ -24,6 +24,7 @@ struct GravityPoint
 	float _minRadius;
 
 	DirectX::XMFLOAT3 _position;
+	DirectX::XMFLOAT3 _direction;
 };
 
 class StageInfo

@@ -26,8 +26,10 @@ StageManager::StageManager()
 	, _actorsBySector(9 * 9 * 9)
 	, _currentPhase(nullptr)
 	, _playerActor(nullptr)
-	, _nextStageName("stage00")
 	, _isLoading(false)
+	, _raycastActor(nullptr)
+	, _raycastPosition(0, 0, 0)
+	, _lastStarShootTick(0)
 {
 }
 
@@ -37,7 +39,9 @@ StageManager::~StageManager()
 
 void StageManager::loadStage(void)
 {	
-	unloadStage();
+	check(!_nextStageName.empty());
+	check(_isLoading);
+	unloadStage(_nextStageName == _currentStageName);
 
 	SMGFramework::getD3DApp()->prepareCommandQueue();
 	loadStageInfo();
@@ -56,7 +60,9 @@ void StageManager::loadStage(void)
 void StageManager::update()
 {
 	TickCount64 deltaTick = SMGFramework::Get().getTimer().getDeltaTickCount();
-	
+
+	updateMouseRaycast();
+	updateStarShoot();
 
 	for (const auto& actor : _actors)
 	{
@@ -81,7 +87,7 @@ void StageManager::update()
 void StageManager::releaseObjects()
 {
 	_isLoading = true;
-	unloadStage();
+	unloadStage(false);
 }
 
 void StageManager::moveActorXXX(Actor* actor, const DirectX::XMFLOAT3& moveVector) noexcept
@@ -207,29 +213,13 @@ const StageInfo* StageManager::getStageInfo(void) const noexcept
 
 void StageManager::spawnActor(const SpawnInfo& spawnInfo)
 {
-	std::unique_ptr<Actor> actor;
+	std::unique_ptr<Actor> actor = std::make_unique<Actor>(spawnInfo);;
 	auto characterInfo = SMGFramework::getCharacterInfoManager()->getInfo(spawnInfo.getCharacterKey());
 	check(characterInfo != nullptr);
-	switch (characterInfo->getCharacterType())
+	if (characterInfo->getCharacterType() == CharacterType::Player)
 	{
-		case CharacterType::Player:
-		{
-			actor = std::make_unique<PlayerActor>(spawnInfo);
-			_playerActor = static_cast<PlayerActor*>(actor.get());
-		}
-		break;
-		case CharacterType::Monster:
-		case CharacterType::Object:
-		{
-			actor = std::make_unique<Actor>(spawnInfo);
-		}
-		break;
-		case CharacterType::Count:
-		default:
-		{
-			static_assert(static_cast<int>(CharacterType::Count) == 3);
-			check(false, "spawnInfo" + std::to_string(spawnInfo.getCharacterKey()) + " characterType이 이상합니다.");
-		}
+		check(_playerActor == nullptr, "플레이어 액터가 교체됩니다.");
+		_playerActor = static_cast<Actor*>(actor.get());
 	}
 
 	int sectorIndex = sectorCoordToIndex(actor->getSectorCoord());
@@ -242,7 +232,7 @@ void StageManager::spawnActor(const SpawnInfo& spawnInfo)
 	_actors.emplace_back(std::move(actor));
 }
 
-const PlayerActor* StageManager::getPlayerActor(void) const noexcept
+const Actor* StageManager::getPlayerActor(void) const noexcept
 {
 	return _playerActor;
 }
@@ -301,11 +291,39 @@ bool StageManager::moveActor(Actor* actor, const TickCount64& deltaTick) noexcep
 	{
 		return false;
 	}
-	float t = actor->isCollisionOn() ? checkWall(actor, moveVector) : 1.f;
+	float t = 1.f;
+	if (actor->isCollisionOn())
+	{
+		t = checkWall(actor, moveVector);
+		if (t < 1.f)
+		{
+			actor->setActorOnWall(true);
+		}
+		else
+		{
+			actor->setActorOnWall(false);
+		}
+
+		if (!actor->isPlaneMove())
+		{
+			float groundT = checkGround(actor, moveVector);
+			if (groundT < t)
+			{
+				actor->setActorOnGround(true);
+				actor->setActorOnWall(false);
+			}
+			else
+			{
+				actor->setActorOnGround(false);
+			}
+
+		}
+	}
 	if (MathHelper::equal(t, 0))
 	{
 		return true;
 	}
+	
 	moveVector = MathHelper::mul(moveVector, t);
 
 	moveActorXXX(actor, moveVector);
@@ -338,6 +356,75 @@ int StageManager::sectorCoordToIndex(const DirectX::XMINT3& sectorCoord) const n
 	return sectorCoord.x * _sectorUnitNumber.y * _sectorUnitNumber.z + sectorCoord.y * _sectorUnitNumber.z + sectorCoord.z;
 }
 
+void StageManager::raycast(DirectX::XMVECTOR start, DirectX::XMVECTOR dir, float maxLength)
+{
+	XMVECTOR velocity = dir * maxLength;
+	float collisionTime = maxLength;
+	for (const auto& terrain : _terrains)
+	{
+		if (!terrain.isGround() && !terrain.isWall())
+		{
+			continue;
+		}
+		float t;
+		if (!terrain.checkCollisionLine(start, velocity, t))
+		{
+			continue;
+		}
+		collisionTime = std::min(collisionTime, t * maxLength);
+	}
+
+	DirectX::XMFLOAT3 startF;
+	XMStoreFloat3(&startF, start);
+
+	XMVECTOR end = start + velocity;
+	DirectX::XMFLOAT3 endF;
+	XMStoreFloat3(&endF, start + velocity);
+
+	auto startSectorCoord = getSectorCoord(startF);
+	// 나중에 맵 범위 코드 정리할때 수정할것 [9/10/2021 qwerw]
+	auto endSectorCoord = getSectorCoord(endF, false);
+	if (endSectorCoord.x < startSectorCoord.x)
+	{
+		std::swap(startSectorCoord.x, endSectorCoord.x);
+	}
+	if (endSectorCoord.y < startSectorCoord.y)
+	{
+		std::swap(startSectorCoord.y, endSectorCoord.y);
+	}
+	if (endSectorCoord.z < startSectorCoord.z)
+	{
+		std::swap(startSectorCoord.z, endSectorCoord.z);
+	}
+
+	for (int i = startSectorCoord.x; i <= endSectorCoord.x; ++i)
+	{
+		for (int j = startSectorCoord.y; j <= endSectorCoord.y; ++j)
+		{
+			for (int k = startSectorCoord.z; k <= endSectorCoord.z; ++k)
+			{
+				int sectorIndex = sectorCoordToIndex(XMINT3(i, j, k));
+				for (const auto& actor : _actorsBySector[sectorIndex])
+				{
+					if (actor->checkPointerPicked() == false)
+					{
+						continue;
+					}
+					float t;
+					bool colliding = actor->checkCollisionWithLine(start, velocity, t);
+					if (colliding && (t * maxLength) < collisionTime)
+					{
+						_raycastActor = actor;
+						collisionTime = t * maxLength;
+					}
+				}
+			}
+		}
+	}
+
+	XMStoreFloat3(&_raycastPosition, start + collisionTime * dir);
+}
+
 void StageManager::loadUI()
 {
 	const auto& uiFileNames = _stageInfo->getUIFileNames();
@@ -366,7 +453,7 @@ void StageManager::loadStageScript(void)
 
 }
 
-DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position) const noexcept
+DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position, bool checkRange) const noexcept
 {
 	check(_sectorSize.x != 0);
 	check(_sectorSize.y != 0);
@@ -380,9 +467,9 @@ DirectX::XMINT3 StageManager::getSectorCoord(const DirectX::XMFLOAT3& position) 
 						   static_cast<int>(position.y + baseCoord.y) / _sectorSize.y,
 						   static_cast<int>(position.z + baseCoord.z) / _sectorSize.z };
 
-	check(0 <= rv.x && rv.x < _sectorUnitNumber.x, "sector 범위가 작게 설정되지 않았는지 확인해야함");
-	check(0 <= rv.y && rv.y < _sectorUnitNumber.y, "sector 범위가 작게 설정되지 않았는지 확인해야함");
-	check(0 <= rv.z && rv.z < _sectorUnitNumber.z, "sector 범위가 작게 설정되지 않았는지 확인해야함");
+	check(!checkRange || 0 <= rv.x && rv.x < _sectorUnitNumber.x, "sector 범위가 작게 설정되지 않았는지 확인해야함");
+	check(!checkRange || 0 <= rv.y && rv.y < _sectorUnitNumber.y, "sector 범위가 작게 설정되지 않았는지 확인해야함");
+	check(!checkRange || 0 <= rv.z && rv.z < _sectorUnitNumber.z, "sector 범위가 작게 설정되지 않았는지 확인해야함");
 
 	rv.x = std::clamp(rv.x, 0, _sectorUnitNumber.x - 1);
 	rv.y = std::clamp(rv.y, 0, _sectorUnitNumber.y - 1);
@@ -440,6 +527,8 @@ void StageManager::loadStageInfo()
 	xmlStageInfo.loadXMLFile(stageInfoFilePath);
 
 	_stageInfo->loadXml(xmlStageInfo.getRootNode());
+	_currentStageName = _nextStageName;
+	_nextStageName.clear();
 }
 
 void StageManager::processActorCollision(void) noexcept
@@ -510,14 +599,12 @@ void StageManager::processActorCollisionXXX(int sectorCoord0, int sectorCoord1) 
 				if (std::abs(actor0HeightFromActor1) > actor0->getHalfHeight() &&
 					std::abs(actor1HeightFromActor0) > actor1->getHalfHeight())
 				{
-					check((actor0HeightFromActor1 < 0) != (actor1HeightFromActor0 < 0), 
-						"반대로 서있는 액터들끼리 자주 충돌한다면 수정이 필요함.");
-					if (actor0HeightFromActor1 < 0)
+					if (actor0HeightFromActor1 < 0 && !(actor1HeightFromActor0 < 0))
 					{
 						actor0Case = CollisionCase::Lower;
 						actor1Case = CollisionCase::Upper;
 					}
-					else
+					else if(!(actor0HeightFromActor1 < 0) && actor1HeightFromActor0 < 0)
 					{
 						actor0Case = CollisionCase::Upper;
 						actor1Case = CollisionCase::Lower;
@@ -547,6 +634,64 @@ void StageManager::processActorCollisionXXX(int sectorCoord0, int sectorCoord1) 
 			}
 		}
 	}
+}
+
+void StageManager::updateMouseRaycast()
+{
+	using namespace DirectX;
+	_raycastActor = nullptr;
+	if (!SMGFramework::Get().isPointerActive())
+	{
+		return;
+	}
+
+	XMVECTOR camPosition = XMLoadFloat3(&SMGFramework::getCamera()->getPosition());
+	XMVECTOR mouseVector = 
+		SMGFramework::getCamera()->getScreenPositionWorld(SMGFramework::Get().getMousePos(), NEAR_Z);
+	
+	XMVECTOR rayDir = XMVector3Normalize(mouseVector - camPosition);
+	raycast(mouseVector, rayDir, FAR_Z);
+
+}
+
+void StageManager::updateStarShoot()
+{
+	TickCount64 currentTick = SMGFramework::Get().getTimer().getCurrentTickCount();
+	if (!SMGFramework::Get().isPointerActive())
+	{
+		return;
+	}
+	ButtonState buttonState = SMGFramework::Get().getButtonInput(ButtonInputType::ZR);
+	if (buttonState != ButtonState::Down &&
+		buttonState != ButtonState::Press)
+	{
+		return;
+	}
+	if (currentTick < _lastStarShootTick + STAR_SHOOT_COOLTIME)
+	{
+		return;
+	}
+	XMFLOAT2 positionScreen =
+	{
+		static_cast<float>(SMGFramework::Get().getClientWidth()) + 30.f,
+		static_cast<float>(SMGFramework::Get().getClientHeight()) / 2.f
+	};
+	XMFLOAT3 position;
+	XMStoreFloat3(&position, 
+		SMGFramework::getCamera()->getScreenPositionWorld(positionScreen, STAR_SHOOT_DISTANCE));
+	XMFLOAT3 upVector(0, 1, 0);
+	XMFLOAT3 direction(0, 0, -1);
+
+	SpawnInfo starSpawnInfo(
+		position,
+		direction,
+		upVector,
+		STAR_SHOOT_SIZE,
+		STAR_SHOOT_CHARACTER_KEY,
+		STAR_SHOOT_ACTION_INDEX);
+
+	requestSpawn(std::move(starSpawnInfo));
+	_lastStarShootTick = currentTick;
 }
 
 void StageManager::updateStageScript(void) noexcept
@@ -630,7 +775,7 @@ void StageManager::createMap(void)
 	}
 }
 
-void StageManager::unloadStage()
+void StageManager::unloadStage(bool isReload)
 {
 	_terrains.clear();
 	_backgroundObjects.clear();
@@ -650,5 +795,5 @@ void StageManager::unloadStage()
 	SMGFramework::getUIManager()->releaseForStageLoad();
 	SMGFramework::getCamera()->releaseForStageLoad();
 	SMGFramework::getEffectManager()->releaseForStageLoad();
-	SMGFramework::getD3DApp()->releaseItemsForStageLoad();
+	SMGFramework::getD3DApp()->releaseItemsForStageLoad(isReload);
 }

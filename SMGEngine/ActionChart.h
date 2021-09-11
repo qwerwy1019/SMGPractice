@@ -41,8 +41,8 @@ private:
 struct ChildEffectInfo
 {
 	std::string _effectName;
-	DirectX::XMFLOAT3 _positionOffset;
-	float _size;
+	DirectX::XMFLOAT3 _positionOffset = { 0, 0, 0 };
+	float _size = 0;
 };
 
 class ActionChart

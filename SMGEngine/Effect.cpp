@@ -105,6 +105,11 @@ void EffectManager::update() noexcept
 
 void EffectManager::createEffectMeshGeometry(void)
 {
+	_mesh = SMGFramework::getD3DApp()->getMeshGeometry("onePoint");
+	if (_mesh != nullptr)
+	{
+		return;
+	}
 	GeneratedMeshData pointMeshData;
 	pointMeshData._vertices.push_back(Vertex(DirectX::XMFLOAT3(0, 0, 0), DirectX::XMFLOAT3(0, 1, 0), DirectX::XMFLOAT2(0, 0)));
 	pointMeshData._indices.push_back(0);

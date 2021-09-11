@@ -9,6 +9,7 @@
 #include "Actor.h"
 #include "CameraPoint.h"
 #include "D3DUtil.h"
+#include "D3DApp.h"
 
 Camera::Camera()
 	: _cameraPoint(nullptr)
@@ -115,6 +116,33 @@ const TickCount64& Camera::getCurrentTick(void) const noexcept
 void Camera::setInputCameraPointKey(int key) noexcept
 {
 	_inputCameraPointKey = key;
+}
+
+DirectX::XMVECTOR Camera::getScreenPositionWorld(const DirectX::XMFLOAT2& screenPosition, float distance) const noexcept
+{
+	using namespace DirectX;
+
+	float screenYSize = tanf(FOV_ANGLE * 0.5f) * 2.f * distance;
+	float screenXSize = screenYSize * SMGFramework::getD3DApp()->getAspectRatio();
+
+	float clientWidth = static_cast<float>(SMGFramework::Get().getClientWidth());
+	float clientHeight = static_cast<float>(SMGFramework::Get().getClientHeight());
+
+	float xOffset = (screenPosition.x - clientWidth / 2.f) / clientWidth; // -0.5 ~ 0.5
+	float yOffset = (screenPosition.y - clientHeight / 2.f) / clientHeight; // -0.5 ~ 0.5
+	
+	XMVECTOR cameraUpVector = XMLoadFloat3(&_cameraUpVector);
+	XMVECTOR cameraRightVector = XMLoadFloat3(&_cameraRightVector);
+
+	XMVECTOR screenCenterWorld = XMLoadFloat3(&_cameraPosition) + XMLoadFloat3(&_cameraDirection) * NEAR_Z;
+
+	XMVECTOR mousePositionWorld = screenCenterWorld 
+								+ xOffset * XMLoadFloat3(&_cameraRightVector) *  screenXSize
+								- yOffset * XMLoadFloat3(&_cameraUpVector) * screenYSize;
+	XMFLOAT3 mousePositionWorldF;
+	XMStoreFloat3(&mousePositionWorldF, mousePositionWorld);
+	
+	return mousePositionWorld;
 }
 
 void Camera::setCameraPoint(const CameraPoint* cameraPoint) noexcept

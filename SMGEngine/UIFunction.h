@@ -12,6 +12,11 @@ public:
 	static void execute(UIFunctionType functionType, UIGroup* uiGroup);
 
 	static void setHpUI(UIGroup* uiGroup);
+	static void setStarBitUI(UIGroup* uiGroup);
+	static void setCoinUI(UIGroup* uiGroup);
+	static void setLifeUI(UIGroup* uiGroup);
+	static void activateUI(UIGroup* uiGroup);
+	static void inactivateUI(UIGroup* uiGroup);
 	static void showUI(UIGroup* uiGroup);
 	static void hideUI(UIGroup* uiGroup);
 	static void shakeUI(UIGroup* uiGroup);

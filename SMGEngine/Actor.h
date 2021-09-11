@@ -25,6 +25,8 @@ public:
 	float getVerticalSpeed() const noexcept;
 	void setActorOnGround(bool onGround) noexcept;
 	bool isOnGround(void) const noexcept;
+	void setActorOnWall(bool onWall) noexcept;
+	bool isOnWall(void) const noexcept;
 	bool isQuaternionRotate(void) const noexcept;
 	void rotateQuat(const DirectX::XMFLOAT4& rotationQuat) noexcept;
 	DirectX::XMFLOAT4 getRotationQuat(const TickCount64& deltaTick) const noexcept;
@@ -40,6 +42,7 @@ public:
 	const DirectX::XMFLOAT3& getUpVector(void) const noexcept;
 
 	static bool checkCollision(const Actor* lhs, const Actor* rhs) noexcept;
+	static bool checkCharacterTypeCollision(const Actor* lhs, const Actor* rhs) noexcept;
 	float getRadius(void) const noexcept;
 	float getSizeX(void) const noexcept;
 	float getSizeY(void) const noexcept;
@@ -48,6 +51,9 @@ public:
 	static bool checkCollideBoxWithBox(const Actor* lhs, const Actor* rhs) noexcept;
 	static bool checkCollideBoxWithSphere(const Actor* lhs, const Actor* rhs) noexcept;
 	static float getResistanceDistance(const Actor& selfActor, const Actor& targetActor) noexcept;
+	bool XM_CALLCONV checkCollisionWithLine(DirectX::FXMVECTOR start, DirectX::FXMVECTOR velocity, float& collisionTime) noexcept;
+	bool checkPointerPicked(void) const noexcept;
+	bool isPlaneMove(void) const noexcept;
 
 	// 아직 미구현 [3/17/2021 qwerwy]
 	static bool checkCollideSphereWithPolygon(const Actor* lhs, const Actor* rhs) noexcept;
@@ -140,21 +146,9 @@ private:
 	bool _isCollisionOn;
 
 	bool _onGround;
+	bool _onWall;
 
 	std::unordered_map<int, ConstantEffectInstance*> _childEffects;
 public:
 	void setChildEffectAlpha(int effectKey, float alpha, TickCount64 blendTick);
-};
-
-class PlayerActor : public Actor
-{
-public:
-	PlayerActor(const SpawnInfo& spawnInfo);
-	bool isMoving(void) const noexcept { return _isMoving; }
-private:
-	bool _isMoving;
-};
-
-class NonPlayerActor : public Actor
-{
 };

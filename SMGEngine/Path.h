@@ -15,9 +15,9 @@ class Path
 public:
 	Path(const XMLReaderNode& node);
 	void getPathPositionAtTime(const TickCount64& currentMoveTick,
-		DirectX::XMFLOAT3& position) const noexcept;
+		DirectX::XMFLOAT3& position, InterpolationType interpolateType) const noexcept;
 	void getPathRotationAtTime(const TickCount64& currentMoveTick,
-		DirectX::XMFLOAT4& quaternion) const noexcept;
+		DirectX::XMFLOAT4& quaternion, InterpolationType interpolateType) const noexcept;
 	const TickCount64& getMoveTick(void) const noexcept;
 	const DirectX::XMFLOAT3& getPathStartPosition(void) const noexcept;
 private:

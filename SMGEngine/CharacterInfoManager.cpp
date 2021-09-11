@@ -63,9 +63,17 @@ CharacterInfo::CharacterInfo(const XMLReaderNode& node)
 	{
 		_characterType = CharacterType::Object;
 	}
+	else if (stringBuffer == "PlayerAttackObject")
+	{
+		_characterType = CharacterType::PlayerAttackObject;
+	}
+	else if (stringBuffer == "Item")
+	{
+		_characterType = CharacterType::Item;
+	}
 	else
 	{
-		static_assert(static_cast<int>(CharacterType::Count) == 3, "타입 추가시 확인");
+		static_assert(static_cast<int>(CharacterType::Count) == 5, "타입 추가시 확인");
 		ThrowErrCode(ErrCode::UndefinedType, "characterType Error : " + stringBuffer);
 	}
 
@@ -103,7 +111,7 @@ CharacterInfo::CharacterInfo(const XMLReaderNode& node)
 	}
 	else
 	{
-		static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
+		static_assert(static_cast<int>(CollisionShape::Count) == 4, "타입 추가시 확인");
 		ThrowErrCode(ErrCode::UndefinedType, "collisionShape Error : " + stringBuffer);
 	}
 
@@ -132,7 +140,7 @@ CharacterInfo::CharacterInfo(const XMLReaderNode& node)
 		default:
 		{
 			ThrowErrCode(ErrCode::UndefinedType, std::to_string(static_cast<int>(_collisionShape)));
-			static_assert(static_cast<int>(CollisionShape::Count) == 3, "타입 추가시 확인");
+			static_assert(static_cast<int>(CollisionShape::Count) == 4, "타입 추가시 확인");
 		}
 		break;
 	}
