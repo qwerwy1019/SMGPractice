@@ -12,8 +12,8 @@
 #include "UIFunction.h"
 
 SMGFramework::SMGFramework(HINSTANCE hInstance)
-	: _clientWidth(1280)
-	, _clientHeight(720)
+	: _clientWidth(1920)
+	, _clientHeight(1080)
 	, _minimized(false)
 	, _maximized(false)
 	, _resizing(false)
@@ -289,7 +289,7 @@ int SMGFramework::Run(void)
 					_d3dApp->Draw();
 				}
 
-				Sleep(10);
+				Sleep(1);
 			}
 			else
 			{

@@ -286,16 +286,7 @@ void D3DApp::initDirect2D(void)
 		ThrowIfFailed(_writeFactory->CreateTextFormat(L"Righteous", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
 			DWRITE_FONT_STYLE_NORMAL,
 			DWRITE_FONT_STRETCH_NORMAL,
-			36.f,
-			L"ko-KR",
-			&_textFormats[0]));
-		ThrowIfFailed(_textFormats[0]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
-		ThrowIfFailed(_textFormats[0]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
-
-		ThrowIfFailed(_writeFactory->CreateTextFormat(L"Righteous", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
-			DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_FONT_STRETCH_NORMAL,
-			36.f,
+			54.f,
 			L"ko-KR",
 			&_textFormats[static_cast<int>(TextFormatType::Normal)]));
 		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::Normal)]->SetTextAlignment(
@@ -306,7 +297,7 @@ void D3DApp::initDirect2D(void)
 		ThrowIfFailed(_writeFactory->CreateTextFormat(L"Righteous", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
 			DWRITE_FONT_STYLE_NORMAL,
 			DWRITE_FONT_STRETCH_NORMAL,
-			40.f,
+			60.f,
 			L"ko-KR",
 			&_textFormats[static_cast<int>(TextFormatType::Points)]));
 		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::Points)]->SetTextAlignment(
@@ -317,7 +308,7 @@ void D3DApp::initDirect2D(void)
 		ThrowIfFailed(_writeFactory->CreateTextFormat(L"Righteous", nullptr, DWRITE_FONT_WEIGHT_EXTRA_BOLD,
 			DWRITE_FONT_STYLE_NORMAL,
 			DWRITE_FONT_STRETCH_NORMAL,
-			40.f,
+			50.f,
 			L"ko-KR",
 			&_textFormats[static_cast<int>(TextFormatType::PointsOutline)]));
 		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::PointsOutline)]->SetTextAlignment(
