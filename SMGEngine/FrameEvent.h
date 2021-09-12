@@ -269,3 +269,13 @@ private:
 	std::string _name;
 	uint8_t _renderItemIndex;
 };
+
+class FrameEvent_StarShoot : public FrameEvent
+{
+public:
+	FrameEvent_StarShoot(const XMLReaderNode& node);
+	virtual ~FrameEvent_StarShoot() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::StarShoot; }
+private:
+};

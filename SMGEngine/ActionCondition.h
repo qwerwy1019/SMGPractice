@@ -258,3 +258,13 @@ public:
 	virtual bool checkCondition(const Actor& actor) const noexcept override;
 private:
 };
+
+class ActionCondition_IsPointerActive : public ActionCondition
+{
+public:
+	ActionCondition_IsPointerActive(const std::string& args);
+	virtual ~ActionCondition_IsPointerActive() = default;
+	virtual ActionConditionType getType(void) const noexcept override { return ActionConditionType::IsPointerActive; }
+	virtual bool checkCondition(const Actor& actor) const noexcept override;
+private:
+};

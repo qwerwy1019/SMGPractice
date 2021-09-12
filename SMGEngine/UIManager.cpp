@@ -165,11 +165,24 @@ void UIGroup::setMove(const DirectX::XMFLOAT2& moveVector,
 {
 	check(interpolationType != InterpolationType::Count);
 
+	_positionOffsetFrom = getCurrentPositionOffset();
 	_positionOffsetTo = moveVector;
 	_moveBlendTick = blendTick;
 	_moveBlendStartTick = SMGFramework::Get().getTimer().getCurrentTickCount();
 	_moveInterpolationType = interpolationType;
-	_positionOffsetFrom = getCurrentPositionOffset();
+}
+
+bool UIGroup::isMoving(void) const noexcept
+{
+	if (_moveInterpolationType == InterpolationType::Count)
+	{
+		return false;
+	}
+	if (_moveBlendStartTick + _moveBlendTick < SMGFramework::Get().getTimer().getCurrentTickCount())
+	{
+		return false;
+	}
+	return true;
 }
 
 UIElement::UIElement(const std::string& name, const DirectX::XMFLOAT2& position, const DirectX::XMFLOAT2& size) noexcept

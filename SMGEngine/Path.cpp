@@ -87,7 +87,6 @@ void Path::getPathPositionAtTime(const TickCount64& currentMoveTick,
 								DirectX::XMFLOAT3& position,
 								InterpolationType interpolateType) const noexcept
 {
-	//float t = (currentMoveTick < _moveTick) ? static_cast<float>(currentMoveTick) / _moveTick : 1.f;
 	float t = MathHelper::getInterpolateValue(currentMoveTick, 0, _moveTick, interpolateType);
 	if (_isCurve)
 	{
@@ -103,10 +102,9 @@ void Path::getPathRotationAtTime(const TickCount64& currentMoveTick,
 								DirectX::XMFLOAT4& quaternion,
 								InterpolationType interpolateType) const noexcept
 {
-	//float t = (currentMoveTick < _moveTick) ? static_cast<float>(currentMoveTick) / _moveTick : 1.f;
 	float t = MathHelper::getInterpolateValue(currentMoveTick, 0, _moveTick, interpolateType);
 
-	OutputDebugStringA(("t : " + std::to_string(t) + '\n').c_str());
+	//OutputDebugStringA(("t : " + std::to_string(t) + '\n').c_str());
 	if (_isCurve)
 	{
 		getPathRotationAtTimeCurve(t, quaternion);

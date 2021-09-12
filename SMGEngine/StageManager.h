@@ -27,7 +27,6 @@ private:
 	void processActorCollision(void) noexcept;
 	void processActorCollisionXXX(int sectorCoord0, int sectorCoord1) noexcept;
 	void updateMouseRaycast();
-	void updateStarShoot();
 	// 스테이지 이동
 public:
 	void loadStage(void);
@@ -37,6 +36,7 @@ public:
 	void requestSpawn(SpawnInfo&& spawnInfo) noexcept;
 	void requestSpawnWithKey(int key) noexcept;
 	const StageInfo* getStageInfo(void) const noexcept;
+	void starShoot() noexcept;
 private:
 	void spawnStageInfoActors();
 	void spawnRequested();
@@ -103,8 +103,6 @@ private:
 	Actor* _raycastActor;
 	DirectX::XMFLOAT3 _raycastPosition;
 
-	TickCount64 _lastStarShootTick;
-	static constexpr TickCount64 STAR_SHOOT_COOLTIME = 500;
 	static constexpr CharacterKey STAR_SHOOT_CHARACTER_KEY = 8;
 	static constexpr int STAR_SHOOT_ACTION_INDEX = 2;
 	static constexpr float STAR_SHOOT_SIZE = 0.3f;

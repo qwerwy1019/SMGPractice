@@ -103,6 +103,7 @@ public:
 				InterpolationType interpolationType) noexcept;
 	void setActive(bool isActive) noexcept { _isActive = isActive; }
 	bool isActive(void) { return _isActive; }
+	bool isMoving(void) const noexcept;
 private:
 	std::vector<std::unique_ptr<UIElement>> _child;
 

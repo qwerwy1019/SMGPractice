@@ -86,13 +86,14 @@ float4 DefaultPixelShader(VertexOut pIn) : SV_TARGET
 	float4 directLight = ComputeLighting(gLights, material, pIn._posWorld, pIn._normalWorld, toEye, shadowFactor);
 
 	float4 color = ambient + directLight;
-#ifdef FOG
-	float fogAmount = saturate((distanceToEye - gFogStart) / gFogEnd);
-	color = lerp(color, gFogColor, fogAmount);
-#endif
 	// 통상적으로 diffuseAlbedo 알파값에 알파값을 넣는다고함.
 	float4 rimLightColor = { 0.3f, 0.3f, 0.6f, 0 };
 	color.a = diffuseAlbedo.a;
 	color += rimLightFactor * rimLightColor;
+
+#ifdef FOG
+	float fogAmount = saturate((distanceToEye - gFogStart) / gFogEnd);
+	color = lerp(color, gFogColor, fogAmount);
+#endif
 	return color;
 }

@@ -24,6 +24,7 @@ enum class ActionConditionType
 	StageVariable,
 	PointerPicked,
 	OnWall,
+	IsPointerActive,
 
 	Count,
 };
@@ -50,6 +51,7 @@ enum class FrameEventType
 	SetEffectAlpha,
 	CallUIFunction,
 	ChangeMaterial,
+	StarShoot,
 
 	Count,
 };

@@ -225,11 +225,11 @@ void Camera::updatePassConstant() noexcept
 	XMStoreFloat3(&_cameraDirection, direction);
 	XMStoreFloat3(&_cameraRightVector, rightVector);
 
-	std::string camInfo;
-	camInfo += "pos : " + D3DUtil::toString(_cameraPosition, 0) + "\n";
-	camInfo += "dir : " + D3DUtil::toString(_cameraDirection, 2) + "\n";
-	camInfo += "up : " + D3DUtil::toString(_cameraUpVector, 2) + "\n\n";
-	OutputDebugStringA(camInfo.c_str());
+// 	std::string camInfo;
+// 	camInfo += "pos : " + D3DUtil::toString(_cameraPosition, 0) + "\n";
+// 	camInfo += "dir : " + D3DUtil::toString(_cameraDirection, 2) + "\n";
+// 	camInfo += "up : " + D3DUtil::toString(_cameraUpVector, 2) + "\n\n";
+// 	OutputDebugStringA(camInfo.c_str());
 
 	XMMATRIX view = XMMatrixLookAtLH(positionV, positionV + direction, upVector);
 	XMStoreFloat4x4(&_viewMatrix, view);

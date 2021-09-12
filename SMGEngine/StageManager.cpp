@@ -29,7 +29,6 @@ StageManager::StageManager()
 	, _isLoading(false)
 	, _raycastActor(nullptr)
 	, _raycastPosition(0, 0, 0)
-	, _lastStarShootTick(0)
 {
 }
 
@@ -62,7 +61,6 @@ void StageManager::update()
 	TickCount64 deltaTick = SMGFramework::Get().getTimer().getDeltaTickCount();
 
 	updateMouseRaycast();
-	updateStarShoot();
 
 	for (const auto& actor : _actors)
 	{
@@ -423,6 +421,13 @@ void StageManager::raycast(DirectX::XMVECTOR start, DirectX::XMVECTOR dir, float
 	}
 
 	XMStoreFloat3(&_raycastPosition, start + collisionTime * dir);
+
+// 	if (_playerActor->getCurrentActionState() == _playerActor->getActionChart()->getActionState("SPIN_ATTACK"))
+// 	{
+// 		std::string raycastInfo;
+// 		raycastInfo += "pos : " + D3DUtil::toString(_raycastPosition, 0) + "\n";
+// 		OutputDebugStringA(raycastInfo.c_str());
+// 	}
 }
 
 void StageManager::loadUI()
@@ -654,23 +659,13 @@ void StageManager::updateMouseRaycast()
 
 }
 
-void StageManager::updateStarShoot()
+void StageManager::starShoot() noexcept
 {
-	TickCount64 currentTick = SMGFramework::Get().getTimer().getCurrentTickCount();
 	if (!SMGFramework::Get().isPointerActive())
 	{
 		return;
 	}
-	ButtonState buttonState = SMGFramework::Get().getButtonInput(ButtonInputType::ZR);
-	if (buttonState != ButtonState::Down &&
-		buttonState != ButtonState::Press)
-	{
-		return;
-	}
-	if (currentTick < _lastStarShootTick + STAR_SHOOT_COOLTIME)
-	{
-		return;
-	}
+
 	XMFLOAT2 positionScreen =
 	{
 		static_cast<float>(SMGFramework::Get().getClientWidth()) + 30.f,
@@ -691,7 +686,6 @@ void StageManager::updateStarShoot()
 		STAR_SHOOT_ACTION_INDEX);
 
 	requestSpawn(std::move(starSpawnInfo));
-	_lastStarShootTick = currentTick;
 }
 
 void StageManager::updateStageScript(void) noexcept

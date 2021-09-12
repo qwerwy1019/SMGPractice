@@ -103,7 +103,7 @@ float4 EffectPixelShader(GeoOut pIn) : SV_TARGET
 
 	float4 color = diffuseAlbedo;
 #ifdef FOG
-	float fogAmount = saturate((distanceToEye - gFogStart) / gFogEnd);
+	float fogAmount = 0.3 * saturate((distanceToEye - gFogStart) / gFogEnd);
 	color = lerp(color, gFogColor, fogAmount);
 #endif
 	color.a = diffuseAlbedo.a;

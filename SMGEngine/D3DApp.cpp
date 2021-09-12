@@ -899,9 +899,9 @@ void D3DApp::updatePassConstantBuffer()
 	_passConstants._totalTime = SMGFramework::Get().getTimer().getTotalTime();
 	_passConstants._deltaTime = SMGFramework::Get().getTimer().getDeltaTime();
 
-	_passConstants._fogColor = DirectX::XMFLOAT4(DirectX::Colors::LightSteelBlue);
+	_passConstants._fogColor = XMFLOAT4(_backgroundColor.x, _backgroundColor.y, _backgroundColor.z, 1.f);
 	_passConstants._fogStart = 20.f;
-	_passConstants._fogEnd = 4000.f;
+	_passConstants._fogEnd = 5000.f;
 	
 	_frameResources[_frameIndex]->setPassCB(0, _passConstants);
 }

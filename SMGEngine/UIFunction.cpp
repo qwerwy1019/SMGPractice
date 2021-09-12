@@ -15,7 +15,7 @@ void UIFunction::initialize(void) noexcept
 {
 	_functions[static_cast<int>(UIFunctionType::None)] = nullptr;
 	_functions[static_cast<int>(UIFunctionType::SetHpUI)] = setHpUI;
-	_functions[static_cast<int>(UIFunctionType::SetStartBitUI)] = setHpUI;
+	_functions[static_cast<int>(UIFunctionType::SetStartBitUI)] = setStarBitUI;
 	_functions[static_cast<int>(UIFunctionType::SetCoinUI)] = setCoinUI;
 	_functions[static_cast<int>(UIFunctionType::SetLifeUI)] = setLifeUI;
 	_functions[static_cast<int>(UIFunctionType::ActivateUI)] = activateUI;
@@ -45,6 +45,7 @@ void UIFunction::setHpUI(UIGroup* uiGroup)
 {
 	check(uiGroup != nullptr);
 
+	shakeUI(uiGroup);
 	UIElement* elementImage = uiGroup->findElement("HPPanelImage", UIElementType::Image);
 	if (elementImage == nullptr)
 	{
@@ -71,6 +72,7 @@ void UIFunction::setHpUI(UIGroup* uiGroup)
 void UIFunction::setStarBitUI(UIGroup* uiGroup)
 {
 	check(uiGroup != nullptr);
+	shakeUI(uiGroup);
 
 	UIElement* elementText = uiGroup->findElement("StarBitText", UIElementType::Text);
 	if (elementText == nullptr)
@@ -87,6 +89,7 @@ void UIFunction::setStarBitUI(UIGroup* uiGroup)
 void UIFunction::setCoinUI(UIGroup* uiGroup)
 {
 	check(uiGroup != nullptr);
+	shakeUI(uiGroup);
 
 	UIElement* elementText = uiGroup->findElement("CoinText", UIElementType::Text);
 	if (elementText == nullptr)
@@ -103,6 +106,7 @@ void UIFunction::setCoinUI(UIGroup* uiGroup)
 void UIFunction::setLifeUI(UIGroup* uiGroup)
 {
 	check(uiGroup != nullptr);
+	shakeUI(uiGroup);
 
 	UIElement* elementText = uiGroup->findElement("LifeText", UIElementType::Text);
 	if (elementText == nullptr)
@@ -141,9 +145,14 @@ void UIFunction::hideUI(UIGroup* uiGroup)
 void UIFunction::shakeUI(UIGroup* uiGroup)
 {
 	check(uiGroup != nullptr);
+	if (uiGroup->isMoving())
+	{
+		return;
+	}
 	DirectX::XMFLOAT2 toPosition = uiGroup->getCurrentPositionOffset();
-	toPosition = MathHelper::add(toPosition, DirectX::XMFLOAT2(0, 5));
-	uiGroup->setMove(toPosition, 0, InterpolationType::Shake);
+	DirectX::XMFLOAT2 shakePosition = MathHelper::add(toPosition, DirectX::XMFLOAT2(0, 7));
+	uiGroup->setMove(shakePosition, 0, InterpolationType::Linear);
+	uiGroup->setMove(toPosition, 400, InterpolationType::Shake);
 }
 
 void UIFunction::irisOut(UIGroup* uiGroup)

@@ -237,9 +237,13 @@ std::unique_ptr<ActionCondition> ActionCondition::parseConditionString(const std
 	{
 		condition = std::make_unique<ActionCondition_OnWall>(conditionArgs);
 	}
+	else if (conditionTypeString == "IsPointerActive")
+	{
+		condition = std::make_unique<ActionCondition_IsPointerActive>(conditionArgs);
+	}
 	else
 	{
-		static_assert(static_cast<int>(ActionConditionType::Count) == 21, "타입이 추가되면 작업되어야 합니다.");
+		static_assert(static_cast<int>(ActionConditionType::Count) == 22, "타입이 추가되면 작업되어야 합니다.");
 		ThrowErrCode(ErrCode::UndefinedType, "conditionString : " + conditionString);
 	}
 
@@ -654,4 +658,14 @@ ActionCondition_OnWall::ActionCondition_OnWall(const std::string& args)
 bool ActionCondition_OnWall::checkCondition(const Actor& actor) const noexcept
 {
 	return actor.isOnWall();
+}
+
+ActionCondition_IsPointerActive::ActionCondition_IsPointerActive(const std::string& args)
+{
+
+}
+
+bool ActionCondition_IsPointerActive::checkCondition(const Actor& actor) const noexcept
+{
+	return SMGFramework::Get().isPointerActive();
 }

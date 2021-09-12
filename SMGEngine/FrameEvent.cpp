@@ -133,9 +133,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_ChangeMaterial>(node);
 	}
+	else if (typeString == "StarShoot")
+	{
+		return std::make_unique<FrameEvent_StarShoot>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 20, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 21, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -521,4 +525,15 @@ FrameEvent_ChangeMaterial::FrameEvent_ChangeMaterial(const XMLReaderNode& node)
 void FrameEvent_ChangeMaterial::process(Actor& actor) const noexcept
 {
 	actor.changeMaterial(_renderItemIndex, _fileName, _name);
+}
+
+FrameEvent_StarShoot::FrameEvent_StarShoot(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+
+}
+
+void FrameEvent_StarShoot::process(Actor& actor) const noexcept
+{
+	SMGFramework::getStageManager()->starShoot();
 }
