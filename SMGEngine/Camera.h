@@ -20,12 +20,14 @@ public:
 	const TickCount64& getCurrentTick(void) const noexcept;
 	void setInputCameraPointKey(int key) noexcept;
 	DirectX::XMVECTOR getScreenPositionWorld(const DirectX::XMFLOAT2& screenPosition, float distance) const noexcept;
+	void moveCameraImmediatley(void) noexcept;
 private:
 	void updateCameraPosition(void) noexcept;
 	void updateCameraPoint(void) noexcept;
 	void setCameraPoint(const CameraPoint* cameraPoint) noexcept;
 	void setCameraIndex(int index) noexcept;
 	int updateCameraInput(void) noexcept;
+	void updatePassConstant() noexcept;
 private:
 	// Ä«¸Þ¶ó
 	const CameraPoint* _cameraPoint;
@@ -55,7 +57,7 @@ private:
 	TickCount64 _keyInputTime;
 	static constexpr TickCount64 KEY_INPUT_INTERVAL = 200;
 	bool _cameraMoveFailed;
-	void updatePassConstant() noexcept;
+	bool _moveImmediately;
 #if defined (DEBUG) | defined(_DEBUG)
 public:
 	void updateCameraPositionDev(void) noexcept;

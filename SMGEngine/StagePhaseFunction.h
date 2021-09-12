@@ -50,3 +50,14 @@ public:
 private:
 	std::string _stageName;
 };
+
+class StagePhaseFunction_AddLife : public StagePhaseFunction
+{
+public:
+	StagePhaseFunction_AddLife(const XMLReaderNode& node);
+	virtual ~StagePhaseFunction_AddLife() = default;
+	virtual void process(void) noexcept;
+	virtual StagePhaseFunctionType getType() const noexcept override { return StagePhaseFunctionType::AddLife; }
+private:
+	int _addValue;
+};

@@ -30,6 +30,7 @@ Camera::Camera()
 	, _cameraIndex(-1)
 	, _keyInputTime(0)
 	, _cameraMoveFailed(false)
+	, _moveImmediately(false)
 #if defined DEBUG | defined _DEBUG
 	, _camThetaDev(0)
 	, _camPhiDev(0)
@@ -153,7 +154,15 @@ void Camera::setCameraPoint(const CameraPoint* cameraPoint) noexcept
 		return;
 	}
 
-	_blendTick = cameraPoint->getBlendTick();
+	if (_moveImmediately)
+	{
+		_blendTick = 0;
+		_moveImmediately = false;
+	}
+	else
+	{
+		_blendTick = cameraPoint->getBlendTick();
+	}
 	_cameraBlendPosition = _cameraPosition;
 	_cameraBlendRotationQuat = _cameraRotationQuat;
 
@@ -178,6 +187,11 @@ void Camera::setCameraIndex(int index) noexcept
 	_currentTick = 0;
 
 	_cameraIndex = index;
+}
+
+void Camera::moveCameraImmediatley(void) noexcept
+{
+	_moveImmediately = true;
 }
 
 int Camera::updateCameraInput(void) noexcept

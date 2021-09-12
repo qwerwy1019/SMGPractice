@@ -278,3 +278,13 @@ public:
 	virtual FrameEventType getType() const noexcept override { return FrameEventType::StarShoot; }
 private:
 };
+
+class FrameEvent_MoveCameraImmediately : public FrameEvent
+{
+public:
+	FrameEvent_MoveCameraImmediately(const XMLReaderNode& node);
+	virtual ~FrameEvent_MoveCameraImmediately() = default;
+	virtual void process(Actor& actor) const noexcept override;
+	virtual FrameEventType getType() const noexcept override { return FrameEventType::MoveCameraImmediately; }
+private:
+};

@@ -7,7 +7,7 @@ public:
 	void increaseStarBit() noexcept;
 	bool decreaseStarBit() noexcept;
 	void increaseCoin() noexcept;
-	void increaseLife() noexcept;
+	void increaseLife(int count) noexcept;
 	bool decreaseLife() noexcept;
 
 	uint32_t getStarBit() const noexcept { return _starBit; }

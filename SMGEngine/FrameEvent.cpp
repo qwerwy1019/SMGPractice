@@ -137,9 +137,13 @@ std::unique_ptr<FrameEvent> FrameEvent::loadXMLFrameEvent(const XMLReaderNode& n
 	{
 		return std::make_unique<FrameEvent_StarShoot>(node);
 	}
+	else if (typeString == "MoveCameraImmediately")
+	{
+		return std::make_unique<FrameEvent_MoveCameraImmediately>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(FrameEventType::Count) == 21, "타입추가시 확인할것");
+		static_assert(static_cast<int>(FrameEventType::Count) == 22, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, typeString);
 	}
 }
@@ -536,4 +540,15 @@ FrameEvent_StarShoot::FrameEvent_StarShoot(const XMLReaderNode& node)
 void FrameEvent_StarShoot::process(Actor& actor) const noexcept
 {
 	SMGFramework::getStageManager()->starShoot();
+}
+
+FrameEvent_MoveCameraImmediately::FrameEvent_MoveCameraImmediately(const XMLReaderNode& node)
+	: FrameEvent(node)
+{
+
+}
+
+void FrameEvent_MoveCameraImmediately::process(Actor& actor) const noexcept
+{
+	SMGFramework::getCamera()->moveCameraImmediatley();
 }

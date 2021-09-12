@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "UserData.h"
+#include "Exception.h"
 
 UserData::UserData() noexcept
 	: _starBit(0)
@@ -34,9 +35,10 @@ void UserData::increaseCoin() noexcept
 	}
 }
 
-void UserData::increaseLife() noexcept
+void UserData::increaseLife(int count) noexcept
 {
-	++_life;
+	check(count >= 0);
+	_life += count;
 }
 
 bool UserData::decreaseLife() noexcept

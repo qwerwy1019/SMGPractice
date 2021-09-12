@@ -28,6 +28,7 @@ enum class StagePhaseFunctionType
 	RemoveLife,
 	LoadStage,
 	//LoadLastSaveFile,
+	AddLife,
 
 	Count,
 };

@@ -52,6 +52,7 @@ enum class FrameEventType
 	CallUIFunction,
 	ChangeMaterial,
 	StarShoot,
+	MoveCameraImmediately,
 
 	Count,
 };

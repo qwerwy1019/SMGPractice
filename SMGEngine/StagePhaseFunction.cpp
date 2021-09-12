@@ -62,9 +62,13 @@ std::unique_ptr<StagePhaseFunction> StagePhaseFunction::loadXMLFunction(const XM
 	{
 		return std::make_unique<StagePhaseFunction_LoadStage>(node);
 	}
+	else if (nameString == "AddLife")
+	{
+		return std::make_unique<StagePhaseFunction_AddLife>(node);
+	}
 	else
 	{
-		static_assert(static_cast<int>(StagePhaseFunctionType::Count) == 3, "타입추가시 확인할것");
+		static_assert(static_cast<int>(StagePhaseFunctionType::Count) == 4, "타입추가시 확인할것");
 		ThrowErrCode(ErrCode::UndefinedType, nameString);
 	}
 }
@@ -114,4 +118,21 @@ void StagePhaseFunction_RemoveLife::process(void) noexcept
 	StagePhaseFunction::process();
 
 	SMGFramework::getUserData()->decreaseLife();
+}
+
+StagePhaseFunction_AddLife::StagePhaseFunction_AddLife(const XMLReaderNode& node)
+	: StagePhaseFunction(node)
+{
+	node.loadAttribute("AddValue", _addValue);
+	if (_addValue <= 0)
+	{
+		ThrowErrCode(ErrCode::InvalidXmlData, std::to_string(_addValue));
+	}
+}
+
+void StagePhaseFunction_AddLife::process(void) noexcept
+{
+	StagePhaseFunction::process();
+
+	SMGFramework::getUserData()->increaseLife(_addValue);
 }
