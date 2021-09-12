@@ -93,3 +93,6 @@ enum class InterpolationType
 
 	Count,
 };
+
+static constexpr float ACCELERATION_UNIT = 0.001f;
+static constexpr float SPEED_UNIT = 0.05f;

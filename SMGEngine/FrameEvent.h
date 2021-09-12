@@ -41,7 +41,6 @@ public:
 	virtual ~FrameEvent_Speed() = default;
 	virtual void process(Actor& actor) const noexcept override;
 	virtual FrameEventType getType() const noexcept override { return FrameEventType::Speed; }
-	static constexpr float ACCELERATION_UNIT = 0.001f;
 private:
 	float _targetSpeed;
 	float _acceleration;

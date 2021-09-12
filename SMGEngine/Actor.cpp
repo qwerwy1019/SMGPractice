@@ -801,8 +801,10 @@ DirectX::XMFLOAT3 Actor::getMoveVector(const TickCount64& deltaTick) const noexc
 	XMFLOAT3 resultVector;
 	if (applySpeed)
 	{
-		direction *= _speed /** deltaTick*/;
+		direction *= _speed * deltaTick * SPEED_UNIT;
 	}
+
+	//OutputDebugStringA((std::to_string(deltaTick) + "\n").c_str());
 	XMStoreFloat3(&resultVector, direction + XMLoadFloat3(&_additionalMoveVector));
 
 	return resultVector;

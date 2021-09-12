@@ -296,7 +296,7 @@ void StageInfo::loadXmlGravityPointInfo(const XMLReaderNode& node)
 		}
 
 		childNodes[i].loadAttribute("Gravity", gravityPoint->_gravity);
-		gravityPoint->_gravity *= 0.001f;//ACCELERATION_UNIT;
+		gravityPoint->_gravity *= ACCELERATION_UNIT;
 		childNodes[i].loadAttribute("Radius", gravityPoint->_radius);
 		childNodes[i].loadAttribute("MinRadius", gravityPoint->_minRadius);
 		childNodes[i].loadAttribute("Position", gravityPoint->_position);
