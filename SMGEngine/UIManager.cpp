@@ -14,9 +14,22 @@ UIManager::UIManager()
 {
 }
 
-void UIManager::releaseForStageLoad(void) noexcept
+void UIManager::release(void) noexcept
 {
 	_uiGroups.clear();
+}
+
+void UIManager::onResize(void) noexcept
+{
+	DirectX::XMFLOAT2 screenSizeRate = { static_cast<float>(SMGFramework::Get().getClientWidth()) / _screenSize.x,
+									   static_cast<float>(SMGFramework::Get().getClientHeight()) / _screenSize.y };
+
+	for (const auto& e : _uiGroups)
+	{
+		e.second->onResize(screenSizeRate);
+	}
+	_screenSize.x = static_cast<float>(SMGFramework::Get().getClientWidth());
+	_screenSize.y = static_cast<float>(SMGFramework::Get().getClientHeight());
 }
 
 void UIManager::drawUI()
@@ -34,12 +47,15 @@ void UIManager::loadXML(const std::string& fileName)
 	XMLReader xmlUI;
 	xmlUI.loadXMLFile(filePath);
 	xmlUI.getRootNode().loadAttribute("ScreenSize", _screenSize);
+	DirectX::XMFLOAT2 screenSizeRate = { static_cast<float>(SMGFramework::Get().getClientWidth()) / _screenSize.x,
+									static_cast<float>(SMGFramework::Get().getClientHeight()) / _screenSize.y };
+
 	const auto& childNodes = xmlUI.getRootNode().getChildNodes();
 	for (const auto& childNode : childNodes)
 	{
 		std::string name;
 		childNode.loadAttribute("Name", name);
-		auto it = _uiGroups.emplace(name, std::make_unique<UIGroup>(childNode));
+		auto it = _uiGroups.emplace(name, std::make_unique<UIGroup>(childNode, screenSizeRate));
 		if (it.second == false)
 		{
 			ThrowErrCode(ErrCode::KeyDuplicated, name);
@@ -65,7 +81,7 @@ UIGroup* UIManager::getGroup(const std::string& groupName) noexcept
 	return it->second.get();
 }
 
-UIGroup::UIGroup(const XMLReaderNode& node)
+UIGroup::UIGroup(const XMLReaderNode& node, const DirectX::XMFLOAT2& sizeRate)
 	: _position(0, 0)
 	, _positionOffsetFrom(0, 0)
 	, _positionOffsetTo(0, 0)
@@ -76,6 +92,7 @@ UIGroup::UIGroup(const XMLReaderNode& node)
 {
 	node.loadAttribute("Position", _position);
 	node.loadAttribute("Hide", _hidePositionOffset);
+	
 	std::string function;
 	node.loadAttribute("UpdateFunction", function);
 	_updateFunctionType = getUIFunctionTypeFromString(function);
@@ -96,6 +113,15 @@ UIGroup::UIGroup(const XMLReaderNode& node)
 		_positionOffsetTo = _hidePositionOffset;
 		_moveInterpolationType = InterpolationType::Linear;
 	}
+	onResize(sizeRate);
+}
+
+void UIGroup::onResize(const DirectX::XMFLOAT2& sizeRate)
+{
+	_position = { _position.x * sizeRate.x, _position.y * sizeRate.y };
+	_hidePositionOffset = { _hidePositionOffset.x * sizeRate.x, _hidePositionOffset.y * sizeRate.y };
+	_positionOffsetTo = { _positionOffsetTo.x * sizeRate.x, _positionOffsetTo.y * sizeRate.y };
+	_positionOffsetFrom = { _positionOffsetFrom.x * sizeRate.x, _positionOffsetFrom.y * sizeRate.y };
 }
 
 UIElement* UIGroup::findElement(const std::string& name, UIElementType typeCheck) const noexcept
@@ -286,6 +312,11 @@ UIElementText::UIElementText(const XMLReaderNode& node)
 	setText(text);
 }
 
+void UIElementText::onResize(const DirectX::XMFLOAT2& resizeRate) noexcept
+{
+
+}
+
 void UIElementText::draw(const DirectX::XMFLOAT2& parentPosition) const noexcept
 {
 	ID2D1Brush* brush = SMGFramework::Get().getD3DApp()->getTextBrush(_brushType);
@@ -309,6 +340,7 @@ UIElementImage::UIElementImage(const XMLReaderNode& node)
 	std::string imageName;
 	node.loadAttribute("ImageName", imageName);
 	_bitmapImage = SMGFramework::getD3DApp()->loadBitmapImage(imageName);
+	node.loadAttribute("Resize", _resize);
 }
 
 void UIElementImage::draw(const DirectX::XMFLOAT2& parentPosition) const noexcept
@@ -320,6 +352,17 @@ void UIElementImage::draw(const DirectX::XMFLOAT2& parentPosition) const noexcep
 	SMGFramework::getD3DApp()->getD2dContext()->DrawBitmap(
 		_bitmapImage,
 		D2D1::RectF(upperLeftX, upperLeftY, bottomRightX, bottomRightY));
+}
+
+void UIElementImage::onResize(const DirectX::XMFLOAT2& resizeRate) noexcept
+{
+	if (!_resize)
+	{
+		return;
+	}
+
+	_localPosition = { _localPosition.x * resizeRate.x , _localPosition.y * resizeRate.y };
+	_size = { _size.x * resizeRate.x, _size.y * resizeRate.y };
 }
 
 void UIElementImage::setImage(const std::string& imageName)
@@ -376,6 +419,14 @@ void UIElementIris::draw(const DirectX::XMFLOAT2& parentPosition) const noexcept
 		&transformedGeometry);
 
 	SMGFramework::getD3DApp()->getD2dContext()->FillGeometry(transformedGeometry.Get(), brush);
+}
+
+void UIElementIris::onResize(const DirectX::XMFLOAT2& resizeRate) noexcept
+{
+	_localPosition = { _localPosition.x * resizeRate.x , _localPosition.y * resizeRate.y };
+	_size = { _size.x * resizeRate.x, _size.y * resizeRate.y };
+	_radiusIn = _radiusIn * std::max(_size.x, _size.y);
+	_radiusOut = _radiusOut * std::max(_size.x, _size.y);
 }
 
 void UIElementIris::set(bool isIn) noexcept

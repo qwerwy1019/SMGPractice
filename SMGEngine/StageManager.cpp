@@ -786,7 +786,7 @@ void StageManager::unloadStage(bool isReload)
 	_stageInfo = nullptr;
 	_actionchartMap.clear();
 
-	SMGFramework::getUIManager()->releaseForStageLoad();
+	SMGFramework::getUIManager()->release();
 	SMGFramework::getCamera()->releaseForStageLoad();
 	SMGFramework::getEffectManager()->releaseForStageLoad();
 	SMGFramework::getD3DApp()->releaseItemsForStageLoad(isReload);

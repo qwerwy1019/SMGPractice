@@ -333,6 +333,7 @@ LRESULT SMGFramework::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					_minimized = false;
 					_maximized = true;
 					_d3dApp->OnResize();
+					_uiManager->onResize();
 				}
 				else if (wParam == SIZE_RESTORED)
 				{
@@ -341,12 +342,14 @@ LRESULT SMGFramework::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						_timer.Start();
 						_minimized = false;
 						_d3dApp->OnResize();
+						_uiManager->onResize();
 					}
 					else if (_maximized)
 					{
 						_timer.Start();
 						_maximized = false;
 						_d3dApp->OnResize();
+						_uiManager->onResize();
 					}
 					else if (_resizing)
 					{
@@ -355,6 +358,7 @@ LRESULT SMGFramework::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					else
 					{
 						_d3dApp->OnResize();
+						_uiManager->onResize();
 					}
 				}
 				else
@@ -371,6 +375,7 @@ LRESULT SMGFramework::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			_timer.Start();
 			_resizing = false;
 			_d3dApp->OnResize();
+			_uiManager->onResize();
 			return 0;
 		case WM_DESTROY:
 			PostQuitMessage(0);

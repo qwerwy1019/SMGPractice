@@ -22,6 +22,7 @@ public:
 	UIElement(const std::string& name, const DirectX::XMFLOAT2& position, const DirectX::XMFLOAT2& size) noexcept;
 	virtual UIElementType getType(void) const noexcept = 0;
 	virtual ~UIElement() = default;
+	virtual void onResize(const DirectX::XMFLOAT2& resizeRate) noexcept = 0;
 	bool isNameEqual(const std::string& name) const noexcept { return _name == name; }
 	virtual void draw(const DirectX::XMFLOAT2& parentPosition) const noexcept = 0;
 	static std::unique_ptr<UIElement> loadXMLUIElement(const XMLReaderNode& node);
@@ -43,6 +44,7 @@ public:
 		TextFormatType formatType,
 		TextBrushType brushType,
 		const std::wstring& text);
+	virtual void onResize(const DirectX::XMFLOAT2& resizeRate) noexcept override;
 	virtual void draw(const DirectX::XMFLOAT2& parentPosition) const noexcept override;
 	void setText(const std::wstring& text);
 private:
@@ -58,9 +60,11 @@ public:
 	virtual ~UIElementImage() = default;
 	virtual UIElementType getType(void) const noexcept override { return UIElementType::Image; }
 	virtual void draw(const DirectX::XMFLOAT2& parentPosition) const noexcept override;
+	virtual void onResize(const DirectX::XMFLOAT2& resizeRate) noexcept override;
 	void setImage(const std::string& imageName);
 private:
 	ID2D1Bitmap* _bitmapImage;
+	bool _resize;
 };
 
 class UIElementIris : public UIElement
@@ -70,6 +74,7 @@ public:
 	virtual ~UIElementIris() = default;
 	virtual UIElementType getType(void) const noexcept override { return UIElementType::Iris; }
 	virtual void draw(const DirectX::XMFLOAT2& parentPosition) const noexcept override;
+	virtual void onResize(const DirectX::XMFLOAT2& resizeRate) noexcept override;
 	void set(bool isIn) noexcept;
 	void update(void);
 private:
@@ -91,7 +96,8 @@ class UIElementButton : public UIElementImage
 class UIGroup
 {
 public:
-	UIGroup(const XMLReaderNode& node);
+	UIGroup(const XMLReaderNode& node, const DirectX::XMFLOAT2& sizeRate);
+	void onResize(const DirectX::XMFLOAT2& sizeRate);
 	UIElement* findElement(const std::string& name, UIElementType typeCheck) const noexcept;
 	void update(void);
 	void draw(void) const noexcept;
@@ -123,7 +129,8 @@ class UIManager
 {
 public:
 	UIManager();
-	void releaseForStageLoad(void) noexcept;
+	void release(void) noexcept;
+	void onResize(void) noexcept;
 	void drawUI();
 	void loadXML(const std::string& fileName);
 	void update();
