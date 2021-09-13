@@ -39,3 +39,5 @@ Direct3D 12 사용. UI는 Direct2D, DirectWrite 사용.
 * Projects, Resources, Codes 폴더에 각각 있어야 합니다.
 * FileConverter의 경우 fbx sdk가 필요합니다.
 * Righteous 폰트가 필요합니다. (https://fonts.google.com/specimen/Righteous?query=right)
+
+코드 내용에 대한 자세한 설명은 코드설명.md를 확인해주세요.
