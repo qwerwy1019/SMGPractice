@@ -1,5 +1,5 @@
 # SMGPractice
-[![게임 플레이 영상](http://img.youtube.com/vi/tG3YZa67Fxo/0.jpg)](https://youtu.be/tG3YZa67Fxo?t=0s)
+[![게임 플레이 영상](http://img.youtube.com/vi/iUm7sT7fNdY/0.jpg)](https://youtu.be/iUm7sT7fNdY?t=0s)
 
 
 Direct3D 12 사용. UI는 Direct2D, DirectWrite 사용.
