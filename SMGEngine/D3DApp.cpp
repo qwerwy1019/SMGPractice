@@ -286,7 +286,7 @@ void D3DApp::initDirect2D(void)
 		ThrowIfFailed(_writeFactory->CreateTextFormat(L"Righteous", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
 			DWRITE_FONT_STYLE_NORMAL,
 			DWRITE_FONT_STRETCH_NORMAL,
-			54.f,
+			48.f,
 			L"ko-KR",
 			&_textFormats[static_cast<int>(TextFormatType::Normal)]));
 		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::Normal)]->SetTextAlignment(
@@ -297,7 +297,7 @@ void D3DApp::initDirect2D(void)
 		ThrowIfFailed(_writeFactory->CreateTextFormat(L"Righteous", nullptr, DWRITE_FONT_WEIGHT_NORMAL,
 			DWRITE_FONT_STYLE_NORMAL,
 			DWRITE_FONT_STRETCH_NORMAL,
-			60.f,
+			54.f,
 			L"ko-KR",
 			&_textFormats[static_cast<int>(TextFormatType::Points)]));
 		ThrowIfFailed(_textFormats[static_cast<int>(TextFormatType::Points)]->SetTextAlignment(

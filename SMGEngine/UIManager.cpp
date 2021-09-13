@@ -122,6 +122,11 @@ void UIGroup::onResize(const DirectX::XMFLOAT2& sizeRate)
 	_hidePositionOffset = { _hidePositionOffset.x * sizeRate.x, _hidePositionOffset.y * sizeRate.y };
 	_positionOffsetTo = { _positionOffsetTo.x * sizeRate.x, _positionOffsetTo.y * sizeRate.y };
 	_positionOffsetFrom = { _positionOffsetFrom.x * sizeRate.x, _positionOffsetFrom.y * sizeRate.y };
+
+	for (const auto& e : _child)
+	{
+		e->onResize(sizeRate);
+	}
 }
 
 UIElement* UIGroup::findElement(const std::string& name, UIElementType typeCheck) const noexcept
@@ -425,8 +430,8 @@ void UIElementIris::onResize(const DirectX::XMFLOAT2& resizeRate) noexcept
 {
 	_localPosition = { _localPosition.x * resizeRate.x , _localPosition.y * resizeRate.y };
 	_size = { _size.x * resizeRate.x, _size.y * resizeRate.y };
-	_radiusIn = _radiusIn * std::max(_size.x, _size.y);
-	_radiusOut = _radiusOut * std::max(_size.x, _size.y);
+	_radiusIn = _radiusIn * std::max(resizeRate.x, resizeRate.y);
+	_radiusOut = _radiusOut * std::max(resizeRate.x, resizeRate.y);
 }
 
 void UIElementIris::set(bool isIn) noexcept
