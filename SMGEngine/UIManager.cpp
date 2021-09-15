@@ -47,20 +47,20 @@ void UIManager::loadXML(const std::string& fileName)
 	XMLReader xmlUI;
 	xmlUI.loadXMLFile(filePath);
 	xmlUI.getRootNode().loadAttribute("ScreenSize", _screenSize);
-	DirectX::XMFLOAT2 screenSizeRate = { static_cast<float>(SMGFramework::Get().getClientWidth()) / _screenSize.x,
-									static_cast<float>(SMGFramework::Get().getClientHeight()) / _screenSize.y };
-
+	
 	const auto& childNodes = xmlUI.getRootNode().getChildNodes();
 	for (const auto& childNode : childNodes)
 	{
 		std::string name;
 		childNode.loadAttribute("Name", name);
-		auto it = _uiGroups.emplace(name, std::make_unique<UIGroup>(childNode, screenSizeRate));
+		auto it = _uiGroups.emplace(name, std::make_unique<UIGroup>(childNode));
 		if (it.second == false)
 		{
 			ThrowErrCode(ErrCode::KeyDuplicated, name);
 		}
 	}
+
+	onResize();
 }
 
 void UIManager::update()
@@ -81,7 +81,7 @@ UIGroup* UIManager::getGroup(const std::string& groupName) noexcept
 	return it->second.get();
 }
 
-UIGroup::UIGroup(const XMLReaderNode& node, const DirectX::XMFLOAT2& sizeRate)
+UIGroup::UIGroup(const XMLReaderNode& node)
 	: _position(0, 0)
 	, _positionOffsetFrom(0, 0)
 	, _positionOffsetTo(0, 0)
@@ -113,7 +113,6 @@ UIGroup::UIGroup(const XMLReaderNode& node, const DirectX::XMFLOAT2& sizeRate)
 		_positionOffsetTo = _hidePositionOffset;
 		_moveInterpolationType = InterpolationType::Linear;
 	}
-	onResize(sizeRate);
 }
 
 void UIGroup::onResize(const DirectX::XMFLOAT2& sizeRate)

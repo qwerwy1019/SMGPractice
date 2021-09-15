@@ -96,7 +96,7 @@ class UIElementButton : public UIElementImage
 class UIGroup
 {
 public:
-	UIGroup(const XMLReaderNode& node, const DirectX::XMFLOAT2& sizeRate);
+	UIGroup(const XMLReaderNode& node);
 	void onResize(const DirectX::XMFLOAT2& sizeRate);
 	UIElement* findElement(const std::string& name, UIElementType typeCheck) const noexcept;
 	void update(void);
