@@ -323,19 +323,23 @@ LRESULT SMGFramework::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			}
 			return 0;
 		case WM_SIZE:
+			if (wParam == SIZE_MINIMIZED)
+			{
+				_timer.Stop();
+				_minimized = true;
+				_maximized = false;
 
-			_clientWidth = LOWORD(lParam);
-			_clientHeight = HIWORD(lParam);
+				return 0;
+			}
 
 			if (_d3dApp != nullptr)
 			{
-				if (wParam == SIZE_MINIMIZED)
-				{
-					_timer.Stop();
-					_minimized = true;
-					_maximized = false;
-				}
-				else if (wParam == SIZE_MAXIMIZED)
+				_clientWidth = LOWORD(lParam);
+				_clientHeight = HIWORD(lParam);
+				check(_clientWidth != 0);
+				check(_clientHeight != 0);
+
+				if (wParam == SIZE_MAXIMIZED)
 				{
 					_timer.Start();
 					_minimized = false;
