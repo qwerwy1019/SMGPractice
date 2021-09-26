@@ -64,7 +64,15 @@ void SMGFramework::Create(HINSTANCE hInstance)
 
 void SMGFramework::Destroy(void)
 {
-	_instance->_stageManager->releaseObjects();
+	if (_instance == nullptr)
+	{
+		return;
+	}
+
+	if (_instance->_stageManager != nullptr)
+	{
+		_instance->_stageManager->releaseObjects();
+	}
 
 	_instance->_effectManager = nullptr;
 	_instance->_camera = nullptr;

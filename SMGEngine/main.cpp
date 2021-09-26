@@ -14,20 +14,36 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 	int rv = 0;
-	try
+	do 
 	{
-		ThrowIfFailed(::CoInitialize(nullptr));
-		SMGFramework::Create(hInstance);
+		try
+		{
+			ThrowIfFailed(::CoInitialize(nullptr));
+			SMGFramework::Create(hInstance);
+		}
+		catch (DxException& e)
+		{
+			MessageBox(nullptr, e.to_wstring().c_str(), L"초기화 실패 !", MB_RETRYCANCEL);
+			rv = 1;
+			break;
+		}
 
-		rv = SMGFramework::Get().Run();
-		SMGFramework::Destroy();
-		::CoUninitialize();
-	}
-	catch (DxException& e)
-	{
-		MessageBox(nullptr, e.to_wstring().c_str(), L"초기화 실패 !", MB_RETRYCANCEL);
-		return 1;
-	}
+		try
+		{
+			rv = SMGFramework::Get().Run();
+		}
+		catch (DxException& e)
+		{
+			MessageBox(nullptr, e.to_wstring().c_str(), L"예외 발생 !", MB_RETRYCANCEL);
+			rv = 2;
+			break;
+		}
+	} while (false);
+
+
+	SMGFramework::Destroy();
+	::CoUninitialize();
+
 #if defined(DEBUG) | defined(_DEBUG)
 	{
 		Microsoft::WRL::ComPtr<IDXGIDebug1> dxgiDebug;
